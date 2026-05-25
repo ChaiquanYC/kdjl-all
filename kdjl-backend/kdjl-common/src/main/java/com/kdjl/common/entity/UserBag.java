@@ -65,7 +65,7 @@ public class UserBag {
     private String holeInfo;
 
     @Column
-    private Integer pyb; // auction ingot
+    private Integer pyb = 0; // auction ingot
 
     public Long getId() { return id; }
     public Long getPropId() { return propId; }
