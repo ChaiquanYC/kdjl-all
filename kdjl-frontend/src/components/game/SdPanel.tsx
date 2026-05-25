@@ -115,9 +115,9 @@ export default function SdPanel() {
                 </div>
               </div>
               <div className={styles.composeSelects}>
-                <table><tbody>
+                <table width="280"><tbody>
                   <tr>
-                    <td align="center">
+                    <td align="center" style={{paddingRight:20}}>
                       <select defaultValue=""><option value="">请选择主宠物</option>{pets.filter(p => p.level >= 40).map(p => <option key={p.id} value={p.id}>{p.name}-{p.level}</option>)}</select>
                     </td>
                     <td align="center">
@@ -141,12 +141,12 @@ export default function SdPanel() {
               <select defaultValue=""><option value="">选择材料一</option></select><br />
               添加<span style={{color:'red'}}>加成</span>材料：
               <select defaultValue=""><option value="">选择材料二</option></select><br />
-              <table><tbody>
+              <table width="300" style={{marginTop:10}}><tbody>
                 <tr>
                   <td rowSpan={2}><a href="#" onClick={(e) => { e.preventDefault(); NYI(); }}><img src="/images/sdbtn.gif" alt="开始合成" /></a></td>
-                  <td>合成幸运星：0</td>
+                  <td style={{paddingLeft:20}}>合成幸运星：0</td>
                 </tr>
-                <tr><td><a href="#" onClick={(e) => { e.preventDefault(); NYI(); }}><img src="/images/gm15.gif" alt="合成幸运星说明" /></a></td></tr>
+                <tr><td style={{paddingLeft:20}}><a href="#" onClick={(e) => { e.preventDefault(); NYI(); }}><img src="/images/gm15.gif" alt="合成幸运星说明" /></a></td></tr>
               </tbody></table>
             </div>
           </div>
@@ -206,7 +206,7 @@ export default function SdPanel() {
           <div className={styles.tabContent}>
             <div className={styles.ssBg}>
               <div className={styles.ssL}>
-                <div className={styles.petRow} style={{marginTop:55}}>
+                <div className={styles.petRow} style={{marginTop:55, marginLeft:35}}>
                   {pets.slice(0, 3).map((p) => (
                     <div key={p.id} className={`${styles.petItem} ${selPet?.id === p.id ? styles.petSel : ''}`}
                       onClick={() => setSelPet(p)} title={p.name}>
@@ -261,7 +261,7 @@ export default function SdPanel() {
           <div className={styles.tabContent}>
             <div className={styles.ssBg2}>
               <div className={styles.ssL}>
-                <div className={styles.petRow} style={{marginTop:55}}>
+                <div className={styles.petRow} style={{marginTop:55, marginLeft:35}}>
                   {pets.slice(0, 3).map((p) => (
                     <div key={p.id} className={`${styles.petItem} ${selPet?.id === p.id ? styles.petSel : ''}`}
                       onClick={() => setSelPet(p)} title={p.name}>
@@ -285,12 +285,16 @@ export default function SdPanel() {
                 )}
               </div>
               <div className={styles.ssR}>
-                <div className={styles.ssSection}>
-                  <table><tbody>
-                    <tr><td rowSpan={4}></td><td>选择道具一：</td></tr>
-                    <tr><td height="30"><select defaultValue=""><option value="">增加道具</option></select></td></tr>
-                    <tr><td>选择道具二：</td></tr>
-                    <tr><td height="20"><select defaultValue=""><option value="">增加道具</option></select></td></tr>
+                <div className={styles.ssImgBox} align="center"></div>
+                <div className={styles.ssItemBox}>
+                  <table width="330"><tbody>
+                    <tr>
+                      <td width="177" rowSpan={4}></td>
+                      <td width="153" align="left">选择道具一：</td>
+                    </tr>
+                    <tr><td height="30" align="left"><select defaultValue=""><option value="">增加道具</option></select></td></tr>
+                    <tr><td align="left">选择道具二：</td></tr>
+                    <tr><td height="20" align="left"><select defaultValue=""><option value="">增加道具</option></select></td></tr>
                   </tbody></table>
                 </div>
               </div>
