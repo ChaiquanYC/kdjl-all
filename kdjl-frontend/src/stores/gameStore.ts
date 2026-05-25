@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import type { Pet, Item, ChatMessage } from '@/types';
 
-export type Panel = 'pets' | 'bag' | 'equip' | 'tasks' | 'map' | 'city' | 'depot' | 'zb' | 'smshop' | 'guild' | 'shop' | 'rank' | 'gm' | 'team' | 'auction' | 'inherit' | 'marry' | 'friend' | 'zhanbu' | 'sd' | 'profile' | null;
-export type GameView = 'map' | 'city' | 'pets' | 'shop' | 'depot' | 'zb' | 'smshop' | 'auction' | 'ranch' | 'pvp' | 'zhanbu' | 'sd' | null;
+export type Panel = 'pets' | 'bag' | 'equip' | 'tasks' | 'map' | 'city' | 'depot' | 'zb' | 'smshop' | 'guild' | 'shop' | 'rank' | 'gm' | 'team' | 'auction' | 'inherit' | 'marry' | 'friend' | 'zhanbu' | 'sd' | null;
+export type GameView = 'map' | 'city' | 'pets' | 'shop' | 'depot' | 'zb' | 'smshop' | 'auction' | 'ranch' | 'pvp' | 'zhanbu' | 'sd' | 'profile' | null;
 
 interface GameState {
   pets: Pet[];
