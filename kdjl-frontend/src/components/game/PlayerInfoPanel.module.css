@@ -1,0 +1,103 @@
+.container {
+  padding: 12px;
+  font-size: 13px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #c0a060;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid #c0a060;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.basic {
+  flex: 1;
+}
+
+.nickname {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4a3520;
+}
+
+.username {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+}
+
+.vip {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 1px 8px;
+  background: linear-gradient(135deg, #ffd700, #ff8c00);
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 3px;
+}
+
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stats h3 {
+  font-size: 13px;
+  color: #c0a060;
+  margin: 10px 0 4px 0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #e8dcc8;
+}
+
+.stats h3:first-child {
+  margin-top: 0;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 6px;
+  border-bottom: 1px solid #f0ede4;
+}
+
+.label {
+  color: #666;
+}
+
+.value {
+  color: #4a3520;
+  font-weight: 500;
+}
+
+.expBuff {
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  text-align: center;
+  color: #856404;
+  font-size: 12px;
+  font-weight: bold;
+}

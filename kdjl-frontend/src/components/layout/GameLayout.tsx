@@ -27,6 +27,7 @@ import FriendPanel from '@/components/game/FriendPanel';
 import PvpPanel from '@/components/game/PvpPanel';
 import ZhanBuPanel from '@/components/game/ZhanBuPanel';
 import SdPanel from '@/components/game/SdPanel';
+import PlayerInfoPanel from '@/components/game/PlayerInfoPanel';
 import OverlayPanel from './OverlayPanel';
 import styles from './GameLayout.module.css';
 
@@ -211,8 +212,8 @@ export default function GameLayout() {
               <a className={`${styles.sideBtn} ${gameView==='pets'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('pets')}}>
                 <img src="/images/ui/menu/m_pet.png" alt="宠物" />
               </a>
-              <a className={`${styles.sideBtn} ${activePanel==='tasks'?styles.sideBtnActive:''}`} onClick={()=>setActivePanel('tasks')}>
-                <img src="/images/ui/menu/m_info.png" alt="信息" />
+              <a className={`${styles.sideBtn} ${activePanel==='profile'?styles.sideBtnActive:''}`} onClick={()=>setActivePanel(activePanel==='profile' ? null : 'profile')}>
+                <img src="/images/ui/menu/m_info.png" alt="个人信息" />
               </a>
             </div>
           </div>
@@ -303,6 +304,7 @@ export default function GameLayout() {
             {activePanel==='marry' && <OverlayPanel title="婚姻" width={420} height={380} defaultLeft={200} defaultTop={20} onClose={()=>setActivePanel(null)}><MarryPanel/></OverlayPanel>}
             {activePanel==='friend' && <OverlayPanel title="好友" width={420} height={380} defaultLeft={200} defaultTop={20} onClose={()=>setActivePanel(null)}><FriendPanel/></OverlayPanel>}
             {activePanel==='gm' && <OverlayPanel title="GM工具" width={500} height={420} defaultLeft={150} defaultTop={10} onClose={()=>setActivePanel(null)}><GmPanel/></OverlayPanel>}
+            {activePanel==='profile' && <OverlayPanel title="个人信息" width={350} height={400} defaultLeft={220} defaultTop={10} onClose={()=>setActivePanel(null)}><PlayerInfoPanel/></OverlayPanel>}
           </div>
         </div>
 

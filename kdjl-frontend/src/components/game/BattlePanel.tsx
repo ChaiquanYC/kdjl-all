@@ -239,7 +239,7 @@ export default function BattlePanel({ petId, monsterId, mapId, mapImg, onClose, 
     const log = s.log;
     if (!log) return;
     clearAnimTimer();
-    setPetImgSrc(s.petImgAck ? `/images/bb/${s.petImgAck}` : null);
+    setPetImgSrc(s.petImgAck ? `/images/bb/${s.petImgAck}` : (s.petImg ? `/images/bb/${s.petImg}` : null));
     const sname = skillLabel(log.action);
     let parts: string[] = [];
     if (log.petCrit) parts.push('<span class="crit">暴击</span>');
@@ -280,7 +280,7 @@ export default function BattlePanel({ petId, monsterId, mapId, mapImg, onClose, 
     const log = s.log;
     if (!log) return;
     clearAnimTimer();
-    setMonsterImgSrc(s.monsterImgAck ? `/images/gpc/${s.monsterImgAck}` : null);
+    setMonsterImgSrc(s.monsterImgAck ? `/images/gpc/${s.monsterImgAck}` : (s.monsterImg ? `/images/gpc/${s.monsterImg}` : null));
     let parts: string[] = [];
     if (log.monsterMiss) {
       parts.push(s.monsterName + '攻击! <span class="miss">miss</span> !');
