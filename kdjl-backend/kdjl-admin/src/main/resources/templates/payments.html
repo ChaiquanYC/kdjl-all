@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>消费统计 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('payments')"></div>
+<div class="main">
+<div th:replace="fragments/topbar :: topbar('元宝消费统计')"></div>
+<div class="content">
+<div class="stats-grid" id="summary"></div>
+<div class="card"><h3>消费排行</h3>
+<table><thead><tr><th>消费项目</th><th>元宝总额</th></tr></thead><tbody id="rankBody"></tbody></table>
+</div>
+<div class="card"><h3>最近消费记录</h3>
+<table><thead><tr><th>ID</th><th>玩家</th><th>项目</th><th>道具</th><th>元宝</th><th>数量</th><th>时间</th></tr></thead><tbody id="recentBody"></tbody></table>
+</div>
+</div>
+</div>
+<script>
+fetch('/api/admin/payment-stats').then(r=>r.json()).then(d=>{
+    document.getElementById('summary').innerHTML=[
+        {label:'总消费元宝',num:d.totalYb,color:'#eb2f96'},
+        {label:'消费项目数',num:(d.byTitle||[]).length,color:'#722ed1'},
+        {label:'最近记录',num:(d.recent||[]).length,color:'#1890ff'}
+    ].map(i=>`<div class="stat-card"><div class="num" style="color:${i.color}">${i.num}</div><div class="label">${i.label}</div></div>`).join('');
+
+    document.getElementById('rankBody').innerHTML=(d.byTitle||[]).map(r=>
+        `<tr><td>${r.title}</td><td style="color:#eb2f96;font-weight:bold">${r.total}</td></tr>`).join('');
+
+    document.getElementById('recentBody').innerHTML=(d.recent||[]).slice(0,50).map(r=>{
+        var d=new Date((r.buytime||0)*1000);
+        return `<tr><td>${r.id}</td><td>${r.nickname||'-'}</td><td>${r.title||'-'}</td><td>${r.pname||'-'}</td><td style="color:#eb2f96">${r.yb}</td><td>${r.nums||1}</td><td>${d.toLocaleDateString()} ${d.toLocaleTimeString()}</td></tr>`;
+    }).join('');
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDJL PHP → React + Spring Boot 完整差异分析</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--red:#f85149;--green:#3fb950;--yellow:#d2991d;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e;--accent:#1f6feb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.75;padding:20px;font-size:15px}
+.container{max-width:1400px;margin:0 auto}
+h1{font-size:1.7rem;text-align:center;margin-bottom:4px;color:var(--yellow)}
+h1 small{display:block;font-size:.82rem;color:var(--muted);font-weight:400;margin-top:2px}
+h2{font-size:1.2rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin:28px 0 12px;color:var(--blue)}
+h3{font-size:1rem;margin:18px 0 8px;color:var(--yellow)}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+.summary-card{background:var(--card);border-radius:8px;padding:14px;text-align:center;border:1px solid var(--border)}
+.summary-card .num{font-size:1.8rem;font-weight:700}
+.summary-card .lbl{font-size:.78rem;color:var(--muted)}
+.done .num{color:var(--green)}.partial .num{color:var(--yellow)}.missing .num{color:var(--red)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:12px 0}
+.card.done{border-left:3px solid var(--green)}
+.card.partial{border-left:3px solid var(--yellow)}
+.card.missing{border-left:3px solid var(--red)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.85rem}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--accent);font-weight:600;white-space:nowrap}
+tr:hover{background:rgba(255,255,255,0.02)}
+.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.7rem;font-weight:700}
+.tag-ok{background:var(--green);color:#000}
+.tag-half{background:var(--yellow);color:#000}
+.tag-no{background:var(--red)}
+.note{background:rgba(210,153,29,0.1);border:1px solid rgba(210,153,29,0.3);border-radius:6px;padding:8px 14px;margin:8px 0;font-size:.83rem;color:var(--yellow)}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;text-align:center}
+.bar-wrap{background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden;margin-top:2px}
+.bar-fill{height:100%;border-radius:4px}
+.bar-ok{background:var(--green)}.bar-half{background:var(--yellow)}.bar-no{background:var(--red)}
+code{font-family:'Cascadia Code','Consolas',monospace;font-size:.82rem;background:rgba(31,111,235,0.08);padding:1px 4px;border-radius:3px}
+pre{background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:10px 14px;overflow-x:auto;font-size:.8rem;line-height:1.5;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL — PHP 原版 vs React 新版 完整差异分析<br><small>
+  基于: PHP 319源文件 / 65个HTML模板 / 30+JS / 117数据表 vs Java 88源文件 / React 19组件 / 23个API
+  | 深度源码分析: FightGate.php / Ack引擎 / get.Catch.php / Chuancheng.php / Merge_Mod.php
+  | 更新: 2026-05-22
+</small></h1>
+
+<!-- ====== 总览 ====== -->
+<div class="summary-grid">
+  <div class="summary-card done"><div class="num">9</div><div class="lbl">已完成系统</div></div>
+  <div class="summary-card partial"><div class="num">6</div><div class="lbl">部分完成系统</div></div>
+  <div class="summary-card missing"><div class="num">26</div><div class="lbl">未实现系统</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--blue)">~22%</div><div class="lbl">系统覆盖率</div></div>
+  <div class="summary-card done"><div class="num">23</div><div class="lbl">已实现API</div></div>
+  <div class="summary-card missing"><div class="num">~100+</div><div class="lbl">PHP功能端点总数</div></div>
+  <div class="summary-card partial"><div class="num">63</div><div class="lbl">已映射实体 (117表)</div></div>
+  <div class="summary-card missing"><div class="num">~54</div><div class="lbl">未映射表</div></div>
+</div>
+
+<!-- ====== API对照 ====== -->
+<h2>一、API 端点对照</h2>
+
+<div class="card done">
+<h3>1.1 已实现的 API (23个) — 全部测试通过</h3>
+<table>
+<tr><th>端点</th><th>方法</th><th>Service</th><th>PHP对应</th><th>验证状态</th></tr>
+<tr><td>/api/auth/login</td><td>POST</td><td>AuthService</td><td>login/loginCheck.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/player/me</td><td>GET</td><td>PlayerService</td><td>getPlayerinfo.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/pets</td><td>GET</td><td>PetService</td><td>Pets_Mod.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/pets/{id}</td><td>GET</td><td>PetService</td><td>Pets_Mod.php详情</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/pets/capture/{id}</td><td>POST</td><td>PetService</td><td>get.Catch.php</td><td><span class="tag tag-half">公式简化</span></td></tr>
+<tr><td>/api/pets/{id}/skills</td><td>GET</td><td>SkillService</td><td>get.Skill.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/pets/{id}/skills/learnable</td><td>GET</td><td>SkillService</td><td>get.Skill.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/pets/{id}/skills/learn/{sid}</td><td>POST</td><td>SkillService</td><td>get.Skill.php</td><td><span class="tag tag-half">简版(金币)</span></td></tr>
+<tr><td>/api/pets/{id}/skills/upgrade/{sid}</td><td>POST</td><td>SkillService</td><td>get.sjSkill.php</td><td><span class="tag tag-half">简版(金币)</span></td></tr>
+<tr><td>/api/bag</td><td>GET</td><td>BagService</td><td>getBag.php</td><td><span class="tag tag-half">缺分类</span></td></tr>
+<tr><td>/api/bag/equipment</td><td>GET</td><td>BagService</td><td>getBagOfVary.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/bag/use/{id}</td><td>POST</td><td>BagService</td><td>usedProps.php</td><td><span class="tag tag-half">简版效果</span></td></tr>
+<tr><td>/api/bag/equip/{id}</td><td>POST</td><td>BagService</td><td>usedProps.php装备</td><td><span class="tag tag-half">缺约束</span></td></tr>
+<tr><td>/api/bag/unequip/{id}</td><td>POST</td><td>BagService</td><td>usedProps.php卸下</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/battle/pve</td><td>POST</td><td>BattleService</td><td>FightGate.php</td><td><span class="tag tag-half">批处理回合</span></td></tr>
+<tr><td>/api/monsters</td><td>GET</td><td>MonsterRepo</td><td>gpc 表查询</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/monsters/boss</td><td>GET</td><td>MonsterRepo</td><td>boss=1 筛选</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/map/list</td><td>GET</td><td>MapController</td><td>Expore_Mod.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/map/{id}/monsters</td><td>GET</td><td>MapController</td><td>getmap.php</td><td><span class="tag tag-ok">已验证</span></td></tr>
+<tr><td>/api/shop/list</td><td>GET</td><td>ShopService</td><td>Shopsm_Mod.php</td><td><span class="tag tag-half">2种类缺6种</span></td></tr>
+<tr><td>/api/shop/buy/{id}</td><td>POST</td><td>ShopService</td><td>ybbuyGate.php</td><td><span class="tag tag-half">金币+元宝</span></td></tr>
+<tr><td>/ws</td><td>WebSocket</td><td>ChatHandler</td><td>socketChat/</td><td><span class="tag tag-half">仅world频道</span></td></tr>
+<tr><td>/api/player/me (在线缓存)</td><td>-</td><td>CacheService</td><td>memory.v1.php</td><td><span class="tag tag-half">Redis可选</span></td></tr>
+</table>
+</div>
+
+<!-- ====== 系统差异 ====== -->
+<h2>二、游戏系统逐项对比 (41个系统)</h2>
+
+<div class="card done">
+<h3>2.1 已完成系统 (9个 — 22%)</h3>
+<table>
+<tr><th>#</th><th>系统</th><th>PHP文件</th><th>新项目实现</th><th>完成度</th></tr>
+<tr><td>1</td><td>登录认证</td><td>login/login.php + loginCheck.php → MD5</td><td>LoginPage + JWT + 过期检测</td><td><span class="tag tag-ok">95%</span></td></tr>
+<tr><td>2</td><td>玩家信息</td><td>getPlayerinfo.php + Session</td><td>PlayerController + player/me</td><td><span class="tag tag-ok">90%</span></td></tr>
+<tr><td>3</td><td>宠物列表</td><td>Pets_Mod.php (cardimg/HP/MP/stat)</td><td>PetList.tsx (卡片+技能面板)</td><td><span class="tag tag-half">70%</span></td></tr>
+<tr><td>4</td><td>背包查看</td><td>getBag.php (16种分类)</td><td>BagPanel.tsx (道具/装备2种)</td><td><span class="tag tag-half">50%</span></td></tr>
+<tr><td>5</td><td>地图浏览</td><td>Expore_Mod.php + getmap.php</td><td>MapPanel.tsx (地图+怪物+挑战/捕捉)</td><td><span class="tag tag-ok">85%</span></td></tr>
+<tr><td>6</td><td>PvE战斗</td><td>FightGate.php + Fight_Mod.php</td><td>BattleService + BattlePanel</td><td><span class="tag tag-half">40%</span></td></tr>
+<tr><td>7</td><td>商店购买</td><td>Shopsm_Mod + Props_Mod + Zb_Mod</td><td>ShopPanel (金币/元宝)</td><td><span class="tag tag-half">35%</span></td></tr>
+<tr><td>8</td><td>技能管理</td><td>get.Skill.php + get.sjSkill.php</td><td>SkillService (学习/升级)</td><td><span class="tag tag-half">40%</span></td></tr>
+<tr><td>9</td><td>聊天</td><td>socketChat/ + chatProto.php</td><td>WebSocket STOMP + ChatPanel</td><td><span class="tag tag-half">40%</span></td></tr>
+</table>
+</div>
+
+<div class="card partial">
+<h3>2.2 部分完成系统 (6个 — 15%)</h3>
+<table>
+<tr><th>#</th><th>系统</th><th>PHP实现要点</th><th>新项目现状</th><th>主要缺失</th></tr>
+<tr>
+  <td>10</td><td><b>装备系统</b></td>
+  <td>usedProps.php: 10槽位 + 等级/五行约束<br>Zb_Mod.php(57.7K): 分类购买<br>zbstrength_Mod: 强化/精炼/分解</td>
+  <td>EquipPanel 基础穿戴/卸下<br>无约束校验, 无槽位概念</td>
+  <td>10部位槽、lv/wx穿戴约束、强化、精炼、分解、镶嵌孔、声望装备</td>
+</tr>
+<tr>
+  <td>11</td><td><b>捕捉系统</b></td>
+  <td>get.Catch.php 3种模式<br><code>(catchv/100)*(1-hp/maxHp)+道具%</code><br>战斗中捕捉 + 全服公告</td>
+  <td>PetService.capture()<br>catchv/100 固定概率<br>仅地图面板捕捉</td>
+  <td>HP因子、道具加成、3捕捉模式(catch/get/getitems)、战斗中捕捉、公告广播</td>
+</tr>
+<tr>
+  <td>12</td><td><b>道具使用</b></td>
+  <td>usedProps.php: 16种分类 + 锁并发<br>进化/技能书/宝箱/卡片/宠物卵</td>
+  <td>BagService.useItem()<br>hp/mp/exp/openmap 4种效果</td>
+  <td>进化道具、任务物品、宝箱开启、卡片、宠物卵、批量使用、物品锁定</td>
+</tr>
+<tr>
+  <td>13</td><td><b>技能系统</b></td>
+  <td>技能书学习 + 升级道具(733/1666)<br>HP/MP消耗(uhp/ump)、10级数组<br>冷却119-319s、永久属性加成</td>
+  <td>金币学习(500)/升级(300*Lv)<br>无消耗、无冷却、无属性加成</td>
+  <td>技能书道具、升级道具、HP/MP消耗、冷却、宠物专属技能、imgeft永久加成</td>
+</tr>
+<tr>
+  <td>14</td><td><b>战斗引擎</b></td>
+  <td>Ack类: <code>(ac+ackval)*plus-mc</code><br>即时回合制、操作冷却2s<br>浮动-10%/+5%、药品Buff、吸血</td>
+  <td>简化公式批处理50回合<br>无回合内交互</td>
+  <td>即时回合制、浮动、药品Buff、吸血(3种)、10部位装备全加成、组队、自动战斗</td>
+</tr>
+<tr>
+  <td>15</td><td><b>聊天</b></td>
+  <td>Flash socket + 5频道(世界/私聊/公会/队伍/系统)<br>脏话过滤300KB + 公告广播</td>
+  <td>WebSocket STOMP基础<br>仅world频道</td>
+  <td>多频道、脏话过滤、系统广播、通知提醒</td>
+</tr>
+</table>
+</div>
+
+<div class="card missing">
+<h3>2.3 未实现系统 (26个 — 63%)</h3>
+<table>
+<tr><th>#</th><th>系统</th><th>PHP核心文件</th><th>功能概述</th><th>工时估</th></tr>
+<tr><td>16</td><td><b>注册&角色创建</b></td><td>login/reg1.php + register.php</td><td>选性别+6初始宠物(金木水火土波姆)选1</td><td>16h</td></tr>
+<tr><td>17</td><td><b>任务系统</b></td><td>getTask.php + kernel/task.v1.php + config.task.php</td><td>12种任务类型、NPC驱动、killmon/giveitem/see/props/itemrand/gonggao</td><td>48h</td></tr>
+<tr><td>18</td><td><b>公会/家族</b></td><td>guild.php + Family_Mod.php(33K) + FamilyGate + FamilyUpgrade</td><td>创建/加入/升级/商店/声望/公会战</td><td>40h</td></tr>
+<tr><td>19</td><td><b>组队/副本</b></td><td>Tt_Mod + Team_Mod + team.php + cmpGate + fbfight_Mod</td><td>队伍管理、副本进度、翻牌奖励、每日限制</td><td>48h</td></tr>
+<tr><td>20</td><td><b>战场PvP</b></td><td>BattleFight_Mod + battleFightGate + Battle系列6个文件</td><td>红蓝阵营、军功积分、战场道具/宝箱、周五20-21点</td><td>80h</td></tr>
+<tr><td>21</td><td><b>挑战PvP</b></td><td>Challenge_Mod + ChallengeGate + ext_Challenge</td><td>玩家间PvP、要塞战、公会战</td><td>32h</td></tr>
+<tr><td>22</td><td><b>宠物合成/结婚</b></td><td>Merge_Mod.php + merge.php</td><td>求婚(定情信物)→结婚→离婚(2000水晶/24h冷却)→强制离婚</td><td>24h</td></tr>
+<tr><td>23</td><td><b>宠物传承(转生)</b></td><td>Chuancheng.php (773行)<br><code>new=(模板+自身*Lv/400+对方*Lv/800)*珠</code></td><td>神宠(wx=6)Lv≥90czl≥60、配对3→4→5→6→7、24h培育、技能保留概率、传承珠倍率、立即完成(水晶)</td><td>32h</td></tr>
+<tr><td>24</td><td><b>宠物进化</b></td><td>usedProps.php进化道具 + bb.evo_*字段</td><td>消耗进化石、形态改变、属性继承</td><td>16h</td></tr>
+<tr><td>25</td><td><b>宠物牧场</b></td><td>Muchang_Mod.php(34.9K模板)</td><td>存储/取出宠物、多牧场分类(muchang字段)</td><td>16h</td></tr>
+<tr><td>26</td><td><b>装备强化系统</b></td><td>zbstrength_Mod.php(11.8K) + zbstrengthGate + ext_zbstrength</td><td>强化(+1~+N)、精炼(zbxlGate)、分解(zbfjGate)</td><td>24h</td></tr>
+<tr><td>27</td><td><b>装备商店</b></td><td>Zb_Mod.php(57.7K最大模板)</td><td>按部位分类(武器/衣服/头盔/鞋子/项链/戒指/护腕/腰带/特殊/翅膀)</td><td>16h</td></tr>
+<tr><td>28</td><td><b>拍卖行</b></td><td>paiProps_Mod (11.8K) + paibuyGate + paisellGate</td><td>玩家挂售/竞拍、水晶/金币交易</td><td>40h</td></tr>
+<tr><td>29</td><td><b>声望系统</b></td><td>Prestige_Mod(12.6K) + PuPrestige(7K) + KinPrestige(8K)</td><td>声望获取/兑换装备、家族声望</td><td>24h</td></tr>
+<tr><td>30</td><td><b>排行榜</b></td><td>King_Mod.php(29.5K) + GrowthRanking(7K)</td><td>等级/财富/声望/宠物战力排行</td><td>16h</td></tr>
+<tr><td>31</td><td><b>活动系统</b></td><td>active_Mod + ext_active + Aoyun_Mod + Aoyunti_Mod</td><td>限时活动、奥运主题活动</td><td>24h</td></tr>
+<tr><td>32</td><td><b>塔罗牌/抽奖</b></td><td>tarot_Mod(5.6K) + tarotGate + luck_Mod(3.3K)</td><td>战斗后翻牌奖励、幸运转盘</td><td>8h</td></tr>
+<tr><td>33</td><td><b>要塞系统</b></td><td>fortress_Mod + fortressGate + fortressCard + fortress_stolen</td><td>要塞占领/掠夺、卡牌对战</td><td>40h</td></tr>
+<tr><td>34</td><td><b>卡片系统</b></td><td>card_Mod + card.php + newcard.php + card_Mod_Request</td><td>抽卡收集、卡牌对战</td><td>24h</td></tr>
+<tr><td>35</td><td><b>转生系统</b></td><td>zs_Mod.php(11.8K模板)</td><td>玩家/宠物转生、等级重置保留能力</td><td>20h</td></tr>
+<tr><td>36</td><td><b>军功系统</b></td><td>jg_Mod.php(5K) + BattleExp_Mod</td><td>军功积分兑换经验/道具</td><td>8h</td></tr>
+<tr><td>37</td><td><b>好友系统</b></td><td>friendGate + friendlist.php</td><td>添加/删除/列表、在线状态</td><td>12h</td></tr>
+<tr><td>38</td><td><b>充值&VIP</b></td><td>pay_Mod + pay_Mod_yb + vip.php + vipbuyGate + ios_pay</td><td>充值页、VIP特权/商店、iOS支付</td><td>24h</td></tr>
+<tr><td>39</td><td><b>GM后台</b></td><td>custom/ (15个文件: adminIndex, selectPlayer, addProp等)</td><td>发道具、查宠物、改数据、GM工具集</td><td>24h</td></tr>
+<tr><td>40</td><td><b>安全/反外挂</b></td><td>sec/sec_common_fnc.php(100KB) + kick_cheater + dblock_fun</td><td>防加速/防外挂/输入验证/封号/锁并发</td><td>24h</td></tr>
+<tr><td>41</td><td><b>新手引导</b></td><td>guide.php + newguide.js(10K) + newguide_new.js</td><td>20步引导(new_guide_step 0-20)</td><td>16h</td></tr>
+</table>
+</div>
+
+<!-- ====== 战斗引擎深度对比 ====== -->
+<h2>三、战斗引擎 — 逐项对比</h2>
+
+<div class="card partial">
+<table>
+<tr><th width="15%">对比项</th><th width="42%">PHP 原版 (FightGate.php 1569行 + Ack class)</th><th width="43%">React 新版 (BattleService.java 332行)</th></tr>
+<tr>
+  <td><b>伤害公式</b></td>
+  <td><code>intval((round(((ac+ackvalue)*plus-mc)*hitsp)+1)*float)*crit</code><br>浮动: rand(-10%,+5%) | 暴击: ×2</td>
+  <td><code>max(1,(ac+ackValue)*plus-mc)*hitRate+1</code><br>缺浮动、简化暴击(5%固定)</td>
+</tr>
+<tr>
+  <td><b>回合机制</b></td>
+  <td><b>即时回合制</b>: 每次操作→AJAX→10s冷却→再操作<br>防加速: 2s间隔(fight_log)+memcache双重检查</td>
+  <td><b>批处理回合制</b>: 一次性算完≤50回合，无回合内交互<br><span class="tag tag-no">完全不同的交互模式</span></td>
+</tr>
+<tr>
+  <td><b>命中判定</b></td>
+  <td>公式: hitsp=(hits-miss)/100 (钳制0.1~1.5)<br>分档判定6级 → 实际硬编码100%命中</td>
+  <td>公式一致 → random判定<br><span class="tag tag-ok">90%一致</span></td>
+</tr>
+<tr>
+  <td><b>暴击系统</b></td>
+  <td>基础暴击率(welcome表crit_rate)+装备crit → rand(0,100)<br>未命中时暴击清零</td>
+  <td>固定5% → rand判定<br><span class="tag tag-half">缺系统暴击率+装备暴击</span></td>
+</tr>
+<tr>
+  <td><b>五行克制</b></td>
+  <td>wx属性 + kx抗性数组(5维) — 多维计算</td>
+  <td>简化为 1.5x/0.7x<br><span class="tag tag-half">缺kx抗性系统</span></td>
+</tr>
+<tr>
+  <td><b>技能消耗</b></td>
+  <td>uhp(HP消耗)+ump(MP消耗) — skillsys 10级数组<br>负值=给自己加(吸血/吸魔技能)</td>
+  <td>无消耗<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>技能冷却</b></td>
+  <td>5个冷却技能(319/320/321/322/323) 119~319s<br>$_SESSION 服务端验证</td>
+  <td>无冷却<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>技能吸血</b></td>
+  <td>hitshp(吸血): 伤害%转HP<br>dxsh(抵伤): 抵消怪物伤害%<br>shjs(加深): 额外伤害%<br>基于skill.img字段解析</td>
+  <td>吸血固定0<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>装备加成</b></td>
+  <td>getzbAttrib(): ac/mc/hits/speed/miss/hp/mp/crit<br>10部位全加成, Memcached缓存300s</td>
+  <td>ac/mc/hp/mp/speed/hits/miss 7种<br><span class="tag tag-half">缺crit+10槽位+缓存</span></td>
+</tr>
+<tr>
+  <td><b>战斗药品Buff</b></td>
+  <td>F_Medicine_Buff: addac/addmc (绝对值或百分比%)<br>player_ext表存储</td>
+  <td>无<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>组队战斗</b></td>
+  <td>多人在线轮流出战(isMyTurn)<br>掉落轮流分配 + 加成×(成员数*0.2+1)<br>队长auto额外×1.2</td>
+  <td>无<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>自动战斗</b></td>
+  <td>Tuoguan_Mod.php(16.6K) 挂机系统<br>autofitflag+计数+auto道具</td>
+  <td>无<br><span class="tag tag-no">0%</span></td>
+</tr>
+<tr>
+  <td><b>防外挂</b></td>
+  <td>2s间隔+memcache+session冷却+安全函数(100KB)<br>违规→stopUser/unset SESSION</td>
+  <td>无<br><span class="tag tag-no">0%</span></td>
+</tr>
+</table>
+</div>
+
+<!-- ====== 传承系统对比 ====== -->
+<h2>四、传承(转生)系统 — 完整对比</h2>
+
+<div class="card missing">
+<h3>4.1 传承系统 (Chuancheng.php 773行)</h3>
+<table>
+<tr><th width="15%">对比项</th><th width="42%">PHP 原版</th><th width="43%">React 新版</th></tr>
+<tr>
+  <td><b>系统状态</b></td>
+  <td>完整实现: 配对→确认→培育→取回 全流程</td>
+  <td><span class="tag tag-no">未实现</span></td>
+</tr>
+<tr>
+  <td><b>参与条件</b></td>
+  <td>神宠(wx=6) + Lv≥90 + czl≥60 + 无装备 + 24h冷却<br>宠物103/104/105(涅槃兽等)禁止传承</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>状态机</b></td>
+  <td>muchang: 1(正常)→3(加入配对)→4(配对完成)→5(等待确认)→6(培育中24h)→7(完成可取回)<br>chchengbb 指向对方宠物ID</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>核心公式</b></td>
+  <td><code>new_stat = intval((模板基础 + intval(自身*等级/400) + intval(对方*等级/800)) * 传承珠倍率)</code><br>7个属性: ac/mc/srchp/hits/miss/speed/srcmp</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>传承珠</b></td>
+  <td>道具effect格式 "chuanc:X" → X=倍率系数<br>消耗型(vary=1)↔不可叠加型(vary=2)</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>技能保留</b></td>
+  <td>道具effect "skills:X" → 保留概率=10+100/X%<br>成功→保留原skillist, 失败→退化"1:1"</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>立即完成</b></td>
+  <td>消耗水晶 = floor((86400 - 已过秒)/60) 每剩余1分钟=1水晶</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>结果</b></td>
+  <td>level→1, exp→0, lexp→170, chchengcolor→'#FF66CC'(粉色)<br>addsx记录每次传承增长量(用于传承次数限制)</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>限制</b></td>
+  <td>每10点czl最多传承2次、24h一次、抽取过成长的(chouqu_chongwu)禁止</td>
+  <td>-</td>
+</tr>
+</table>
+</div>
+
+<!-- ====== 结婚系统对比 ====== -->
+<div class="card missing">
+<h3>4.2 结婚/合成系统 (Merge_Mod.php 310行 + merge.php 250行)</h3>
+<table>
+<tr><th width="15%">对比项</th><th width="42%">PHP 原版</th><th width="43%">React 新版</th></tr>
+<tr>
+  <td><b>系统状态</b></td>
+  <td>完整实现: 求婚→接受→结婚→离婚 全流程</td>
+  <td><span class="tag tag-no">未实现</span></td>
+</tr>
+<tr>
+  <td><b>求婚</b></td>
+  <td>选择背包中 merge=1 的求婚道具 → 赠送给目标玩家<br>player_ext.send = "count,prop_id"<br>player_ext.request_merge = target_id</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>接受婚姻</b></td>
+  <td>接受→返还求婚道具到接收方背包<br>双方 merge 互设为对方ID<br>全服广播 "恭喜A和B结为夫妻!"</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>离婚</b></td>
+  <td>提出: 消耗2000水晶, request=1, nomergetime=now<br>24h冷却: 对方不响应→自动取消, 退回2000水晶<br>强制离婚: 对方拒绝后仍可强制离(2000水晶不退)</td>
+  <td>-</td>
+</tr>
+<tr>
+  <td><b>宠物培育</b></td>
+  <td>婚后通过muchang字段管理宠物配对状态<br>使用传承道具(varyname=20)进行培育</td>
+  <td>-</td>
+</tr>
+</table>
+</div>
+
+<!-- ====== 数据层对比 ====== -->
+<h2>五、数据层差异</h2>
+
+<div class="card partial">
+<h3>5.1 实体映射状态</h3>
+<table>
+<tr><th>类别</th><th>已映射</th><th>未映射</th></tr>
+<tr><td>核心实体</td><td>Player, PlayerExt, UserPet, UserBag, Pet, Skill, Props, Monster (8)</td><td>-</td></tr>
+<tr><td>战斗实体</td><td>Battlefield*, War*, FightLog, Fuben, Tgt, Challenge* (27)</td><td>FbGwHp, BossRefresh, CGpc</td></tr>
+<tr><td>公会/社交</td><td>Guild*, Team* (7)</td><td>-</td></tr>
+<tr><td>经济/商店</td><td>ShopOrder, Trade, CardInfo, MoneyLog, Yb, YbLog, Zs (7)</td><td>TShopLog</td></tr>
+<tr><td>任务/活动</td><td>TaskDef, TaskAccept, TaskLog, TimeConfig (4)</td><td>SystemActivity</td></tr>
+<tr><td>配置</td><td>SkillSys, Card, GameMap, Tarot, ExpToLv, Blacklist, Gonggao, Information (8)</td><td>~50张配置/日志表</td></tr>
+<tr><td><b>总计</b></td><td><b>63实体</b> (54%)</td><td><b>~54表</b> (46%)</td></tr>
+</table>
+<div class="note">已知问题: Pet实体 evo_id/evo_level/evo_pid/quality 字段在 bb 表中不存在，已标记 @Transient。ddl-auto: none。</div>
+</div>
+
+<!-- ====== 前端UI对比 ====== -->
+<h2>六、前端UI差异</h2>
+
+<div class="card partial">
+<table>
+<tr><th>React组件 (19个文件)</th><th>PHP对应</th><th>功能差异</th></tr>
+<tr><td>LoginPage.tsx</td><td>login/login.php</td><td>缺注册/选初始宠物/找回密码</td></tr>
+<tr><td>GameLayout.tsx</td><td>index.php iframe框架</td><td>SPA路由替代iframe、缺城内/安全区/多面板布局</td></tr>
+<tr><td>PetList.tsx</td><td>Pets_Mod.php (9.2K)</td><td>缺装备展示(10槽)、czl详情、主战切换(mbid)、公共视图</td></tr>
+<tr><td>BagPanel.tsx</td><td>getBag.php + usedProps.php</td><td>缺16种分类标签、出售、仓库、批量操作、物品锁定</td></tr>
+<tr><td>EquipPanel.tsx</td><td>usedProps.php + Zb_Mod (57.7K)</td><td>缺10部位槽位、等级/五行校验、强化/精炼/分解</td></tr>
+<tr><td>MapPanel.tsx</td><td>Expore_Mod (11.6K) + getmap</td><td>缺进入条件校验、玩家位置追踪、城市视图</td></tr>
+<tr><td>BattlePanel.tsx</td><td>Fight_Mod (7.1K) + fight.js(45K)</td><td>缺回合内交互(选技能/攻击/道具/捕捉4按钮)、飘字动画、技能特效</td></tr>
+<tr><td>ShopPanel.tsx</td><td>Shopsm_Mod(23.3K)+Zb_Mod+Props_Mod</td><td>缺限时抢购、VIP专区、拍卖行、装备分类、声望/公会商店</td></tr>
+<tr><td>ChatPanel.tsx</td><td>socketChat/ + chat_html5.js(10K)</td><td>缺频道切换、脏话过滤、系统广播、msg提醒</td></tr>
+<tr><td>ErrorBoundary.tsx</td><td>PHP die() 退出</td><td>基础错误捕获</td></tr>
+<tr><td>-</td><td>wz_tooltip.js (38K)</td><td>缺装备/道具悬浮详情</td></tr>
+<tr><td>-</td><td>wz_dragdrop.js (42K)</td><td>缺拖拽穿戴装备</td></tr>
+<tr><td>-</td><td>newguide.js (10K)</td><td>缺新手引导20步</td></tr>
+<tr><td>-</td><td>ymp.js (9.5K)</td><td>缺通用弹窗组件</td></tr>
+</table>
+</div>
+
+<!-- ====== 关键公式差异 ====== -->
+<h2>七、关键公式差异汇总</h2>
+
+<div class="card partial">
+<table>
+<tr><th>公式</th><th>PHP原版 (精确, 源码还原)</th><th>新项目</th></tr>
+<tr>
+  <td>伤害</td>
+  <td><code>intval((round(((ac+ackval)*plus-mc)*hitsp)+1)*(100+rand(-10,5))/100)*(crit?2:1)</code></td>
+  <td><code>max(1,(ac+ackValue)*plus-mc)*hitRate+1</code></td>
+</tr>
+<tr>
+  <td>捕捉</td>
+  <td><code>rate=(catchv/100)*(1-hp/maxHp)+item% → roll=rand(1,intval(100/(rate*100))) → roll==1成功</code></td>
+  <td><code>rand(0,99) < catchv 成功</code></td>
+</tr>
+<tr>
+  <td>传承</td>
+  <td><code>intval((模板+intval(自身*等级/400)+intval(对方*等级/800))*传承珠)</code></td>
+  <td>未实现</td>
+</tr>
+<tr>
+  <td>技能冷却</td>
+  <td><code>time()-session[key] > cool_time(119~319s) → 允许</code></td>
+  <td>未实现</td>
+</tr>
+<tr>
+  <td>组队经验</td>
+  <td><code>exp * (成员数*0.2+1) / 成员数 * (队长auto?1.2:1)</code></td>
+  <td>未实现</td>
+</tr>
+<tr>
+  <td>双倍经验</td>
+  <td><code>welcome表 doubleexp 配置 → 时段内 exp*2</code></td>
+  <td>未实现</td>
+</tr>
+<tr>
+  <td>离婚</td>
+  <td><code>2000水晶 → 24h冷却 → 超时自动退回 → 可强制离</code></td>
+  <td>未实现</td>
+</tr>
+</table>
+</div>
+
+<!-- ====== 总结 ====== -->
+<h2>八、总结与优先级建议</h2>
+
+<div class="card">
+<h3>8.1 覆盖率</h3>
+<div style="margin:8px 0">系统 22% <div class="bar-wrap"><div class="bar-fill bar-no" style="width:22%"></div></div></div>
+<div style="margin:8px 0">API 23% <div class="bar-wrap"><div class="bar-fill bar-no" style="width:23%"></div></div></div>
+<div style="margin:8px 0">实体 54% <div class="bar-wrap"><div class="bar-fill bar-half" style="width:54%"></div></div></div>
+<div style="margin:8px 0">战斗公式 40% <div class="bar-wrap"><div class="bar-fill bar-half" style="width:40%"></div></div></div>
+
+<h3>8.2 推荐优先级</h3>
+<table>
+<tr><th>优先级</th><th>系统</th><th>理由</th><th>工时</th></tr>
+<tr><td style="color:var(--red);font-weight:700">P0</td><td><b>战斗回合交互</b></td><td>核心体验差异最大——即时回合制 vs 批处理，影响所有战斗</td><td>40h</td></tr>
+<tr><td style="color:var(--red);font-weight:700">P0</td><td><b>技能HP/MP消耗+冷却</b></td><td>战斗策略深度——无消耗=无限技能，无冷却=无战术选择</td><td>16h</td></tr>
+<tr><td style="color:var(--red);font-weight:700">P0</td><td><b>装备10槽位+穿戴约束</b></td><td>核心养成线——等级/五行穿戴约束是装备系统根基</td><td>24h</td></tr>
+<tr><td style="color:var(--yellow);font-weight:700">P1</td><td><b>任务系统</b></td><td>游戏内容驱动——12种任务类型承载所有PVE内容</td><td>48h</td></tr>
+<tr><td style="color:var(--yellow);font-weight:700">P1</td><td><b>宠物传承(转生)</b></td><td>核心养成深度——公式已还原，神宠培育是endgame</td><td>32h</td></tr>
+<tr><td style="color:var(--yellow);font-weight:700">P1</td><td><b>公会/家族</b></td><td>社交基础——创建/加入/商店/挑战</td><td>40h</td></tr>
+<tr><td style="color:var(--yellow);font-weight:700">P1</td><td><b>捕捉增强</b></td><td>HP因子+道具加成+战斗中捕捉+公告 → 原版体验</td><td>12h</td></tr>
+<tr><td style="color:var(--green);font-weight:700">P2</td><td><b>组队/副本</b></td><td>多人协作玩法</td><td>48h</td></tr>
+<tr><td>P2</td><td>排行榜 + 注册引导</td><td>竞技激励 + 新玩家体验</td><td>32h</td></tr>
+<tr><td>P2</td><td>拍卖行 + 装备商店</td><td>玩家经济 + 装备分类购买</td><td>56h</td></tr>
+<tr><td>P3</td><td>战场PvP / 要塞 / 卡片 / 活动</td><td>高端内容和活动</td><td>大量</td></tr>
+</table>
+</div>
+
+<div class="footer">
+KDJL PHP 原版 vs React + Spring Boot 新版 完整差异分析 | 基于 PHP 319源文件逐行对比 Java 88源文件 + React 19组件 | 更新: 2026-05-22
+</div>
+
+</div>
+</body>
+</html>

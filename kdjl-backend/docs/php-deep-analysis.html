@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDJL PHP 原版深度技术分析 — 完整公式与交互流程</title>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --border:#30363d; --accent:#1f6feb; --red:#f85149; --green:#3fb950; --yellow:#d2991d; --text:#e6edf3; --muted:#8b949e; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.75; padding:24px; font-size:15px; }
+  .container { max-width:1300px; margin:0 auto; }
+  h1 { font-size:1.8rem; text-align:center; margin-bottom:4px; color:var(--yellow); }
+  h1 small { display:block; font-size:.85rem; color:var(--muted); font-weight:400; margin-top:4px; }
+  h2 { font-size:1.3rem; border-bottom:1px solid var(--border); padding-bottom:6px; margin:36px 0 14px; color:var(--accent); }
+  h3 { font-size:1.05rem; margin:20px 0 8px; color:var(--yellow); }
+  h4 { font-size:.95rem; margin:12px 0 6px; color:#79c0ff; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:18px 22px; margin:14px 0; }
+  pre { background:#0d1117; border:1px solid var(--border); border-radius:6px; padding:12px 16px; overflow-x:auto; font-size:.82rem; line-height:1.55; margin:10px 0; }
+  code { font-family:'Cascadia Code','Fira Code','Consolas',monospace; }
+  .formula { background:rgba(31,111,235,0.1); border-left:3px solid var(--accent); padding:10px 16px; margin:10px 0; border-radius:0 6px 6px 0; }
+  table { width:100%; border-collapse:collapse; margin:10px 0; font-size:.86rem; }
+  th,td { padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); }
+  th { background:var(--accent); font-weight:600; white-space:nowrap; }
+  tr:hover { background:rgba(255,255,255,0.02); }
+  .tag { display:inline-block; padding:1px 7px; border-radius:3px; font-size:.7rem; font-weight:700; }
+  .tag-ok { background:var(--green); color:#000; }
+  .tag-half { background:var(--yellow); color:#000; }
+  .tag-no { background:var(--red); }
+  .note { background:rgba(210,153,29,0.1); border:1px solid rgba(210,153,29,0.3); border-radius:6px; padding:8px 14px; margin:8px 0; font-size:.85rem; color:var(--yellow); }
+  .toc { columns:3; gap:20px; margin:16px 0; }
+  .toc a { display:block; color:var(--accent); text-decoration:none; font-size:.88rem; padding:2px 0; }
+  .toc a:hover { text-decoration:underline; }
+  .footer { margin-top:40px; padding-top:16px; border-top:1px solid var(--border); color:var(--muted); font-size:.8rem; text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL PHP 原版 — 深度技术分析<br><small>完整战斗公式 · 系统交互流程 · 核心代码还原 | 基于 319 个 PHP 源文件逐行分析 | 生成: 2026-05-22</small></h1>
+
+<!--
+  This document is the result of reading and analyzing the original PHP source code
+  from D:\code\kdjl\kdjl\kdjl, specifically:
+  - FightGate.php (1569 lines) — battle action gateway
+  - Fight_Mod.php (1719 lines) — battle display module
+  - sec/sec_common_fnc.php (class Ack, ~2500 lines) — damage calculation engine
+  - get.Catch.php (448 lines) — capture mechanics
+  - get.Skill.php / get.sjSkill.php — skill learning/upgrading
+  - usedProps.php — item usage & equipment
+  - kernel/task.v1.php — quest engine
+-->
+
+<div class="toc">
+<a href="#s1">1. 战斗引擎核心公式</a>
+<a href="#s2">2. 命中/闪避系统</a>
+<a href="#s3">3. 暴击系统</a>
+<a href="#s4">4. 五行克制</a>
+<a href="#s5">5. 装备加成计算</a>
+<a href="#s6">6. 技能系统详解</a>
+<a href="#s7">7. 捕捉系统完整流程</a>
+<a href="#s8">8. 宠物创建与成长率</a>
+<a href="#s9">9. 回合制完整流程</a>
+<a href="#s10">10. 道具/装备使用</a>
+<a href="#s11">11. 任务引擎</a>
+<a href="#s12">12. 合成&结婚系统</a>
+<a href="#s13">13. 宠物传承(转生)</a>
+<a href="#s14">14. 掉落与奖励</a>
+<a href="#s15">15. 新项目差距对照</a>
+</div>
+
+<!-- ====== Section 1 ====== -->
+<h2 id="s1">1. 战斗引擎核心公式</h2>
+<div class="card">
+<h3>1.1 伤害计算公式 (class Ack, sec_common_fnc.php:2435-2517)</h3>
+
+<div class="formula">
+<strong>基础伤害:</strong><br>
+<code>base = (attacker.ac + ackvalue) × plus - defender.mc</code><br>
+<code>base = max(1, base)</code><br>
+<br>
+<strong>命中修正:</strong><br>
+<code>damage = round(base × hitsp) + 1</code><br>
+其中 <code>hitsp = (attacker.hits - defender.miss) / 100</code>，钳制在 [0.1, 1.5]<br>
+<br>
+<strong>浮动:</strong><br>
+<code>foalt = rand(-10, 5)</code><br>
+<code>final = intval(damage × (100 + foalt) / 100)</code><br>
+即伤害在 -10% 到 +5% 之间浮动<br>
+<br>
+<strong>暴击:</strong><br>
+<code>if crit: final = final × 2</code><br>
+<br>
+<strong>最低伤害:</strong><br>
+<code>final = max(1, final)</code>
+</div>
+
+<h4>关键源码还原</h4>
+<pre><code>// sec/sec_common_fnc.php class Ack :: getSkillAck()
+$ackvalue = $ar[$cid];                          // 技能基础值 (数组按技能等级索引)
+$plus = $ar1[$cid] / 100 + 1;                   // 技能加成倍率 (如 "hp:10%" → 1.1)
+$base = ($this->ap['ac'] + $ackvalue) * $plus - $this->bp['mc'];
+$base = $base <= 0 ? 1 : $base;
+$one = round($base * $this->hitsp) + 1;          // 命中率修正
+
+// 浮动: -10% ~ +5%
+$foalt_ac_number = rand(-10, 5);
+if ($this->Crit == 1) {
+    $one *= 2;                                    // 暴击翻倍
+} else {
+    $one = intval($one * (100 + $foalt_ac_number) / 100);
+}
+if ($one < 1) $one = 1;
+$this->skillack = $one;</code></pre>
+</div>
+
+<div class="card">
+<h3>1.2 怪物攻击宠物公式 (class Ack1, 同文件)</h3>
+<p>怪物对宠物造成伤害使用相同的公式，只是攻防双方互换：</p>
+<pre><code>// 怪物攻击力 = 怪物 ac + 怪物技能 ackvalue, 宠物防御 = 宠物 mc
+$aobj1 = new Ack1($gs, $rs);  // $gs=怪物, $rs=宠物
+$aobj1 -> getSkillAck();
+$gwac = $aobj1 -> skillack;   // 怪物最终伤害</code></pre>
+</div>
+
+<!-- ====== Section 2 ====== -->
+<h2 id="s2">2. 命中/闪避系统</h2>
+<div class="card">
+<h3>2.1 命中率公式 (getHitsP, sec_common_fnc.php:2390-2394)</h3>
+<div class="formula">
+<code>hitsp = (attack.hits - defend.miss) / 100</code><br>
+钳制范围: <code>[0.1, 1.5]</code><br>
+即最低命中 10%，最高命中 150%
+</div>
+
+<h3>2.2 命中判定 (His_and_miss, sec_common_fnc.php:2396-2434)</h3>
+<p>原作使用命中/闪避比值分档判定（但在实际代码中 <code>$hit_or_miss = 1</code> 被硬编码，<strong>实际为100%命中</strong>）：</p>
+<table>
+<tr><th>命中与闪避比值</th><th>命中概率 (num/10)</th></tr>
+<tr><td>hits > 3×miss</td><td>90% (num=9)</td></tr>
+<tr><td>2×miss &lt; hits ≤ 3×miss</td><td>80% (num=8)</td></tr>
+<tr><td>miss &lt; hits ≤ 2×miss</td><td>60% (num=6)</td></tr>
+<tr><td>miss ≤ hits ≤ 2×hits &gt; miss</td><td>40% (num=4)</td></tr>
+<tr><td>2×hits ≤ miss &lt; 3×hits</td><td>30% (num=3)</td></tr>
+<tr><td>3×hits ≤ miss</td><td>30% (num=3)</td></tr>
+</table>
+<div class="note">注意: 原代码 line 2423 <code>$hit_or_miss = 1;</code> 硬编码为永远命中，分档逻辑未被实际使用。</div>
+</div>
+
+<!-- ====== Section 3 ====== -->
+<h2 id="s3">3. 暴击系统</h2>
+<div class="card">
+<h3>3.1 暴击率计算 (FightGate.php:536-568)</h3>
+<pre><code>// 系统暴击率 (从 welcome 表 code='crit_rate' 读取)
+$Crit_rate = $mem_system_crit;  // 系统基础暴击率
+
+// 装备附加暴击率
+if (isset($att['crit'])) {
+    $Crit_rate += intval($att['crit']);
+}
+
+// 暴击判定 (0-100 随机数)
+$Crit_number = rand(0, 100);
+if ($Crit_number <= $Crit_rate) {
+    $Crit = 1;   // 暴击!
+} else {
+    $Crit = 0;   // 未暴击
+}</code></pre>
+
+<div class="formula">
+<strong>暴击率 = 系统基础暴击率 + 装备暴击率</strong><br>
+暴击时伤害 <strong>×2</strong><br>
+未命中时暴击清零 (<code>$Crit = 0</code> when miss)
+</div>
+</div>
+
+<!-- ====== Section 4 ====== -->
+<h2 id="s4">4. 五行克制系统</h2>
+<div class="card">
+<h3>4.1 五行规则 (Monster / Pet wx 字段)</h3>
+<table>
+<tr><th>wx 值</th><th>属性</th><th>克制</th><th>被克</th></tr>
+<tr><td>1</td><td>金</td><td>木(2)</td><td>火(4)</td></tr>
+<tr><td>2</td><td>木</td><td>土(5)</td><td>金(1)</td></tr>
+<tr><td>3</td><td>水</td><td>火(4)</td><td>土(5)</td></tr>
+<tr><td>4</td><td>火</td><td>金(1)</td><td>水(3)</td></tr>
+<tr><td>5</td><td>土</td><td>水(3)</td><td>木(2)</td></tr>
+<tr><td>6</td><td>超神</td><td colspan="2">特殊(通天塔30层+)</td></tr>
+<tr><td>7</td><td>神圣</td><td colspan="2">特殊地图专用</td></tr>
+</table>
+
+<h4>抗性系统 (kx 字段)</h4>
+<p>宠物和怪物有 <code>kx</code> 字段，存储格式为逗号分隔的抗性值：<code>"金抗,木抗,水抗,火抗,土抗"</code></p>
+<pre><code>// 读取抗性
+$kx_arr = explode(",", $bb['kx']);
+// kx[0]=金抗, kx[1]=木抗, kx[2]=水抗, kx[3]=火抗, kx[4]=土抗</code></pre>
+<div class="note">当前新项目只实现了基础 1.5x/0.7x 五行克制，未实现 kx 抗性系统。</div>
+</div>
+
+<!-- ====== Section 5 ====== -->
+<h2 id="s5">5. 装备加成计算</h2>
+<div class="card">
+<h3>5.1 装备属性加成 (FightGate.php:471-534)</h3>
+<pre><code>// getzbAttrib() 函数返回装备属性数组:
+$att = getzbAttrib($rs['id']);  // 参数: userbb.id
+// 返回值: ['ac'=>X, 'mc'=>X, 'hits'=>X, 'speed'=>X, 'miss'=>X,
+//          'hp'=>X, 'mp'=>X, 'crit'=>X, 'hp1'=>0, 'hp2'=>0, ...]
+
+// 应用装备加成到宠物属性
+$rs['ac']    += $att['ac'];
+$rs['mc']    += $att['mc'];
+$rs['hits']  += $att['hits'];
+$rs['speed'] += $att['speed'];
+$rs['miss']  += $att['miss'];</code></pre>
+
+<h3>5.2 战斗药品 Buff (FightGate.php:496-534)</h3>
+<p>药品效果存储在 <code>player_ext.F_Medicine_Buff</code> 字段，格式: <code>"addac:10,addmc:5%"</code></p>
+<pre><code>// 解析 buff: "addac:10" 或 "addac:5%"
+$med_buff_arr = explode(':', $info);
+switch ($med_buff_arr[0]) {
+    case "addac":   // +攻击 或 +%攻击
+        if (有%) $rs['ac'] = (1 + num/100) * $rs['ac'];
+        else $rs['ac'] += num;
+        break;
+    case "addmc":   // +魔攻 或 +%魔攻
+        // 同上逻辑
+        break;
+}</code></pre>
+
+<h3>5.3 吸血/吸魔 (FightGate.php:617-643)</h3>
+<pre><code>// 技能 img 字段格式: "hitshp:10%" (命中伤害的10%转为生命)
+$jnar = explode(":", $img);
+$num = 去掉百分号($jnar[1]) / 100;
+switch ($jnar[0]) {
+    case "hitshp":  $att['hp1'] += round($num * $bback); break;  // 吸血
+    case "dxsh":    $att['hpdx'] += round($num * $gwac); break;  // 抵消伤害
+    case "shjs":    $att['ack'] += round($num * $bback); break;  // 伤害加深
+}</code></pre>
+</div>
+
+<!-- ====== Section 6 ====== -->
+<h2 id="s6">6. 技能系统详解</h2>
+<div class="card">
+<h3>6.1 技能数据结构</h3>
+<table>
+<tr><th>表</th><th>关键字段</th><th>说明</th></tr>
+<tr><td><code>skillsys</code></td><td>id, pid, name, vary, wx, ackvalue, plus, requires, uhp, ump, imgeft</td><td>技能模板定义</td></tr>
+<tr><td><code>skill</code></td><td>id, bid(pet_id), sid(skillsys.id), name, level, value, plus, img, uhp, ump</td><td>宠物已学技能实例</td></tr>
+</table>
+
+<h3>6.2 技能字段详解</h3>
+<pre><code>ackvalue: "10,20,30,40,50,60,70,80,90,100"  // 10级攻击值数组
+plus:     "hp:1%,hp:2%,...,hp:10%"           // 10级加成数组
+uhp:      "0,0,0,0,0,0,0,0,0,0"             // 10级 HP 消耗
+ump:      "5,10,15,20,25,30,35,40,45,50"     // 10级 MP 消耗
+imgeft:   "hitshp:5%,hitshp:6%,..."          // 10级附加效果数组
+requires: "1,1,1,1,1,1,1,1,1,1"             // 学习/升级所需宠物等级
+vary:     1=主动, 4=被动, 其他=特殊</code></pre>
+
+<h3>6.3 学习技能流程 (get.Skill.php)</h3>
+<ol>
+<li>从 skillsys 表读取技能模板 (pid = 所需道具ID)</li>
+<li>检查宠物是否已学会该技能 (查 skill 表 sid)</li>
+<li>检查背包是否有对应技能书 (userbag.pid == skillsys.pid)</li>
+<li>检查宠物等级/五行是否满足 requires 条件</li>
+<li>检查是否宠物专属技能 (requires[2] 匹配 bb.id)</li>
+<li>创建 skill 记录 (取 ackvalue[0], plus[0], uhp[0], ump[0] → Lv.1)</li>
+<li>更新宠物 skillist 字段 (追加 ",sid:1")</li>
+<li>消耗技能书 (DELETE FROM userbag)</li>
+</ol>
+
+<h3>6.4 升级技能流程 (get.sjSkill.php)</h3>
+<ol>
+<li>找到已学技能 (skill 表 sid == skillsys.id)</li>
+<li>需要升级道具: vary≠4 用道具 733, vary=4 用道具 1666</li>
+<li>最高 10 级</li>
+<li>检查宠物等级 >= requires[当前等级]</li>
+<li>更新 skill: level+1, value=ackvalue[新等级], plus=plus[新等级]...</li>
+<li>如果 imgeft 是属性加成类 (addac/addmc/addhp/addmp/addhits)，永久修改宠物属性</li>
+<li>消耗升级道具 (userbag sums-1)</li>
+</ol>
+
+<h3>6.5 技能冷却 (FightGate.php:112-137)</h3>
+<pre><code>// 冷却技能 ID 及冷却时间(秒)
+$need_cold_skill_id_arr = array(
+    '319' => '299',   // 技能319: 冷却299秒
+    '320' => '299',
+    '321' => '179',
+    '322' => '179',
+    '323' => '119'
+);
+// 基于 $_SESSION 的服务端验证 (减去1秒防延迟)
+if (time() - $_SESSION[$key] > $cold_time) { 允许使用 }
+else { echo "SKILLCOLD"; 拒绝 }</code></pre>
+<div class="note">当前新项目未实现技能冷却和 HP/MP 消耗，技能等级使用简化版 (Lv×300金币升级，无等级限制)。</div>
+</div>
+
+<!-- ====== Section 7 ====== -->
+<h2 id="s7">7. 捕捉系统完整流程</h2>
+<div class="card">
+<h3>7.1 捕捉公式 (get.Catch.php:88-240)</h3>
+
+<div class="formula">
+<strong>标准捕捉 (props.effect 以 "catch:" 开头):</strong><br>
+<code>rate = (catchv / 100) × (1 - currentHP / maxHP) + itemBonus</code><br>
+<code>roll = rand(1, intval(100 / (rate × 100)))</code><br>
+<code>if roll == 1: 捕捉成功!</code><br>
+<br>
+<strong>获取装备 (props.effect 以 "getitems:" 开头):</strong><br>
+<code>rate = (catchv / 100) × (1 - currentHP / maxHP)</code><br>
+<code>roll = rand(1, a) where a = rate==0 ? 10000 : intval(100 / (rate×100))</code><br>
+<code>if roll == 1: 随机获取道具 (从 effect 参数解析)</code><br>
+<br>
+<strong>获取特殊物品 (props.effect 以 "get:" 开头):</strong><br>
+<code>rate = (catchv / 100) × (1 - currentHP / maxHP) + itemBonus</code><br>
+<code>if roll == 1: 获取指定道具 + 可选公告</code>
+</div>
+
+<h3>7.2 关键源码</h3>
+<pre><code>// get.Catch.php line 237
+$pzl = ($gs['catchv'] / 100) * (1 - $bb['hp'] / $gs['hp']) + $pvv;
+$randNum = $pzl * 100;
+$nvl = rand(1, intval(100 / $randNum));
+if ($nvl == 1) {
+    // 捕捉成功 → 创建新宠物
+    $newpetsid = $gs['catchid'];  // 怪物 catchid 指向 bb 表模板
+    $bb = $membbid[$newpetsid];   // 读取宠物模板
+    $czl = getCzl($bb['czl']);    // 生成随机成长率
+
+    // INSERT INTO userbb (从 bb 模板复制所有属性)
+    // INSERT INTO skill (从 skillsys 模板为宠物创建初始技能)
+
+    // 发送公告 (如果 effect[3] == 2)
+    $task->saveGword("成功的捕捉到了 {$bb['name']}，太有才了！");
+}</code></pre>
+
+<h3>7.3 捕捉道具效果格式</h3>
+<pre><code>// Props.effect 格式:
+"catch:1|2|3:5%:2"       → 捕捉怪物1/2/3, +5% 成功率, 公告
+"getitems:1:15|2:10:2"   → 从怪物获取装备, 随机概率
+"get:128:5%:2:200:1"     → 从指定怪物获取道具 200</code></pre>
+</div>
+
+<!-- ====== Section 8 ====== -->
+<h2 id="s8">8. 宠物创建与成长率</h2>
+<div class="card">
+<h3>8.1 成长率系统 (czl)</h3>
+<p>宠物的核心战力指标，由字符串表示如 <code>"1.2~1.5"</code>，getCzl() 函数在此范围内随机：</p>
+<pre><code>// 解析 czl 字符串 (如 "1.2~1.5")
+function getCzl($czl_str) {
+    list($min, $max) = explode('~', $czl_str);
+    $czl = rand($min * 100, $max * 100) / 100;
+    return $czl;
+}</code></pre>
+
+<h3>8.2 捕捉时宠物生成</h3>
+<table>
+<tr><th>字段</th><th>来源</th></tr>
+<tr><td>name, wx, ac, mc, hp, mp</td><td>从 bb 模板直接复制</td></tr>
+<tr><td>srchp, srcmp</td><td>初始等于 hp, mp</td></tr>
+<tr><td>hits, miss, speed</td><td>从 bb 模板复制</td></tr>
+<tr><td>imgstand, imgack, imgdie</td><td>从 bb 模板复制 (精灵图)</td></tr>
+<tr><td>headimg, cardimg, effectimg</td><td>从 bb 模板复制 (头像/卡片/效果)</td></tr>
+<tr><td>czl</td><td>getCzl() 在 bb.czl 范围内随机</td></tr>
+<tr><td>skillist</td><td>"sid:1,sid:1,..." (所有模板技能 Lv.1)</td></tr>
+<tr><td>nowexp, lexp</td><td>nowexp=0, lexp=100 (初始需要100经验升级)</td></tr>
+<tr><td>level</td><td>1</td></tr>
+<tr><td>kx</td><td>从 bb 模板复制 (五行抗性)</td></tr>
+<tr><td>remakelevel, remakeid, remakepid</td><td>进化/重制相关</td></tr>
+<tr><td>subyl~subkl (7 个成长值)</td><td>从 bb 模板复制 (各属性成长率)</td></tr>
+</table>
+
+<h3>8.3 宠物最大数量</h3>
+<pre><code>// get.Catch.php line 39
+$all = 0;
+foreach ($allbb as $pet) {
+    if ($pet['muchang'] == 1) continue;  // 牧场中的不计
+    $all++;
+}
+if ($all >= 3) die("6");  // 最多携带3只</code></pre>
+<div class="note">PHP原版: 携带上限 3 只 + 牧场存储。新版: 未限制。</div>
+</div>
+
+<!-- ====== Section 9 ====== -->
+<h2 id="s9">9. 回合制完整流程</h2>
+<div class="card">
+<h3>9.1 战斗状态机 (FightGate.php)</h3>
+<pre><code>// 战斗状态存储在 $_SESSION['fight'.$uid] 中:
+array(
+    'uid'    => player_id,
+    'bid'    => userbb_id,     // 出战宠物
+    'gid'    => monster_id,    // 当前怪物
+    'hp'     => monster_hp,    // 怪物当前HP
+    'mp'     => monster_mp,
+    'fuzu'   => 0,             // 辅助攻击锁定 (0=正常, 1=已辅助)
+    'fatting'=> 1,             // 战斗中标记
+    'boss'   => 0/1,           // 是否Boss
+    'ftime'  => timestamp      // 上次攻击时间
+);</code></pre>
+
+<h3>9.2 单回合流程</h3>
+<ol>
+<li><b>防加速检查</b>: 距上次操作 < 2s → 踢出 (line 82-89)</li>
+<li><b>技能冷却检查</b>: 冷却中的技能 → 拒绝 "SKILLCOLD"</li>
+<li><b>防加速内存检查</b>: memcache 中 last_update 距现在 < 2s → 拒绝 "操作太快"</li>
+<li><b>自动战斗检查</b>: autofitflag+次数检查 (line 275-283)</li>
+<li><b>装备属性挂载</b>: getzbAttrib() 读取装备加成 → 加到宠物属性</li>
+<li><b>药品Buff挂载</b>: F_Medicine_Buff 解析 → 加到宠物属性</li>
+<li><b>暴击判定</b>: rand(0,100) vs 暴击率</li>
+<li><b>宠物攻击计算</b>: new Ack(pet, monster) → skillack</li>
+<li><b>怪物攻击计算</b>: new Ack1(monster, pet) → skillack</li>
+<li><b>吸血/吸魔计算</b>: 解析技能 img 字段效果</li>
+<li><b>HP/MP 回复处理</b>: 先加血、再加魔</li>
+<li><b>怪物 HP 扣除</b>: newHp = oldHp - petDamage</li>
+<li><b>宠物 HP 扣除</b>: newHp = oldHp - monsterDamage + lifesteal</li>
+<li><b>死亡判定</b>: 宠物 HP≤0 → 死亡处理; 怪物 HP≤0 → 胜利+奖励</li>
+<li><b>更新 session 状态</b></li>
+</ol>
+
+<h3>9.3 操作冷却</h3>
+<pre><code>// 核心防加速 (FightGate.php:82-89)
+$sql = "SELECT time FROM fight_log WHERE uid = {uid} and vary = 1";
+$ctime = time() - $timearr['time'];
+if ($ctime < 2) {
+    unset($_SESSION['id']);  // 直接踢出!
+}
+
+// 内存防加速 (FightGate.php:146-155)
+$timeMem = unserialize($mem->get("last_update_user_fight_time_{uid}"));
+if ($timeMem + 2 > time()) {
+    echo '操作太快！';
+    die();
+}</code></pre>
+
+<h3>9.4 组队战斗</h3>
+<pre><code>// 组队模式 (FightGate.php:33-75)
+// 1. 检查 team_id
+// 2. 获取队伍状态 → 确定是否轮到自己回合 (isMyTurn)
+// 3. 非自己回合 → 返回 TEAMERROR
+// 4. 自己的回合 → 正常战斗流程
+
+// 胜利后 (FightGate.php:1094+)
+// - 按队伍人数分配掉落 (轮流分配)
+// - 组队加成: 经验/金币 × (成员数 × 0.2 + 1)
+// - 队长自动战斗: 额外 × 1.2</code></pre>
+</div>
+
+<!-- ====== Section 10 ====== -->
+<h2 id="s10">10. 道具/装备使用详解</h2>
+<div class="card">
+<h3>10.1 装备穿戴流程 (usedProps.php:53-150)</h3>
+<ol>
+<li>检查物品 varyname == 9 (装备)</li>
+<li>检查 requires 字段: <code>"lv:10,wx:3"</code> → 等级≥10 且 五行=水</li>
+<li>不满足 → 拒绝 "宝宝等级不够或五行不匹配"</li>
+<li>解析装备位置 postion (0-10)</li>
+<li>读取宠物当前装备字符串 zb (格式: "position:id,position:id")</li>
+<li>替换或新增对应位置 → 更新 pet.zb</li>
+<li>清除旧装备的 zbing 标记 → 更新 userbag</li>
+<li>设置新装备 zbing=1, zbpets=petId</li>
+</ol>
+
+<h3>10.2 10 装备槽位</h3>
+<table>
+<tr><th>position</th><th>部位</th></tr>
+<tr><td>0</td><td>武器</td></tr>
+<tr><td>1</td><td>衣服/铠甲</td></tr>
+<tr><td>2</td><td>头盔</td></tr>
+<tr><td>3</td><td>鞋子</td></tr>
+<tr><td>4</td><td>项链</td></tr>
+<tr><td>5</td><td>戒指左</td></tr>
+<tr><td>6</td><td>戒指右</td></tr>
+<tr><td>7</td><td>护腕</td></tr>
+<tr><td>8</td><td>腰带</td></tr>
+<tr><td>9</td><td>特殊</td></tr>
+<tr><td>10</td><td>翅膀/披风</td></tr>
+</table>
+
+<h3>10.3 物品锁定机制</h3>
+<pre><code>// 防并发 (usedProps.php:20-23)
+if (lockItem($id) === false) {
+    unLockItem($id);
+    die("已经在处理了");
+}</code></pre>
+<p>使用 <code>lockItem</code> / <code>unLockItem</code> 对背包道具加互斥锁，防止并发操作导致物品复制或丢失。</p>
+</div>
+
+<!-- ====== Section 11 ====== -->
+<h2 id="s11">11. 任务引擎</h2>
+<div class="card">
+<h3>11.1 任务状态 (player 表)</h3>
+<pre><code>player.task:    当前任务步骤 (int, 0=无任务)
+player.tasklog: 任务进度日志 (string, 格式: "see:npc1,see:npc2,killmon:1,getitem:5")</code></pre>
+
+<h3>11.2 任务类型 (config.task.php)</h3>
+<table>
+<tr><th>类型</th><th>格式</th><th>说明</th></tr>
+<tr><td>visit_npc</td><td><code>see:N</code></td><td>拜访 NPC N</td></tr>
+<tr><td>kill_monster</td><td><code>killmon:X|Y|Z:M</code></td><td>击杀怪物 X/Y/Z M次</td></tr>
+<tr><td>collect_item</td><td><code>giveitem:X:Y</code></td><td>收集道具 X，数量 Y</td></tr>
+<tr><td>give_money</td><td><code>givemoney:X</code></td><td>支付金币 X</td></tr>
+<tr><td>level_requirement</td><td><code>lv:X</code></td><td>宠物等级 ≥ X</td></tr>
+<tr><td>element_requirement</td><td><code>wx:X</code></td><td>宠物五行 = X</td></tr>
+<tr><td>props_reward</td><td><code>props:X:Y</code></td><td>奖励道具 X 数量 Y</td></tr>
+<tr><td>random_reward</td><td><code>itemrand:X:Y:Z|...</code></td><td>概率随机奖励</td></tr>
+<tr><td>broadcast</td><td><code>gonggao:msg</code></td><td>全服公告</td></tr>
+<tr><td>exp_reward</td><td><code>exp:X</code></td><td>奖励经验</td></tr>
+</table>
+
+<h3>11.3 任务流程</h3>
+<pre><code>// 接受任务 (getTask.php?type=get)
+$task->startTask($user, $npc_code)
+  → UPDATE player SET task=$task_id, tasklog+='see:$npc'
+
+// 完成任务 (getTask.php?type=ok)
+$task->completeTask($user, $taskinfo)
+  → 检查 tasklog 是否包含所有 okneed 条件
+  → 扣除所需道具/金币
+  → 发放奖励 (道具/经验/金币)
+  → UPDATE player SET tasklog+=',see:npc'
+  → 返回结果消息</code></pre>
+</div>
+
+<!-- ====== Section 12 ====== -->
+<h2 id="s12">12. 合成 &amp; 结婚系统 (Merge/merge)</h2>
+<div class="card">
+<h3>12.1 婚姻系统概述</h3>
+<p>PHP 游戏中的宠物合成系统实际上是一个<b>玩家间结婚</b>系统。两名玩家通过求婚→接受→结婚的流程建立婚姻关系，然后可以进行宠物培育。</p>
+
+<h3>12.2 婚姻状态机 (player_ext 表)</h3>
+<table>
+<tr><th>字段</th><th>值</th><th>含义</th></tr>
+<tr><td><code>merge</code></td><td>0 / player_id</td><td>配偶 ID (0=未婚)</td></tr>
+<tr><td><code>request_merge</code></td><td>0 / player_id</td><td>向谁求婚 (或 0=无)</td></tr>
+<tr><td><code>request</code></td><td>0/1/2/3</td><td>0=正常, 1=请求离婚, 2=已拒绝, 3=拒绝不通知</td></tr>
+<tr><td><code>send</code></td><td>"count,prop_id"</td><td>求婚时的定情信物</td></tr>
+<tr><td><code>nomergetime</code></td><td>timestamp</td><td>提出离婚的时间</td></tr>
+<tr><td><code>sj</code></td><td>int</td><td>水晶数量 (离婚消耗)</td></tr>
+</table>
+
+<h3>12.3 结婚流程 (merge.php type=4→3)</h3>
+<ol>
+<li><b>赠送定情信物 (type=4)</b>: 玩家A选择背包中的道具 (merge=1标记的求婚道具) 赠送给玩家B
+  <br>→ UPDATE player_ext SET request_merge=B_id, send='count,prop_id' WHERE uid=A_id
+  <br>→ 对方收到通知 "玩家A向你提出求婚"</li>
+<li><b>接受婚姻 (type=3)</b>: 玩家B接受玩家A的求婚
+  <br>→ 将求婚道具发放给B的背包 (INSERT/UPDATE userbag)
+  <br>→ UPDATE both player_ext: merge=B, request_merge=0, merge=A, request_merge=0
+  <br>→ 系统广播: "恭喜【A】和【B】结为夫妻！"</li>
+</ol>
+
+<h3>12.4 离婚流程 (merge.php type=1→2)</h3>
+<pre><code>// 提出离婚 (type=1): 花费 2000 水晶
+$sql = "UPDATE player_ext SET sj = sj - 2000, request=1, nomergetime=$t WHERE uid = $uid and sj >= 2000";
+
+// 24小时冷却: 如果对方24小时不响应 → 自动取消，退回2000水晶
+if (time() - $nomergetime >= 86400) {
+    UPDATE player_ext SET sj = sj + 2000, request=0;
+    // 发送通知 "玩家24小时没响应你的离婚请求，已自动取消"
+}
+
+// 取消离婚 (type=2): 退回2000水晶
+$sql = "UPDATE player_ext SET sj = sj + 2000, request=0 WHERE uid = $uid and request=1";
+// 强制离婚: 对方拒绝后仍可强制离婚 (消耗2000水晶不退回)</code></pre>
+
+<h3>12.5 宠物培育</h3>
+<p>婚后通过 Merge_Mod.php 进行宠物配对培育：
+<br>系统使用 <code>userbb.muchang</code> 字段标记宠物状态:
+<code>1</code>=正常, <code>3</code>=已加入配对, <code>4</code>=已配对, <code>5</code>=等待确认, <code>6</code>=培育中, <code>7</code>=培育完成</p>
+<p>配对需使用特殊求婚道具(merge字段=1)和传承道具(varyname=20)。</p>
+</div>
+
+
+<!-- ====== Section 13 ====== -->
+<h2 id="s13">13. 宠物传承(转生)系统 — 完整公式</h2>
+<div class="card">
+<h3>13.1 传承系统概述 (Chuancheng.php)</h3>
+<p>两只<b>神宠 (wx=6)</b> 之间的传承系统。宠物A (主动方) 和宠物B (被动方) 配对后，经过24小时培育产生新宠物，继承双方的属性。</p>
+
+<h3>13.2 传承条件 (type=1 加入)</h3>
+<pre><code>// 必须满足以下所有条件:
+宠物等级 >= 90           ($v['level'] < 90 → 拒绝 "级数不够")
+宠物成长率 >= 60          ($v['czl'] < 60 → 拒绝 "成长不够")
+宠物五行 == 6 (神宠)      ($v['wx'] != 6 → 拒绝 "不是神宠")
+宠物不能有装备             (检查 zb 字段中有 varyname==9 的装备)
+每24小时只能传承1次       (chchengtime + 86400 > time() → 拒绝)
+如果已传承过:
+  czl 区间内每10点成长只能传承2次
+  当前czl - 上次czl差值 >= 10</code></pre>
+
+<h3>13.3 传承状态机 (muchang 字段)</h3>
+<table>
+<tr><th>muchang</th><th>状态</th><th>说明</th></tr>
+<tr><td>1</td><td>正常</td><td>在携带中</td></tr>
+<tr><td>3</td><td>已加入配对</td><td>宠物放在培育栏等配对</td></tr>
+<tr><td>4</td><td>已配对</td><td>两只宠物互配 (chchengbb 指向对方)</td></tr>
+<tr><td>5</td><td>等待确认</td><td>一方已确认，等另一方</td></tr>
+<tr><td>6</td><td>传承中</td><td>24小时倒计时 (chchengtime)</td></tr>
+<tr><td>7</td><td>传承完成</td><td>可取回新宠物</td></tr>
+</table>
+
+<h3>13.4 核心传承公式 (type=8 取回)</h3>
+<div class="formula">
+<strong>传承珠倍率:</strong> 从道具 effect 字段读取，格式 <code>"chuanc:X"</code>，其中 X = 传承珠的倍率系数<br><br>
+
+<strong>新属性计算公式:</strong><br>
+<code>new_stat = intval(
+  ( base_stat +
+    intval(own_stat × own_level / 400) +
+    intval(mate_stat × mate_level / 800)
+  ) × pearl_multiplier
+)</code><br><br>
+
+<strong>各属性:</strong><br>
+<code>new_ac    = intval((rs.ac    + intval(own.ac    × own.level / 400) + intval(mate.ac    × mate.level / 800)) × pearl)</code><br>
+<code>new_mc    = intval((rs.mc    + intval(own.mc    × own.level / 400) + intval(mate.mc    × mate.level / 800)) × pearl)</code><br>
+<code>new_srchp = intval((rs.hp    + intval(own.srchp × own.level / 400) + intval(mate.srchp × mate.level / 800)) × pearl)</code><br>
+<code>new_hits  = intval((rs.hits  + intval(own.hits  × own.level / 400) + intval(mate.hits  × mate.level / 800)) × pearl)</code><br>
+<code>new_miss  = intval((rs.miss  + intval(own.miss  × own.level / 400) + intval(mate.miss  × mate.level / 800)) × pearl)</code><br>
+<code>new_speed = intval((rs.speed + intval(own.speed × own.level / 400) + intval(mate.speed × mate.level / 800)) × pearl)</code><br>
+<code>new_srcmp = intval((rs.mp    + intval(own.srcmp × own.level / 400) + intval(mate.srcmp × mate.level / 800)) × pearl)</code><br>
+<br>
+<strong>其中:</strong><br>
+<code>rs</code> = 宠物种族原始模板数据 (从 bb.pets 缓存读取)<br>
+<code>own</code> = 自己的宠物当前属性 (chchengsx 字段存储的对方属性)<br>
+<code>mate</code> = 对方宠物存入的属性<br>
+<code>pearl</code> = 传承珠倍率 (来自道具 effect 字段，如 "chuanc:1.5")<br>
+<code>own.level / 400</code> = 等级贡献系数<br>
+<code>mate.level / 800</code> = 对方等级贡献系数 (只有自己的一半)
+</div>
+
+<h3>13.5 关键源码还原</h3>
+<pre><code>// Chuancheng.php line 575-588 (旧版注释公式)
+$new['ac'] = floor(($rs['ac'] + $own['ac']*0.08 + $mate_ac*0.05) * ($pearl + 0.5));
+$new['mc'] = floor(($rs['mc'] + $own['mc']*0.08 + $mate_mc*0.05) * ($pearl + 0.5));
+// ...
+
+// Chuancheng.php line 582-588 (实际使用公式)
+$new['ac']    = intval(($rs['ac']    + intval($own['ac']*$own['level']/400)    + intval($mate_ac*$mate_level/800))    * $pearl);
+$new['mc']    = intval(($rs['mc']    + intval($own['mc']*$own['level']/400)    + intval($mate_mc*$mate_level/800))    * $pearl);
+$new['srchp'] = intval(($rs['hp']    + intval($own['srchp']*$own['level']/400) + intval($mate_srchp*$mate_level/800)) * $pearl);
+$new['hits']  = intval(($rs['hits']  + intval($own['hits']*$own['level']/400)  + intval($mate_hits*$mate_level/800))  * $pearl);
+$new['miss']  = intval(($rs['miss']  + intval($own['miss']*$own['level']/400)  + intval($mate_miss*$mate_level/800))  * $pearl);
+$new['speed'] = intval(($rs['speed'] + intval($own['speed']*$own['level']/400) + intval($mate_speed*$mate_level/800)) * $pearl);
+$new['srcmp'] = intval(($rs['mp']    + intval($own['srcmp']*$own['level']/400) + intval($mate_srcmp*$mate_level/800)) * $pearl);
+
+// 属性增长量记录 (addsx 字段，用于后续传承的累计统计)
+$add['ac']    = $new['ac']    - $own['ac'];
+$add['mc']    = $new['mc']    - $own['mc'];
+$add['srchp'] = $new['srchp'] - $own['srchp'];
+$add['hits']  = $new['hits']  - $own['hits'];
+$add['miss']  = $new['miss']  - $own['miss'];
+$add['speed'] = $new['speed'] - $own['speed'];
+$add['srcmp'] = $new['srcmp'] - $own['srcmp'];</code></pre>
+
+<h3>13.6 技能保留系统</h3>
+<pre><code>// 技能保留道具 effect 格式: "skills:X"
+// X = 技能保留参数，用于计算保留概率
+$jnn = 从道具 effect 读取的技能保留值;
+if (!empty($jnn)) {
+    $save = round(10 + 100 / $jnn);   // 保留概率
+} else {
+    $save = 10;                        // 默认 10%
+}
+
+$randskill = rand(1, 100);
+if ($randskill <= $save) {
+    $sk = $own['skillist'];  // 保留原技能！
+} else {
+    $sk = "1:1";             // 退化为基础技能
+}</code></pre>
+
+<h3>13.7 传承结果</h3>
+<pre><code>// 传承完成后 (muchang=7):
+UPDATE userbb SET
+    level = 1,                  // 等级重置为1
+    nowexp = 0,                 // 经验清零
+    lexp = 170,                 // 下一级需170经验
+    skillist = '$sk',           // 保留或退化技能
+    ac/new_ac, mc/new_mc,       // 新属性
+    srchp/new_srchp, srcmp/new_srcmp,
+    hits/new_hits, miss/new_miss, speed/new_speed,
+    muchang = '7',              // 标记完成
+    addsx = '...',              // 属性增长记录
+    chchengcolor = '#FF66CC',   // 粉色名字标记
+    chchengsx = ''              // 清除传承中间数据
+WHERE id = $cwid and muchang = 6;
+
+// 立即完成花费:
+$sj = floor((86400 - time() + $chchengtime) / 60);  // 每剩余1分钟 = 1水晶</code></pre>
+
+<h3>13.8 传承限制</h3>
+<ul>
+<li>宠物 <b>103、104、105</b> (涅槃兽等) <b>不能传承</b></li>
+<li>每24小时每个宠物只能传承1次</li>
+<li>同级czl区间每10点最多传承2次</li>
+<li>传承过的宠物 (chouqu_chongwu 字段记录) 不能传承</li>
+</ul>
+</div>
+
+
+<!-- ====== Section 14 ====== -->
+<h2 id="s14">14. 掉落与奖励</h2>
+<div class="card">
+<h3>12.1 掉落系统 (FightGate.php:900-1100)</h3>
+<pre><code>// 怪物掉落
+$okidlist = '';  // 掉落的道具ID列表
+$drop = '无';    // 掉落物显示文本
+
+// 检查背包空间
+$l = 0;
+foreach ($_bag as $item) {
+    if ($item['sums'] > 0 && $item['zbing'] == 0) $l++;
+}
+if ($l >= $user['maxbag']) return false;  // 背包满
+
+// 掉落物入包 saveGetProps()
+for each prop_id:
+    if (已存在 && vary==1 可折叠):
+        UPDATE userbag SET sums = sums + 1
+    else:
+        INSERT INTO userbag (新记录)
+    if ($l >= $user['maxbag']) break;  // 背包满则停止</code></pre>
+
+<h3>12.2 经验计算</h3>
+<pre><code>// 经验奖励 (FightGate.php:1056+)
+$exps = $gs['exps'];  // 怪物经验值
+
+// 双倍经验检查
+$doubleexp = 从 memcache 读取时间配置
+if (当前时间在双倍时段):
+    $exps *= 2;
+
+// 组队加成
+$multiple = $memberNum * 0.2 + 1;   // 2人=1.4x, 3人=1.6x...
+$expAvg = intval($exps * $multiple / $memberNum);
+
+// 队长自动战斗加成
+if ($auto['uid'] == $uid):
+    $expAvg *= 1.2;  // 额外 20%</code></pre>
+
+<h3>12.3 金币奖励</h3>
+<pre><code>// 金币 (FightGate.php)
+$money = $gs['money'] + $att['money'];   // 怪物金币 + 装备加成金币
+
+// 金币上限
+UPDATE player SET money = IF(money + $money > 1000000000, 1000000000, money + $money)</code></pre>
+</div>
+
+<!-- ====== Section 13 ====== -->
+<h2 id="s15">15. 新项目差距对照表</h2>
+<div class="card">
+<h3>15.1 战斗系统差距</h3>
+<table>
+<tr><th>功能</th><th>PHP 原版实现</th><th>新项目状态</th><th>差距评估</th></tr>
+<tr><td>伤害公式</td><td><code>(ac+ackvalue)×plus-mc</code>, round×hitsp+1, float-10%/+5%, crit×2</td><td>简化版: <code>(ac+ackvalue)*plus-mc</code>, 无浮动</td><td><span class="tag tag-half">60%</span></td></tr>
+<tr><td>命中系统</td><td>公式计算 + 分档判定 (实际 100%命中)</td><td>hitsp 公式 + 随机判定</td><td><span class="tag tag-ok">90%</span></td></tr>
+<tr><td>暴击系统</td><td>系统暴击率 + 装备暴击率, rand(0,100)</td><td>固定 5% 暴击率</td><td><span class="tag tag-half">40%</span></td></tr>
+<tr><td>回合交互</td><td>即时回合制: 每次选技能→AJAX→等冷却→再操作</td><td>批处理: 一次性算完50回合</td><td><span class="tag tag-no">完全不同</span></td></tr>
+<tr><td>技能消耗</td><td>消耗 HP (uhp) / MP (ump)</td><td>无消耗</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>技能冷却</td><td>119-319秒冷却 (5个技能)</td><td>无冷却</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>装备加成</td><td>10 部位, ac/mc/hits/speed/miss/hp/mp/crit 全加成</td><td>部分属性 (ac/mc/hp/mp/speed/hits/miss)</td><td><span class="tag tag-half">60%</span></td></tr>
+<tr><td>战斗药品Buff</td><td>addac/addmc (绝对值或百分比)</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>吸血/吸魔</td><td>hitshp/dxsh/shjs 三种效果</td><td>简化吸血 (固定0)</td><td><span class="tag tag-half">10%</span></td></tr>
+<tr><td>自动战斗</td><td>Tuoguan_Mod.php 托管 (autofitflag/autofitcount)</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>组队战斗</td><td>多人在线协作, 轮流回合, 分配掉落, 加成</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>防外挂</td><td>2s操作间隔, memcache 检查, 冷却验证</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+</table>
+
+<h3>15.2 其他系统差距</h3>
+<table>
+<tr><th>系统</th><th>PHP 原版</th><th>新项目</th><th>差距</th></tr>
+<tr><td>装备系统</td><td>10槽位, 强化/精炼/分解, 等级/五行约束, 镶嵌孔</td><td>基础穿戴/卸下, 无校验</td><td><span class="tag tag-half">20%</span></td></tr>
+<tr><td>技能系统</td><td>技能书学习, 升级道具, HP/MP消耗, 冷却, 10级, 永久属性加成</td><td>金币学习/升级, 无消耗</td><td><span class="tag tag-half">40%</span></td></tr>
+<tr><td>捕捉系统</td><td>HP越低越容易, 道具加成, 3种模式(catch/get/getitems), 公告</td><td>固定概率 catchv/100</td><td><span class="tag tag-half">30%</span></td></tr>
+<tr><td>商店系统</td><td>金币/元宝/水晶/VIP/声望/公会/拍卖7种商店</td><td>金币+元宝 2种</td><td><span class="tag tag-half">25%</span></td></tr>
+<tr><td>背包系统</td><td>16种分类, maxbag容量, 仓库, 批量出售, 物品锁定</td><td>道具/装备2种</td><td><span class="tag tag-half">20%</span></td></tr>
+<tr><td>宠物系统</td><td>合成/繁殖/转生/进化/牧场/主战切换</td><td>列表+技能管理</td><td><span class="tag tag-half">20%</span></td></tr>
+<tr><td>任务系统</td><td>12种任务类型, NPC驱动, 条件检查, 奖励发放</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>公会/家族</td><td>创建/加入/升级/挑战/商店/声望</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>组队/副本</td><td>队伍管理, 副本进度, 翻牌奖励, 每日限制</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>PvP/战场</td><td>红蓝阵营, 军功积分, 战场道具, 宝箱</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+<tr><td>排行榜</td><td>等级/财富/声望/宠物战力</td><td>无</td><td><span class="tag tag-no">0%</span></td></tr>
+</table>
+</div>
+
+<div class="footer">
+KDJL PHP 原版深度技术分析 | 基于 FightGate.php + sec_common_fnc.php + get.Catch.php + get.Skill.php + usedProps.php + task.v1.php 等核心源码逐行分析 | 2026-05-22
+</div>
+
+</div>
+</body>
+</html>

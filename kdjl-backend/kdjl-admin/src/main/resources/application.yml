@@ -1,0 +1,26 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: kdjl-admin
+  datasource:
+    url: jdbc:mysql://localhost:3306/kdjl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: kdjl
+    password: kdjl_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+admin:
+  username: admin
+  password: admin123

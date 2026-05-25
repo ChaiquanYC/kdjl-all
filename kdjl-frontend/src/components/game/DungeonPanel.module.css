@@ -1,0 +1,53 @@
+/* PHP tpl_fb.html — 770px table, 3-column layout */
+.container{width:788px;height:319px;background:url('/images/fuben/fbbg.jpg') no-repeat;overflow:hidden;padding:4px 8px}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;color:#B06A01;font-size:14px}
+
+.mainTable{display:flex;height:100%}
+
+/* LEFT COLUMN: flex-grow to fill — PHP line 26 */
+.leftCol{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* Banner — PHP line 28: min-height matches fbdt03/fbdt04 (58px) */
+.banner{display:flex;align-items:flex-start;min-height:58px}
+.dungeonImg{flex-shrink:0}
+.bannerMid{flex-shrink:0}
+.bannerRight{flex-shrink:0}
+
+/* Description — PHP line 31: fbdt05.jpg bg, height 80 */
+.descArea{height:80px;background:url('/images/fuben/fbdt05.jpg');display:flex;align-items:flex-start;overflow:hidden}
+.descText{color:#B06A01;font-size:12px;line-height:1.7;margin:0;padding:0 24px}
+
+/* fbdt06.jpg bottom — PHP line 40 */
+.bannerBottom{width:100%;max-width:525px;height:20px;flex-shrink:0}
+
+/* Lower: pets + info — PHP line 43-76 */
+.lowerArea{display:flex;flex:1;padding-top:4px}
+.petSection{flex:1;display:flex;flex-direction:column}
+.petHeader{padding-left:10px;height:29px;display:flex;align-items:center}
+.petHeader img{width:95px;height:22px}
+.petCards{display:flex;align-items:flex-end;padding:0 0 0 25px;overflow:hidden}
+.petImg{cursor:pointer;transition:opacity .2s;flex-shrink:0}
+.petImg:hover{opacity:1!important}
+
+/* Info section — PHP line 66-75 */
+.infoSection{width:240px;flex-shrink:0;display:flex;flex-direction:column;padding-right:10px}
+.infoHeader{height:29px;display:flex;align-items:center}
+.infoHeader img{width:95px;height:22px}
+.infoTable{font-size:12px;color:#066B00;line-height:1.8;margin-top:4px;width:100%}
+.infoTable td{padding:1px 0}
+
+/* SEPARATOR — PHP line 78-85 */
+.separator{width:1px;flex-shrink:0;background:url('/images/ui/team/zdy06.jpg') repeat-y;margin:0 1px;background-size:1px 100%}
+
+/* RIGHT COLUMN: 241px — PHP line 86-101 */
+.rightCol{width:241px;flex-shrink:0;display:flex;flex-direction:column;color:#066B00}
+.rightHeader{width:198px;height:27px;margin-top:22px}
+.rightContent{height:217px;overflow-y:auto;font-size:12px}
+.teamPlaceholder{color:#066B00;font-size:12px;display:block;padding:20px 8px}
+
+/* Actions — PHP line 95-100 */
+.rightActions{display:flex;gap:4px;justify-content:center;padding-top:4px}
+.actionBtn{width:78px;height:29px;cursor:pointer;opacity:0.9}
+.actionBtn:hover{opacity:1}
+.cooldownBtn{width:78px;height:29px;background:#c04040;color:#fff;border:none;border-radius:2px;cursor:pointer;font-size:8px;line-height:1.2}
+.cooldownBtn:hover{background:#a03030}

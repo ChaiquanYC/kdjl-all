@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDJL PHP 原版 — 页面与内容全目录</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--red:#f85149;--green:#3fb950;--yellow:#d2991d;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e;--accent:#1f6feb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.75;padding:20px;font-size:14px}
+.container{max-width:1500px;margin:0 auto}
+h1{font-size:1.6rem;text-align:center;margin-bottom:4px;color:var(--yellow)}
+h1 small{display:block;font-size:.8rem;color:var(--muted);font-weight:400;margin-top:2px}
+h2{font-size:1.15rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin:28px 0 12px;color:var(--blue)}
+h3{font-size:.95rem;margin:16px 0 6px;color:var(--yellow);border-bottom:1px solid var(--border);padding-bottom:4px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin:16px 0}
+.summary-card{background:var(--card);border-radius:6px;padding:10px;text-align:center;border:1px solid var(--border)}
+.summary-card .num{font-size:1.6rem;font-weight:700;color:var(--yellow)}
+.summary-card .lbl{font-size:.72rem;color:var(--muted)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.82rem}
+th,td{padding:5px 9px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--accent);font-weight:600;white-space:nowrap}
+tr:hover{background:rgba(255,255,255,0.02)}
+.col-f{width:30%}.col-l{width:8%}.col-d{width:62%}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.68rem;font-weight:700}
+.tag-mod{background:var(--blue);color:#000}.tag-gate{background:var(--green);color:#000}
+.tag-kernel{background:var(--yellow);color:#000}.tag-other{background:var(--muted)}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:.75rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL PHP 原版 — 页面与内容全目录<br><small>333 个 PHP 文件 · 26 个分类 · ~77,000 行代码 | 2026-05-23</small></h1>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="num">333</div><div class="lbl">PHP 文件</div></div>
+  <div class="summary-card"><div class="num">~77K</div><div class="lbl">代码行数</div></div>
+  <div class="summary-card"><div class="num">26</div><div class="lbl">系统分类</div></div>
+  <div class="summary-card"><div class="num">65</div><div class="lbl">HTML 模板</div></div>
+  <div class="summary-card"><div class="num">Mod+Gate</div><div class="lbl">核心模式</div></div>
+</div>
+
+<!-- ====== 1. 登录注册 ====== -->
+<h2>1. 登录/注册 (19 文件, ~2,315 行)</h2>
+<table>
+<tr><th class="col-f">文件</th><th class="col-l">行</th><th class="col-d">内容说明</th></tr>
+<tr><td>login/login.php</td><td>112</td><td>登录表单渲染 — 用户名/密码输入框</td></tr>
+<tr><td>login/loginCheck.php</td><td>22</td><td>登录表单处理后端 — MD5 密码验证</td></tr>
+<tr><td>login/register.php</td><td>202</td><td>新用户注册表单</td></tr>
+<tr><td>login/reg1.php</td><td>407</td><td>注册页面 — 6选1初始宠物(金木水火土波姆)</td></tr>
+<tr><td>login/curl.php</td><td>95</td><td>cURL 工具 — 远程认证 HTTP 请求</td></tr>
+<tr><td>loginCheck.php</td><td>73</td><td>根级登录检查路由</td></tr>
+<tr><td>reg_code.php</td><td>98</td><td>邀请/注册码处理</td></tr>
+<tr><td>passport/login.php</td><td>337</td><td>通行证登录 — 多服务器选择界面</td></tr>
+<tr><td>passport/deal.php</td><td>79</td><td>通行证数据处理</td></tr>
+<tr><td>passport/dealMobile.php</td><td>77</td><td>移动端通行证处理</td></tr>
+<tr><td>passport/dealPc.php</td><td>52</td><td>PC端通行证处理</td></tr>
+<tr><td>passport/reg_check.php</td><td>44</td><td>注册验证 — 用户名可用性检查</td></tr>
+<tr><td>passport/passreset.php</td><td>92</td><td>密码重置功能</td></tr>
+<tr><td>passport/serverList.php</td><td>64</td><td>服务器列表展示</td></tr>
+<tr><td>passport/set_online.php</td><td>10</td><td>设置在线状态</td></tr>
+<tr><td>passport/mb.php</td><td>180</td><td>手机绑定页面</td></tr>
+<tr><td>passport/mbGate.php</td><td>153</td><td>手机绑定网关 (Ajax)</td></tr>
+<tr><td>passport/mbNameGate.php</td><td>104</td><td>手机绑定名称查找</td></tr>
+<tr><td>login/get.info.php</td><td>2</td><td>空的登录信息获取占位文件</td></tr>
+</table>
+
+<!-- ====== 2. 战斗 ====== -->
+<h2>2. 战斗系统 (20 文件, ~9,377 行)</h2>
+<table>
+<tr><th class="col-f">文件</th><th class="col-l">行</th><th class="col-d">内容说明</th></tr>
+<tr><td><b>Fight_Mod.php</b></td><td>1,719</td><td><span class="tag tag-mod">主界面</span> 战斗显示、自动战斗、行动日志</td></tr>
+<tr><td>Fight_Mod_Mobile.php</td><td>1,733</td><td><span class="tag tag-mod">界面</span> 移动端战斗显示</td></tr>
+<tr><td>Fight_ModT.php</td><td>642</td><td><span class="tag tag-mod">界面</span> 组队战斗显示</td></tr>
+<tr><td><b>FightGate.php</b></td><td>1,569</td><td><span class="tag tag-gate">核心网关</span> 攻击/捕捉/道具/逃跑 Ajax处理、Ack伤害计算类</td></tr>
+<tr><td>battleFightGate.php</td><td>585</td><td><span class="tag tag-gate">网关</span> 备用战斗操作网关</td></tr>
+<tr><td>AddBattleGate.php</td><td>199</td><td><span class="tag tag-gate">网关</span> 添加/开始战斗(遇敌)</td></tr>
+<tr><td>BattleFight_Mod.php</td><td>505</td><td><span class="tag tag-mod">界面</span> 竞技场战斗</td></tr>
+<tr><td>BattleBox_Mod.php</td><td>200</td><td><span class="tag tag-mod">界面</span> 竞技场选择</td></tr>
+<tr><td>BattleComein_Mod.php</td><td>178</td><td><span class="tag tag-mod">界面</span> 竞技场入场选择 (按czl分组)</td></tr>
+<tr><td>BattleExp_Mod.php</td><td>38</td><td><span class="tag tag-mod">界面</span> 竞技场经验兑换</td></tr>
+<tr><td>BattleInfo_Mod.php</td><td>166</td><td><span class="tag tag-mod">界面</span> 战斗信息/统计面板</td></tr>
+<tr><td>BattleProps_Mod.php</td><td>52</td><td><span class="tag tag-mod">界面</span> 战斗道具面板</td></tr>
+<tr><td>multi_Monster.php</td><td>360</td><td>多怪物战斗处理</td></tr>
+<tr><td><b>get.Catch.php</b></td><td>448</td><td><span class="tag tag-gate">网关</span> 宠物捕捉逻辑 — 3种模式(catch/get/getitems)</td></tr>
+<tr><td>ext_Battle.php</td><td>522</td><td>战斗扩展 — 诅咒宝石/女神圣水等战场道具</td></tr>
+<tr><td>ext_Fight.php</td><td>82</td><td>战斗扩展辅助函数</td></tr>
+<tr><td>botGate.php</td><td>203</td><td><span class="tag tag-gate">网关</span> 自动挂机战斗</td></tr>
+<tr><td>botGate_android.php</td><td>207</td><td><span class="tag tag-gate">网关</span> 安卓端自动挂机</td></tr>
+<tr><td>autoCatch.php</td><td>93</td><td>自动捕捉辅助 (涅槃兽)</td></tr>
+<tr><td>config.battle.php</td><td>15</td><td>战斗配置 — 战场时间(周五20-21点)</td></tr>
+</table>
+
+<!-- ====== 3. 宠物 ====== -->
+<h2>3. 宠物系统 (15 文件, ~3,030 行)</h2>
+<table>
+<tr><th class="col-f">文件</th><th class="col-l">行</th><th class="col-d">内容说明</th></tr>
+<tr><td>Pets_Mod.php</td><td>339</td><td><span class="tag tag-mod">界面</span> 宠物列表/信息 — cardimg/HP/MP/属性/装备10槽</td></tr>
+<tr><td>Pets_Mod_View.php</td><td>264</td><td><span class="tag tag-mod">界面</span> 宠物详情 (他人查看)</td></tr>
+<tr><td>Sd_Mod.php</td><td>538</td><td><span class="tag tag-mod">界面</span> 宠物合成/融合系统 (13.1K模板)</td></tr>
+<tr><td>Merge_Mod.php</td><td>310</td><td><span class="tag tag-mod">界面</span> 宠物合并 — 结婚/配对 (44.7K模板)</td></tr>
+<tr><td>merge.php</td><td>502</td><td><span class="tag tag-gate">网关</span> 合并处理 — 求婚/接受/离婚</td></tr>
+<tr><td>get.sjSkill.php</td><td>180</td><td><span class="tag tag-gate">网关</span> 技能升级 — 消耗道具升级到10级</td></tr>
+<tr><td>get.Skill.php</td><td>181</td><td><span class="tag tag-gate">网关</span> 技能学习 — 检查技能书+等级+五行</td></tr>
+<tr><td>zhaohui.php</td><td>93</td><td>宠物召回/复活</td></tr>
+<tr><td>card.php</td><td>66</td><td>宠物卡片</td></tr>
+<tr><td>newcard.php</td><td>120</td><td>新版宠物卡片</td></tr>
+<tr><td>eggs_server.php</td><td>142</td><td>宠物蛋服务器</td></tr>
+<tr><td>zhanbuwu.php</td><td>134</td><td>占卜屋 — 宠物占卜</td></tr>
+<tr><td>getSkillInfo.php</td><td>29</td><td>技能信息辅助函数</td></tr>
+<tr><td>Sd_ComposeMod.php</td><td>115</td><td>合成组件逻辑</td></tr>
+<tr><td>config.pets.php</td><td>17</td><td>宠物配置</td></tr>
+</table>
+
+<!-- ====== 继续简化为关键文件 ====== -->
+<h2>4. 背包/物品 (19 文件, ~5,007 行)</h2>
+<table>
+<tr><th class="col-f">文件</th><th class="col-l">行</th><th class="col-d">内容说明</th></tr>
+<tr><td><b>usedProps.php</b></td><td>1,982</td><td><span class="tag tag-gate">核心</span> <b>最大道具文件</b> — 所有道具效果: 装备穿戴/卸下/进化/技能书/宝箱/卡片/宠物卵</td></tr>
+<tr><td>usedProps1.php</td><td>1,056</td><td><span class="tag tag-gate">网关</span> 备选道具使用处理</td></tr>
+<tr><td>Base_Mod.php</td><td>188</td><td><span class="tag tag-mod">界面</span> 主背包/仓库界面</td></tr>
+<tr><td>Props_Mod.php</td><td>198</td><td><span class="tag tag-mod">界面</span> 道具商店/购买 (14.7K模板)</td></tr>
+<tr><td>getBag.php</td><td>226</td><td>Ajax 获取背包数据 — 16种分类</td></tr>
+<tr><td>sellBag.php</td><td>91</td><td><span class="tag tag-gate">网关</span> 出售背包物品</td></tr>
+<tr><td>sellBagAllZB.php</td><td>118</td><td><span class="tag tag-gate">网关</span> 批量出售所有装备</td></tr>
+<tr><td>baseGate.php</td><td>119</td><td><span class="tag tag-gate">网关</span> 背包操作网关(存取)</td></tr>
+<tr><td>props2Depot.php</td><td>257</td><td>道具放入仓库</td></tr>
+<tr><td>props2DepotAllSame.php</td><td>58</td><td>批量相同道具放入仓库</td></tr>
+<tr><td>offprops.php</td><td>124</td><td>卸下装备道具</td></tr>
+<tr><td>PropsGate.php</td><td>142</td><td><span class="tag tag-gate">网关</span> 道具操作</td></tr>
+<tr><td>getProps.php</td><td>169</td><td>获取道具信息</td></tr>
+<tr><td>getPropsInfo.php</td><td>98</td><td>获取道具详细信息</td></tr>
+<tr><td>getBagOfVary.php</td><td>16</td><td>按类型获取背包物品</td></tr>
+<tr><td>offpropsT.php</td><td>126</td><td>备选卸下装备</td></tr>
+<tr><td>config.props.php</td><td>90</td><td>道具配置</td></tr>
+<tr><td>bag_desc.php</td><td>11</td><td>背包描述文本</td></tr>
+<tr><td>bag_desc_android.php</td><td>13</td><td>安卓版背包描述</td></tr>
+</table>
+
+<!-- ====== 5-26 用简洁格式 ====== -->
+<h2>5. 商店 (20 文件, ~4,794 行)</h2>
+<table>
+<tr><th class="col-f">文件</th><th class="col-l">行</th><th class="col-d">内容说明</th></tr>
+<tr><td>Shopsm_Mod.php</td><td>367</td><td>主商店界面 (23.3K模板) — 金币/水晶/限时抢购/VIP专区</td></tr>
+<tr><td>Shopsm_Mod_yb.php</td><td>178</td><td>元宝商店界面</td></tr>
+<tr><td>Zb_Mod.php</td><td>479</td><td><b>装备商店</b> (57.7K 最大模板) — 按部位分类: 武器/衣服/头盔/鞋子/项链/戒指/护腕/腰带/特殊/翅膀</td></tr>
+<tr><td>smbuyGate.php</td><td>446</td><td>金币购买网关</td></tr>
+<tr><td>ybbuyGate.php</td><td>363</td><td>元宝购买网关</td></tr>
+<tr><td>pay_Mod.php</td><td>526</td><td>充值/支付界面</td></tr>
+<tr><td>pay_Mod_yb.php</td><td>165</td><td>元宝支付界面</td></tr>
+<tr><td>ios_pay.php</td><td>141</td><td>iOS 支付处理</td></tr>
+<tr><td>ybsellGate.php</td><td>174</td><td>元宝出售网关</td></tr>
+<tr><td>ZbGate.php</td><td>134</td><td>装备购买网关</td></tr>
+<tr><td>sjbuyGate.php</td><td>157</td><td>随机商店购买</td></tr>
+<tr><td>vipbuyGate.php</td><td>142</td><td>VIP 专属商店购买</td></tr>
+<tr><td>smbuyGateCheck.php</td><td>149</td><td>购买前检查(余额等)</td></tr>
+<tr><td>smbuyGate123.php</td><td>331</td><td>快速购买选项</td></tr>
+<tr><td>smbuyGatet.php</td><td>444</td><td>批量购买处理</td></tr>
+<tr><td>smbuyGate_yb.php</td><td>149</td><td>元宝购买网关变体</td></tr>
+<tr><td>success_Mod.php</td><td>221</td><td>购买成功页面</td></tr>
+<tr><td>success_Mod_yb.php</td><td>169</td><td>元宝购买成功页面</td></tr>
+<tr><td>PayCheck_Mod.php</td><td>23</td><td>支付检查</td></tr>
+<tr><td>shop.v1.php</td><td>36</td><td><span class="tag tag-kernel">内核</span> 商店核心类</td></tr>
+</table>
+
+<h2>6-26 其余系统汇总</h2>
+
+<table>
+<tr><th width="12%">系统</th><th width="6%">文件数</th><th width="8%">行数</th><th>核心文件一览</th></tr>
+<tr><td><b>6. 地图</b></td><td>9</td><td>~940</td>
+<td>Expore_Mod.php(主地图界面)、Exporenew_Mod.php(新版地图)、mapGate.php(地图进入网关-等级/道具检查)、getmap.php(获取地图数据)、openMap.php(解锁地图)、City_Mod.php(城镇/安全区)、manymapgate.php(多地图入口)</td></tr>
+
+<tr><td><b>7. 公会/家族</b></td><td>9</td><td>~2,054</td>
+<td><b>guild.php(965行-主公会系统)</b> 创建/列表/管理/搜索、Family_Mod.php(199行-家族界面)、FamilyGate.php(家族操作网关)、FamilyUpgrade.php(家族升级)、guild_battle_mod.php(公会战界面)、KinPrestigeGate/Mod(家族声望)</td></tr>
+
+<tr><td><b>8. 组队</b></td><td>11</td><td>~5,470</td>
+<td><b>Team_Mod.php(596行-组队主界面)</b> 创建/加入/管理、Tt_Mod.php(267行-组队战斗)、cmpGate.php(1,099行-组队战斗网关-最大)、Tuoguan_Mod.php(247行-自动托管)、tuoGuanGate.php(767行-托管网关)、team.v1.php(1,141行-组队核心类)</td></tr>
+
+<tr><td><b>9. 任务</b></td><td>7</td><td>~3,948</td>
+<td><b>task.v1.php(1,936行-任务核心类-最大内核)</b> startTask/completeTask/saveExps/saveGetProps、getTask.php(594行-接受/完成任务处理)、taskshow.php(465行-任务列表展示)、xqhcGate.php(433行-循环日常任务)、guide.php(50行-新手引导)</td></tr>
+
+<tr><td><b>10. 婚姻</b></td><td>5</td><td>~686</td>
+<td>jhGate.php(281行-结婚操作-求婚/接受)、merge.php(502行-合并/离婚)、superJhGate.php(199行-高级结婚)、zhGate.php(82行-离婚处理)、qy_Mod.php(70行-情侣信息界面)</td></tr>
+
+<tr><td><b>11. 传承/转生</b></td><td>6</td><td>~2,183</td>
+<td><b>Chuancheng.php(773行-宠物传承主界面)</b> 神宠配对/培育/取回、zsGate.php(699行-转生网关)、zc_Mod.php(113行-转生界面)、Muchang_Mod.php(266行-牧场繁殖)、mcGate.php(206行-牧场网关)</td></tr>
+
+<tr><td><b>12. PvP/战场</b></td><td>7</td><td>~1,810</td>
+<td>ChallengeGate.php(716行-PvP挑战网关)、Challenge_Mod.php(606行-挑战界面-公会战/要塞战)、kffight_bm.php(221行-跨服战场报名)、kffight_get.php(121行-数据获取)、kffight_sx.php(39行-战场刷新)</td></tr>
+
+<tr><td><b>13. 要塞</b></td><td>5</td><td>~966</td>
+<td>fortress_Mod.php(150行-女神要塞主界面)、fortress_gate.php(191行-要塞操作网关)、fortress_stolen_Mod.php(233行-要塞掠夺)、fortressCard.php(215行-要塞卡片)、fortressCard_Mod.php(177行-卡片界面)</td></tr>
+
+<tr><td><b>14. 副本</b></td><td>4</td><td>~2,288</td>
+<td><b>fbfightGate.php(1,056行-副本战斗网关)</b>、fbfight_Mod.php(950行-副本战斗界面)、fb_Mod.php(214行-副本主界面)、config.fuben.php(68行-副本地图ID/进入条件)</td></tr>
+
+<tr><td><b>15. 国王/声望</b></td><td>7</td><td>~969</td>
+<td>King_Mod.php(237行-王位争夺界面)、Prestige_Mod.php(169行-声望界面)、PrestigeGate.php(144行-声望网关)、zbPrestigeGate.php(130行-装备声望网关)、PuPrestige_Mod.php(80行-普通声望)</td></tr>
+
+<tr><td><b>16. 强化/锻造</b></td><td>7</td><td>~2,631</td>
+<td><b>equipment.v1.php(1,224行-装备核心类)</b> getzbAttrib/ac/mc/hits/speed/miss/hp/mp/crit全属性计算、zbstrength_Mod.php(275行-装备强化+1到+9)、zbfjGate.php(151行-装备分解)、zbxlGate.php(84行-装备洗练重铸)、sszsInfo.php(495行-圣石注灵)</td></tr>
+
+<tr><td><b>17. 拍卖行</b></td><td>9</td><td>~3,137</td>
+<td>Pai_Mod.php(358行-拍卖界主面)、paibuyGate.php(356行-拍卖购买)、paisellGate.php(170行-拍卖出售)、<b>swap_Zone.php(1,230行-交易区/交换系统-最大)</b>、paiPropsGate.php(142行-道具网关)</td></tr>
+
+<tr><td><b>18. 活动</b></td><td>29</td><td>~4,101</td>
+<td>active_Mod.php(活动界面)、tarotGate.php(676行-塔罗牌翻牌)、card_Mod.php(543行-卡片活动)、AoyuntiGate.php(272行-奥运题目)、sl_start.php(379行-扫雷游戏)、onlineForPrize.php(117行-在线奖励)、consumption2exp.php(182行-消费转经验)、luck_Mod.php(88行-幸运转盘)、get_LB.php(135行-礼包)、getPrize.php(120行-奖品领取)</td></tr>
+
+<tr><td><b>19. 聊天</b></td><td>16</td><td>~3,655</td>
+<td>chatGate.php(632行-公聊/私聊/喇叭)、chatProto.php(730行-聊天协议处理)、<b>snb.php(1,262行-Socket服务器)</b>、friendGate.php(251行-好友管理)、friendlist.php(161行-好友列表)、bbshow.php(39行-公告板)</td></tr>
+
+<tr><td><b>20. 排行榜</b></td><td>3</td><td>~599</td>
+<td>GrowthRanking_Mod.php(107行-成长率排行)、Public_Mod.php(422行-公共排行/公告板)、qy_Mod.php(70行-魅力排行)</td></tr>
+
+<tr><td><b>21. GM管理</b></td><td>18</td><td>~2,834</td>
+<td>Gamemaster.php(156行-GM API: 封禁/禁言/公告)、entrance.php(400行-排行榜计算工具)、vm1.php(447行-服务器管理)、serverGate.php(476行-服务器消息中心)、custom/addPropToUser.php(233行-给用户发道具)、selectBB/Player/Props系列(选择器+查询器)</td></tr>
+
+<tr><td><b>22. API</b></td><td>7</td><td>~504</td>
+<td>allToolsQl.php(92行-工具查询)、check_user.php(162行-用户验证-第三方平台)、gold_usage_sta.php(110行-金币使用统计)、time.php(39行-服务器时间)、interface.php(29行-跨服接口)</td></tr>
+
+<tr><td><b>23. 安全</b></td><td>5</td><td>~3,898</td>
+<td><b>sec_common_fnc.php(3,688行-最大文件!)</b> 外挂检测/参数验证/secStart/stopUser/Ack伤害计算类/Ack1类/getzbAttrib/getCzl/kick_cheater.php(120行-踢出作弊)</td></tr>
+
+<tr><td><b>24. 核心框架</b></td><td>17</td><td>~4,560</td>
+<td>mysql.v1.php(181行-MySQL类)、memory.v1.php(306行-Memcache类)、user.v1.php(411行-用户数据类: getUserById/getUserPetById/getUserBagById/getUserPetSkillById)、equipment.v1.php(1,224行-装备类)、task.v1.php(1,936行-任务类)、team.v1.php(1,141行-组队类)、session.v1.php(348行-会话处理)</td></tr>
+
+<tr><td><b>25. 配置</b></td><td>13</td><td>~677</td>
+<td><b>config.game.php(105行-主配置)</b> 加载所有配置/初始化 $_pm/定义MEM_KEY全局变量、config.mysql.php(26行-数据库连接)、config.props.php(122行-道具数据)、config.task.php(69行-任务类型: killmon/giveitem/see/props/itemrand/gonggao...)</td></tr>
+
+<tr><td><b>26. 根入口/工具</b></td><td>46</td><td>~9,176</td>
+<td><b>index.php(1,684行-主游戏入口)</b> iframe框架+左侧导航+聊天+背包+任务面板、Welcome_Mod.php(62行-欢迎页)、vip.php(129行-VIP信息)、onlineStat.php(186行-在线统计)、search_knol.php(484行-口袋百科)、guard_thread.php(772行-守护线程)、loginGate.php(418行-登录网关-防沉迷检查)</td></tr>
+</table>
+
+<!-- ====== 汇总 ====== -->
+<h2>架构总结</h2>
+
+<table>
+<tr><th>模式</th><th>说明</th><th>示例</th></tr>
+<tr><td><b>Mod (界面)</b></td><td>显示/渲染页面，加载HTML模板文件</td><td>Fight_Mod.php → tpl_fight.html</td></tr>
+<tr><td><b>Gate (网关)</b></td><td>Ajax操作处理器，接收请求→处理逻辑→返回结果</td><td>FightGate.php → 攻击/捕捉/道具</td></tr>
+<tr><td><b>Kernel (内核)</b></td><td>核心业务类，封装MySQL+Memcache数据访问</td><td>user.v1.php / task.v1.php</td></tr>
+<tr><td><b>Config (配置)</b></td><td>游戏常量、道具/技能/任务/怪物数据</td><td>config.game.php / config.props.php</td></tr>
+<tr><td><b>Template (模板)</b></td><td>65个HTML文件，通过file_get_contents+str_replace渲染</td><td>tpl_fight.html / tpl_smshop.html</td></tr>
+</table>
+
+<h2>页面交互流程</h2>
+
+<table>
+<tr><th width="18%">用户操作</th><th width="35%">流程</th><th>关键文件</th></tr>
+<tr><td>登录</td><td>login.php → loginCheck.php(MD5验证) → Welcome_Mod.php(主界面)</td><td>login/login.php, loginCheck.php, config.game.php</td></tr>
+<tr><td>进入地图</td><td>Expore_Mod.php(地图列表) → mapGate.php(检查等级/道具) → Fight_Mod.php(加载怪物)</td><td>Expore_Mod.php, mapGate.php, Fight_Mod.php</td></tr>
+<tr><td>战斗</td><td>Fight_Mod.php(iframe渲染) → 点击攻击/技能/道具/捕捉 → FightGate.php(Ajax,计算伤害) → 返回结果</td><td>Fight_Mod.php, FightGate.php, sec_common_fnc.php(Ack类)</td></tr>
+<tr><td>捕捉宠物</td><td>战斗中使用精灵球 → get.Catch.php(计算概率) → 创建userbb+skill → 全服公告</td><td>get.Catch.php, user.v1.php</td></tr>
+<tr><td>使用道具</td><td>getBag.php(背包) → usedProps.php(解析effect→应用效果→更新bag)</td><td>getBag.php, usedProps.php, equipment.v1.php</td></tr>
+<tr><td>购买道具</td><td>Shopsm_Mod.php(商店) → smbuyGate.php(扣款→入包→记录日志)</td><td>Shopsm_Mod.php, smbuyGate.php, shop.v1.php</td></tr>
+<tr><td>接受任务</td><td>taskshow.php → getTask.php(type=get) → task::startTask() → 更新player.task/tasklog</td><td>taskshow.php, getTask.php, task.v1.php</td></tr>
+<tr><td>完成任务</td><td>getTask.php(type=ok) → task::completeTask() → 检查tasklog→消耗道具→发放奖励</td><td>getTask.php, task.v1.php</td></tr>
+<tr><td>宠物传承</td><td>Chuancheng.php → 配对→确认→24h培育→取回→公式应用</td><td>Chuancheng.php, zsGate.php</td></tr>
+</table>
+
+<div class="footer">KDJL PHP 原版页面与内容全目录 | 基于 333 PHP 源文件 + 65 HTML模板 + 20 JS文件 逐一分析 | 2026-05-23</div>
+
+</div>
+</body>
+</html>

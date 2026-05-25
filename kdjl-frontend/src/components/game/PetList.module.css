@@ -1,0 +1,76 @@
+.container{display:flex;height:100%;color:#513a11;font-size:12px}
+.loading,.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#693600;font-size:14px;position:absolute;inset:0;z-index:5;background:#f2ebc5}
+.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:13px;white-space:nowrap}
+.equipTip{position:fixed;z-index:999;background:#1F1F30;color:#FEFDFA;padding:6px 10px;border:1px solid #6a6a7a;font-size:11px;pointer-events:none;min-width:150px;max-width:200px;box-shadow:2px 2px 6px rgba(0,0,0,0.5);line-height:1.6}
+.tipImg{width:32px;height:32px;object-fit:contain;float:right;margin-left:6px}
+.tipName{font-size:13px;font-weight:bold;color:#FED625;margin-bottom:2px}
+.tipRow{color:#FEFDFA}
+
+/* Left panel — PHP .pet_l */
+.left{width:291px;flex-shrink:0;background:url('/images/ui/pet_bg_l.jpg') no-repeat;position:relative;display:flex;flex-direction:column}
+.userInfo{position:absolute;left:25px;top:13px;line-height:20px;width:120px}
+.avatar{position:absolute;left:149px;top:9px;width:112px;text-align:center}
+.avatar img{max-height:180px}
+.petCards{position:absolute;left:30px;top:224px;width:240px;display:flex;gap:13px}
+.petCard{width:67px;height:84px;background:url('/images/ui/nopet.jpg') no-repeat;background-size:cover;cursor:pointer;opacity:.5;display:flex;align-items:flex-end;justify-content:center;position:relative}
+.petCard:hover{opacity:.8}
+.petCardActive{opacity:1!important}
+.petCard img{width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0}
+.petCard span{position:relative;padding:4px;bottom:46px;line-height:14px;color:#fff;text-align:center;font-size:10px}
+.noCard{width:40px;height:40px;background:transparent;display:flex;align-items:center;justify-content:center;font-size:10px;color:transparent;margin:auto}
+
+/* Right panel — PHP .pet_r */
+.right{width:497px;flex-shrink:0;background:url('/images/ui/pet_bg_r.jpg') no-repeat;position:relative;display:flex;flex-direction:column}
+
+/* Tabs — PHP .pettab sprite */
+.tabs{margin:2px 0 0 28px;height:27px;display:flex;list-style:none;padding:0;gap:1px}
+.tabs li{cursor:pointer;width:87px;height:27px}
+.tab1,.tab2,.tab3{display:block;width:87px;height:27px;background:url('/images/ui/pet_tab_bg.jpg') no-repeat;text-indent:-9999px;overflow:hidden}
+.tab1{background-position:0 0}.tabOn .tab1{background-position:0 -27px}
+.tab2{background-position:-88px 0}.tabOn .tab2{background-position:-88px -27px}
+.tab3{background-position:-176px 0}.tabOn .tab3{background-position:-176px -27px}
+
+/* Tab 1 */
+.tabEq{flex:1;display:flex;margin-top:9px}
+.equipPanel{width:336px;margin-left:27px;position:relative;height:238px;background:url('/images/ui/pet_1_bg.jpg') no-repeat}
+.equipSlots{position:absolute;inset:0}
+.slot{position:absolute;text-align:center}
+.slot span{font-size:10px;color:#693600;font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70px}
+.slotImg{width:36px;height:35px;object-fit:contain}
+/* PHP positions */
+.s0{left:4px;top:5px}    .s1{left:144px;top:5px}   .s2{left:282px;top:5px}
+.s3{left:4px;top:69px}   .s4{left:282px;top:69px}  .s5{left:4px;top:132px}
+.s6{left:282px;top:132px}.s7{left:4px;top:196px}   .s8{left:144px;top:196px}
+.s9{left:282px;top:196px}.s10{left:200px;top:5px}  .s11{left:200px;top:5px}
+.petBig{position:absolute;left:46px;top:47px;width:232px;height:144px;display:flex;align-items:center;justify-content:center}
+.petBig img{max-width:100%;max-height:100%;object-fit:contain}
+.noImg{width:80px;height:80px;background:rgba(240,235,208,0.5);display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:16px;font-weight:bold}
+.statCol{width:124px;padding:5px 0 5px 10px;line-height:24px;background:url('/images/ui/pet_c1_r.jpg') left center no-repeat;overflow-y:auto}
+.btns{display:flex;gap:4px;margin-top:4px}
+.btns button{width:39px;height:17px;background:url('/images/ui/pet_c1_l_btn.gif') no-repeat;border:none;color:#2F291D;cursor:pointer;font-size:11px;line-height:17px}
+.isMain{color:#e08040;font-weight:bold;font-size:12px}
+
+/* Tab 2 */
+.tabAttr{flex:1;display:flex;margin-top:9px;overflow-y:auto}
+.attrCol{width:50%;padding:8px;line-height:22px}
+.attrCol:first-child{background:url('/images/ui/pet_2_bg.jpg') center top no-repeat;padding-top:190px}
+.petBig2{width:100%;height:179px;display:flex;align-items:center;justify-content:center;position:absolute;left:0;top:8px}
+.petBig2 img{max-width:100%;max-height:179px;object-fit:contain}
+.attrCol .petBig2{position:relative;top:0}
+.attrCol .petBig2 img{opacity:1}
+
+/* Tab 3 */
+.tabSkill{flex:1;display:flex;margin-top:9px;overflow-y:auto}
+.skillLeft{width:313px;position:relative;display:flex;flex-direction:column;align-items:center}
+.skillLeft .petBig2{position:relative;width:313px;height:189px}
+.learnRow{display:flex;gap:4px;align-items:center;margin:10px 0}
+.learnRow select{padding:2px 4px;border:1px solid #c48c35;font-size:11px;width:160px}
+.learnRow button{width:39px;height:17px;background:url('/images/ui/pet_c1_l_btn.gif') no-repeat;border:none;color:#2F291D;cursor:pointer;font-size:11px}
+.skillRight{flex:1;padding:10px;background:url('/images/ui/pet_c1_r.jpg') left center no-repeat}
+.skillRight h4{margin:0 0 6px;color:#693600;font-size:13px}
+.noSkills{color:#999;font-size:13px}
+.skillList{list-style:none;padding:0;margin:0;line-height:22px}
+.skillList li{border-bottom:1px solid #f0ebd0;padding:2px 0}
+.elTag{font-size:10px;color:#e08040;background:#fff0e0;padding:0 4px;border-radius:3px}
+.upgradeBtn{float:right;background:#c8a060;border:none;color:#fff;padding:1px 8px;border-radius:3px;cursor:pointer;font-size:10px}
+.upgradeBtn:hover{background:#daa520}

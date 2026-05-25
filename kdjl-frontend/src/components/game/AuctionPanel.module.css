@@ -1,0 +1,35 @@
+.container{width:788px;height:319px;display:flex;color:#B06A01;font-size:12px}
+.loading,.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#888;padding:20px}
+.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:12px;white-space:nowrap}
+.leftBg{width:138px;height:319px;flex-shrink:0;background:url('/images/ui/pms01.jpg') no-repeat;position:relative}
+.returnBtn{position:absolute;left:86px;bottom:21px;width:39px;height:17px;background:url('/images/ui/cangku04.jpg') no-repeat;cursor:pointer}
+.rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
+.tabs{display:flex;list-style:none;margin:0;padding:0;height:29px}
+.tabs li{cursor:pointer;width:90px;height:29px}
+.t1,.t2,.t3{display:block;width:90px;height:29px;background:url('/images/ui/pms02.png') no-repeat}
+.t1{background-position:0 0}.tabOn .t1{background-position:0 -29px}
+.t2{background-position:-90px 0}.tabOn .t2{background-position:-90px -29px}
+.t3{background-position:-179px 0}.tabOn .t3{background-position:-179px -29px}
+.resBar{position:absolute;top:4px;right:10px;display:flex;align-items:center;gap:4px;font-size:12px;color:#333}
+.resBar img{width:20px;height:18px}
+.columns{display:flex;height:290px}
+.column{width:292px;padding-left:14px;display:flex;flex-direction:column}
+.colHead{display:flex;align-items:center;height:28px}
+.colTitle{font-weight:bold;color:#693600;font-size:13px}
+.itemList{flex:1;border:1px solid #D9BD7A;background:#fff;overflow-y:auto;scrollbar-face-color:#E1D395;scrollbar-track-color:#F3EDC9}
+.itemList::-webkit-scrollbar{width:6px}
+.itemList::-webkit-scrollbar-track{background:#F3EDC9}
+.itemList::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
+.table{width:100%;border-collapse:collapse;font-size:12px;color:#BF7D1A}
+.table thead{position:sticky;top:0;background:#e1cea1;z-index:1}
+.table th{padding:2px 4px;text-align:left;background:#e1cea1;border-bottom:1px solid #b4a449;color:#693600;font-weight:600}
+.thIcon{width:35px}.thName{width:100px}.thPrice{width:55px}.thSeller{font-size:10px}
+.table td{padding:1px 4px;line-height:22px}
+.tdIcon{width:35px;text-align:center}.tdIcon img{width:25px;height:25px;object-fit:contain}
+.tdName{width:100px}.tdPrice{width:55px}.tdSeller{font-size:10px;color:#888}
+.row{cursor:pointer}.row:hover{background:#DFD496}
+.rowSel{background:#DFD496!important}
+.colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px}
+.inp{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:10px;padding:1px}
+.btn{width:39px;height:17px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px}
+.btn:hover{filter:brightness(1.1)}

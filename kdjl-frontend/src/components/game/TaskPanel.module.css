@@ -1,0 +1,475 @@
+/* TaskPanel — 原PHP taskshow.php / global.css 任务面板 */
+
+/* Panel = .box_task: 700x430, bg = task_bg.gif */
+.container {
+  width: 700px;
+  height: 430px;
+  position: relative;
+  overflow: hidden;
+  background: url('/images/ui/task_bg.gif') no-repeat;
+  color: #724908;
+}
+
+/* Close button — PHP .close_btn: right:22px, top:10px */
+.closeBtn {
+  position: absolute;
+  right: 22px;
+  top: 10px;
+  width: 25px;
+  height: 17px;
+  background: url('/images/ui/close_btn.png') no-repeat;
+  cursor: pointer;
+  border: none;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #915d0c;
+  font-size: 14px;
+}
+
+/* Toast */
+.toast {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #3e8400;
+  color: #fff;
+  padding: 4px 16px;
+  border-radius: 3px;
+  font-size: 12px;
+  z-index: 20;
+  animation: fadeIn 0.3s ease;
+  white-space: nowrap;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-4px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ==================== Left Nav — PHP .task_nav: left:26px, top:70px, 227x339 ==================== */
+
+.leftNav {
+  position: absolute;
+  left: 26px;
+  top: 70px;
+  width: 227px;
+  height: 339px;
+}
+
+.leftNav h2 {
+  height: 29px;
+  padding: 0 15px;
+  line-height: 29px;
+  font-weight: bold;
+  color: #915d0c;
+  font-size: 13px;
+}
+
+.taskList {
+  height: 300px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-arrow-color: #fff;
+  scrollbar-face-color: #e1d395;
+  scrollbar-darkshadow-color: #e1d395;
+  scrollbar-base-color: #f3edc9;
+  scrollbar-highlight-color: #f3edc9;
+  scrollbar-shadow-color: #f3edc9;
+  scrollbar-track-color: #f3edc9;
+  scrollbar-3dlight-color: #e1d395;
+}
+.taskList::-webkit-scrollbar { width: 8px; }
+.taskList::-webkit-scrollbar-track { background: #f3edc9; }
+.taskList::-webkit-scrollbar-thumb { background: #e1d395; border-radius: 4px; }
+
+/* Category list — PHP .task_list ul.lev */
+.catList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Category header item — PHP .task_list ul.lev li a */
+.catItem a {
+  display: block;
+  height: 25px;
+  background: url('/images/ui/task_line.jpg') no-repeat;
+  cursor: pointer;
+}
+
+.catItem a:hover,
+.catItemOn a {
+  background-position: 0 -25px;
+}
+
+.catItem p,
+.catItemOn p {
+  cursor: pointer;
+  line-height: 25px;
+  padding: 0 10px 0 28px;
+  color: #915d0c;
+  font-weight: bold;
+  background: url('/images/ui/ico_2.gif') 10px center no-repeat;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.catItemOn p {
+  background: url('/images/ui/ico_1.gif') 10px center no-repeat;
+  color: #ff4200;
+}
+
+.catDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.catBadge {
+  font-style: normal;
+  font-size: 9px;
+  background: #d63031;
+  color: #fff;
+  padding: 0 4px;
+  border-radius: 8px;
+  line-height: 15px;
+  min-width: 12px;
+  text-align: center;
+}
+
+.catTotal {
+  font-weight: normal;
+  color: #b18033;
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* Task sub-list — PHP .task_list ul.con */
+.subList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.subList li a {
+  display: block;
+  height: 25px;
+  background: url('/images/ui/task_lev.jpg') no-repeat;
+}
+
+/* Available — PHP .task_list ul.con li.a p */
+.subCan p {
+  line-height: 25px;
+  padding: 0 6px 0 36px;
+  color: #d55f00;
+  background: url('/images/ui/task_ico_can.jpg') 18px center no-repeat;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Accepted — PHP .task_list ul.con li.u p */
+.subOk p {
+  line-height: 25px;
+  padding: 0 6px 0 36px;
+  background: url('/images/ui/task_ico_ok.jpg') 18px center no-repeat;
+  color: #3e8400;
+  font-size: 12px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Focused — PHP .task_list ul.con li.cfocus/ufocus */
+.subFocus p {
+  background-color: #B2E7F9;
+  color: #d55f00;
+}
+
+.subEmpty p {
+  line-height: 25px;
+  padding: 0 6px 0 36px;
+  color: #915d0c;
+  font-size: 11px;
+}
+
+.killMini {
+  background: #e17055;
+  color: #fff;
+  font-size: 9px;
+  padding: 0 4px;
+  border-radius: 2px;
+  line-height: 16px;
+  flex-shrink: 0;
+}
+
+.empty {
+  color: #915d0c;
+  font-size: 12px;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* ==================== Right Content — PHP .task_cont: left:265px, top:72px, 411x333 ==================== */
+
+.rightCont {
+  position: absolute;
+  left: 265px;
+  top: 72px;
+  width: 411px;
+  height: 333px;
+}
+
+.rightCont h2 {
+  height: 29px;
+  padding: 0 15px;
+  line-height: 29px;
+  font-weight: bold;
+  color: #915d0c;
+  font-size: 13px;
+  text-align: right;
+}
+
+/* No selection state */
+.noSelect {
+  height: 100%;
+}
+
+.taskContList {
+  height: 275px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-arrow-color: #fff;
+  scrollbar-face-color: #e1d395;
+  scrollbar-darkshadow-color: #e1d395;
+  scrollbar-base-color: #f3edc9;
+  scrollbar-highlight-color: #f3edc9;
+  scrollbar-shadow-color: #f3edc9;
+  scrollbar-track-color: #f3edc9;
+  scrollbar-3dlight-color: #e1d395;
+}
+.taskContList::-webkit-scrollbar { width: 8px; }
+.taskContList::-webkit-scrollbar-track { background: #f3edc9; }
+.taskContList::-webkit-scrollbar-thumb { background: #e1d395; border-radius: 4px; }
+
+.taskContList ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.taskContList li {
+  line-height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.taskContList li:hover {
+  background: rgba(178, 231, 249, 0.4);
+}
+
+.taskContList li span {
+  float: left;
+  padding-left: 5px;
+  color: #d55f00;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.taskContList li p {
+  padding-left: 10px;
+  width: 80px;
+  text-align: left;
+  color: #915d0c;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.rowAccepted span {
+  color: #3e8400;
+}
+
+.noSelectHint {
+  color: #b18033;
+  font-size: 11px;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.noSelectBody {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #915d0c;
+  font-size: 13px;
+}
+
+.noSelectIcon {
+  font-size: 40px;
+  opacity: 0.3;
+  margin-bottom: 8px;
+}
+
+.noSelectCount {
+  color: #b18033;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* ==================== Task Detail (selected) — PHP .task_info ==================== */
+
+.taskInfo {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.taskInfo h2 {
+  height: 29px;
+  text-align: left;
+  padding: 0 0 0 15px;
+  line-height: 29px;
+  font-weight: bold;
+  color: #915d0c;
+  font-size: 13px;
+}
+
+.infoBody {
+  flex: 1;
+  width: 398px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  margin-bottom: 2px;
+  padding-left: 15px;
+  font-size: 12px;
+  scrollbar-arrow-color: #fff;
+  scrollbar-face-color: #e1d395;
+  scrollbar-darkshadow-color: #e1d395;
+  scrollbar-base-color: #f3edc9;
+  scrollbar-highlight-color: #f3edc9;
+  scrollbar-shadow-color: #f3edc9;
+  scrollbar-track-color: #f3edc9;
+  scrollbar-3dlight-color: #e1d395;
+}
+
+.infoMeta {
+  color: #915d0c;
+  margin: 2px 0;
+}
+
+.infoColor {
+  display: inline-block;
+  color: #fff;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 8px;
+}
+
+.infoDesc {
+  color: #724908;
+  line-height: 1.7;
+  padding: 4px 0;
+}
+
+.infoLabel {
+  color: #b18033;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.infoText {
+  color: #724908;
+  padding-left: 8px;
+  line-height: 1.6;
+}
+
+.infoReward {
+  color: #3e8400;
+  padding-left: 8px;
+  line-height: 1.6;
+}
+
+.infoLimit {
+  color: #d63031;
+  font-size: 11px;
+}
+
+/* Kill progress */
+.killBars {
+  margin: 2px 0;
+  padding-left: 8px;
+}
+
+.killRow {
+  color: #724908;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.killBar {
+  color: #d63031;
+  font-family: monospace;
+  letter-spacing: -1px;
+}
+
+/* Action buttons — PHP .task_cont div.btn */
+.infoBtns {
+  height: 30px;
+  margin-top: 8px;
+  display: flex;
+  gap: 11px;
+}
+
+.btnAccept,
+.btnComplete,
+.btnAbandon {
+  width: 59px;
+  height: 17px;
+  font-size: 12px;
+  line-height: 17px;
+  border: none;
+  color: #772200;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btnAccept {
+  background: url('/images/ui/ico_btn.gif') no-repeat;
+}
+
+.btnComplete {
+  background: url('/images/ui/ico_btn2.gif') no-repeat;
+}
+
+.btnAbandon {
+  width: 59px;
+  height: 17px;
+  font-size: 12px;
+  line-height: 17px;
+  border: none;
+  color: #772200;
+  cursor: pointer;
+  padding: 0;
+  background: url('/images/ui/ico_btn.gif') no-repeat;
+}

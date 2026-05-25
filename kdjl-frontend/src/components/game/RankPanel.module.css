@@ -1,0 +1,10 @@
+.container{display:flex;flex-direction:column;gap:10px}
+.loading{color:#a0a0b0;text-align:center;padding:40px}
+.tabs{display:flex;gap:4px}
+.tab,.tabActive{padding:6px 16px;border:1px solid #0f3460;border-radius:4px;background:#16213e;color:#a0a0b0;font-size:13px;cursor:pointer}
+.tabActive{border-color:#fdcb6e;color:#fdcb6e;font-weight:600}
+.list{display:flex;flex-direction:column;gap:2px}
+.row{display:flex;align-items:center;padding:8px 12px;background:#16213e;border-radius:4px;gap:12px}
+.rank{color:#fdcb6e;font-size:14px;font-weight:700;width:40px}
+.name{color:#eee;font-size:13px;flex:1}
+.val{color:#00b894;font-size:13px;font-weight:600}

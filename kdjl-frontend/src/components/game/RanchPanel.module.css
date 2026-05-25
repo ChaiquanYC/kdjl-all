@@ -1,0 +1,101 @@
+/* Exact PHP tpl_muchang.html layout */
+.task{width:788px;height:319px;background:#f2ebc5;position:relative;color:#B06A01;font-size:12px;overflow:hidden}
+.msg{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);color:#ff0;padding:4px 16px;border-radius:4px;z-index:100;font-size:13px;white-space:nowrap}
+
+/* PHP #Layer1 — close button */
+.layer1{position:absolute;left:88px;top:280px;width:39px;height:17px;background:url('/new_images/ui/cangku04.jpg') no-repeat;cursor:pointer;z-index:5}
+
+/* PHP .task_left — 138x319 decorative */
+.taskLeft{width:138px;height:319px;float:left;background:url('/new_images/ui/muchang_03.jpg') no-repeat}
+
+/* PHP .task_right — 650x319 main area */
+.taskRight{width:650px;height:319px;float:left;background:url('/new_images/ui/cangku02.jpg') no-repeat;position:relative}
+
+/* PHP ul.task_nav — tab bar 650x29 */
+.tabBar{width:640px;height:29px;list-style:none;margin:0;padding:0;position:absolute;left:0;top:0}
+.tabBar li{float:left;height:29px}
+.tabBar li a{display:block;width:89px;height:29px;background:url('/new_images/ui/muchang_06.jpg') no-repeat;cursor:pointer}
+.tab1{background-position:0 0 !important}
+.tab2{background-position:-90px 0 !important}
+.tabOn .tab1{background-position:0 -29px !important}
+.tabOn .tab2{background-position:-90px -29px !important}
+
+.clear{clear:both}
+
+/* PHP .dt_task — content below tabs */
+.tabContent{width:640px;height:290px;float:left;margin-top:29px}
+
+/* PHP .box01 — columns */
+.box{width:292px;float:left;padding:0}
+
+/* PHP .box02 — header row */
+.boxHd{width:292px;height:28px;float:left}
+.boxHd .hdImg[src*="09"]{width:95px;height:25px}
+.boxHd .hdImg[src*="11"]{width:82px;height:25px}
+
+/* PHP .box03 — pet list area */
+.petListBox{width:290px;height:235px;border:1px solid #D9BD7A;background:#fff;float:left;overflow:hidden}
+
+/* Table header */
+.tableHd td{height:24px;color:#BF7D1A;font-weight:bold}
+
+/* PHP .dt_list — scrollable pet list */
+.petScroll{width:290px;height:210px;overflow-y:auto;border-top:1px solid #D9BD7A;color:#BF7D1A}
+.petTable{width:100%;border-collapse:collapse}
+.petTable td{padding:2px 4px;height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nameTd{text-align:left}
+.nameTd img{width:14px;height:14px;vertical-align:middle;margin-right:4px}
+.sel td{background:#DFD496}
+.empty{color:#999;text-align:center;padding:30px 0 !important}
+
+/* PHP .box04 — bottom bar */
+.btmBar{width:292px;height:20px;float:left;color:#B06A01;line-height:20px}
+
+/* PHP .box06 — pet card display */
+.petCardBox{width:280px;height:175px;border:1px solid #D9BD7A;background:url('/new_images/ui/muchang_16.jpg') repeat;padding:5px;overflow-y:auto}
+.petab{width:280px;margin:5px auto;border-collapse:collapse}
+.petab td{text-align:center;vertical-align:middle}
+
+/* PHP .ch01 — main pet indicator (zz.gif, 50px high) */
+.ch01{background:url('/images/zz.gif') no-repeat center center;height:50px}
+
+/* PHP .ch02 — non-main pet card (smaller, dimmed) */
+.ch02{height:55px;opacity:0.6;filter:grayscale(0.2)}
+.ch02:hover{opacity:0.9;filter:none}
+
+/* Main pet card — full size, highlighted */
+.mainPetImg{max-height:90px;filter:drop-shadow(0 2px 3px rgba(0,0,0,0.3))}
+
+/* PHP .pet — card container */
+.pet{width:70px;margin:0 auto;display:flex;align-items:center;justify-content:center;min-height:70px}
+.pet img{max-width:65px;object-fit:contain;cursor:pointer}
+
+/* PHP p — instructions */
+.desc{color:#B06A01;font-size:10px;line-height:1.4;margin:2px 0;padding:0 4px}
+.desc b{color:#BF7D1A}
+
+/* PHP mcbbshow — pet detail popup matching petbg.jpg */
+.detailPopup{position:absolute;left:460px;top:59px;width:300px;height:232px;z-index:100}
+.detailClose{position:absolute;left:269px;top:0;z-index:10;font-size:12px;color:red;cursor:pointer;padding:5px 5px 0 0}
+.detailBg{width:300px;height:230px;background:url('/images/ui/petbg.jpg') no-repeat;position:relative;display:flex}
+.detailLeft{width:177px;height:230px;display:flex;align-items:center;justify-content:center}
+.detailLeft img{width:177px;height:230px;object-fit:contain}
+.detailRight{width:123px;height:230px;position:relative}
+.detailName{position:absolute;text-align:center;top:16px;left:9px;width:99px;height:24px;font-size:12px;color:#fff;font-family:'微软雅黑','黑体',Arial,Verdana,sans-serif}
+.detailStats{font-size:12px;line-height:20px;position:absolute;top:40px;left:5px;padding:2px;height:180px;width:110px;overflow-y:auto;color:#333}
+
+/* PHP .plus — bottom action bar */
+.plus{clear:both;height:24px;text-align:right;color:#BF7D1A;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding-right:4px;margin-top:2px}
+.addIcon{cursor:pointer;width:39px;height:17px}
+
+/* PHP .conbtn — action buttons */
+.conbtn{width:39px;height:17px;background:url('/images/bnt.gif') no-repeat;border:0;cursor:pointer;font-size:11px;color:#B06A01;line-height:17px;margin:0 3px}
+.conbtn:hover{filter:brightness(1.2)}
+
+/* Scrollbar — PHP colors */
+.petScroll::-webkit-scrollbar{width:8px}
+.petScroll::-webkit-scrollbar-thumb{background:#E1D395}
+.petScroll::-webkit-scrollbar-track{background:#F3EDC9}
+.petCardBox::-webkit-scrollbar{width:8px}
+.petCardBox::-webkit-scrollbar-thumb{background:#E1D395}
+.petCardBox::-webkit-scrollbar-track{background:#F3EDC9}

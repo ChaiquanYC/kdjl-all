@@ -1,0 +1,43 @@
+.city {
+  width: 790px; height: 330px; position: relative;
+  overflow: hidden; margin: 0 auto;
+}
+.cityBg {
+  width: 790px; height: 330px; object-fit: cover; display: block;
+}
+.building {
+  position: absolute; cursor: pointer; z-index: 5;
+}
+.building:hover {
+  filter: brightness(1.3); transform: scale(1.05);
+}
+.buildingLabel {
+  font-size: 10px; font-weight: 900; color: red;
+  background: rgba(0,0,0,0.5); padding: 2px 4px;
+  border-radius: 2px; white-space: nowrap;
+}
+.buildingImg { width: 100%; height: auto; }
+
+/* Sprite-based buildings from map.png */
+.mc         { background: url('/images/city/map.png') -90px -25px no-repeat; }
+.jiaoyisuo  { background: url('/images/city/map.png') -101px -197px no-repeat; }
+.smsd       { background: url('/images/city/map.png') -280px -70px no-repeat; }
+.ck         { background: url('/images/city/map.png') -438px -22px no-repeat; }
+.ggp        { background: url('/images/city/map.png') -467px -156px no-repeat; }
+.djsd       { background: url('/images/city/map.png') -540px -64px no-repeat; }
+.tjp        { background: url('/images/city/map.png') -688px -47px no-repeat; }
+.hg         { background: url('/images/city/map.png') -634px -164px no-repeat; }
+
+/* Navigation arrows */
+.arrow {
+  position: absolute; top: 140px; cursor: pointer; z-index: 10;
+  animation: mapArrow 0.2s infinite alternate;
+}
+.arrowLeft  { left: 0; }
+.arrowRight { right: 0; }
+.arrow img { width: 24px; height: auto; }
+
+@keyframes mapArrow {
+  0%   { transform: translateX(0px); }
+  100% { transform: translateX(10px); }
+}

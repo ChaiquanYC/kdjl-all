@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: kdjl-server
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/kdjl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
+    username: ${MYSQL_USER:kdjl}
+    password: ${MYSQL_PASSWORD:kdjl_pass}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 4
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+    default-property-inclusion: non_null
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# JWT Configuration
+app:
+  jwt:
+    secret: ${JWT_SECRET:kdjl-jwt-secret-change-in-production-min-256-bits}
+    expiration-ms: 86400000  # 24 hours
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.kdjl: DEBUG
+    org.springframework.security: INFO

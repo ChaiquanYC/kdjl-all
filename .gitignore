@@ -1,0 +1,22 @@
+# Frontend
+node_modules/
+dist/
+.vite/
+
+# Backend
+target/
+*.class
+*.jar
+
+# IDE
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+
+# Logs
+*.log
+
+# Database dumps
+*.sql

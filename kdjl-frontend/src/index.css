@@ -1,0 +1,17 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Microsoft YaHei', 'PingFang SC', system-ui, sans-serif;
+  background: #2d1f0e;
+  color: #f0d080;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #3d2b15; }
+::-webkit-scrollbar-thumb { background: #6B5010; border-radius: 3px; }

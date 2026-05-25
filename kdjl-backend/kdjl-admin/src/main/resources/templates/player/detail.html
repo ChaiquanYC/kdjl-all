@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玩家详情 - KDJL</title>
+<link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('players')"></div>
+<div class="main">
+<div th:replace="fragments/topbar :: topbar('玩家详情')"></div>
+<div class="content" id="app">
+<div id="loading" style="text-align:center;padding:40px;color:#888">加载中...</div>
+<div id="detail" style="display:none">
+<div id="msgBox"></div>
+
+<div class="card"><h3>基本信息</h3>
+<div class="detail-grid" id="infoGrid"></div>
+</div>
+
+<div class="card"><h3>管理操作</h3>
+<div class="flex-row" style="margin-bottom:8px">
+    <input class="input-sm" id="propId" placeholder="道具ID">
+    <input class="input-sm" id="propCount" placeholder="数量" value="1">
+    <button class="btn btn-primary" onclick="giveItem()">发放道具</button>
+    <button class="btn btn-success" onclick="giveCurrency('money')">+金币</button>
+    <button class="btn btn-success" onclick="giveCurrency('yb')">+元宝</button>
+    <button class="btn btn-success" onclick="giveCurrency('sj')">+水晶</button>
+    <input class="input-sm" id="amount" placeholder="数量" value="1000">
+</div>
+<div class="flex-row">
+    <button class="btn btn-danger" onclick="banPlayer()">封号</button>
+    <button class="btn btn-default" onclick="unbanPlayer()">解封</button>
+    <input class="input-sm" id="muteMinutes" placeholder="分钟" value="60" style="width:60px">
+    <button class="btn btn-danger" onclick="mutePlayer()">禁言</button>
+    <button class="btn btn-default" onclick="unmutePlayer()">解禁</button>
+</div>
+</div>
+
+<div class="card"><h3>宠物列表 (<span id="petCount">0</span>)</h3>
+<table><thead><tr><th>ID</th><th>名称</th><th>等级</th><th>HP</th><th>成长率</th><th>五行</th><th>技能</th></tr></thead>
+<tbody id="petBody"></tbody></table>
+</div>
+
+<div class="card"><h3>背包物品 (<span id="bagCount">0</span>)</h3>
+<table><thead><tr><th>ID</th><th>道具名</th><th>数量</th><th>种类</th></tr></thead>
+<tbody id="bagBody"></tbody></table>
+</div>
+
+<div style="text-align:center;padding:10px"><a href="/players" class="btn btn-default">返回列表</a></div>
+</div>
+</div>
+</div>
+<script>
+const pid=window.location.pathname.split('/').pop();
+function showMsg(text,ok){ document.getElementById('msgBox').innerHTML=`<div class="msg ${ok?'msg-success':'msg-error'}">${text}</div>`; setTimeout(()=>document.getElementById('msgBox').innerHTML='',3000); }
+
+fetch('/api/admin/players/'+pid).then(r=>r.json()).then(d=>{
+    if(d.error){ document.getElementById('loading').innerHTML='<p style="color:red">'+d.error+'</p>'; return; }
+    document.getElementById('loading').style.display='none';
+    document.getElementById('detail').style.display='block';
+    document.getElementById('infoGrid').innerHTML=[
+        ['ID',d.id],['账号',d.username],['昵称',d.nickname],['等级',d.level],
+        ['金币',d.money],['元宝',d.yb],['水晶',d.sj],['威望',d.prestige],
+        ['VIP',d.vip],['主战宠ID',d.mbid],['通天塔层数',d.tgt],['双倍经验',d.dblExpFlag],
+        ['自动战斗(金币)','剩余'+ (d.sysAutoSum||0) +'次'],['自动战斗(元宝)','剩余'+ (d.maxAutoFitSum||0) +'次'],
+        ['在线时长','约'+Math.floor((d.onlineTime||0)/3600)+'小时']
+    ].map(([k,v])=>`<div class="detail-item"><label>${k}:</label>${v}</div>`).join('');
+
+    document.getElementById('petCount').textContent=(d.pets||[]).length;
+    document.getElementById('petBody').innerHTML=(d.pets||[]).map(p=>
+        `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.level}</td><td>${p.hp}</td><td>${p.czl}</td><td>${p.wx}</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.skillList||'-'}</td></tr>`
+    ).join('');
+
+    document.getElementById('bagCount').textContent=(d.bag||[]).length;
+    document.getElementById('bagBody').innerHTML=(d.bag||[]).map(b=>
+        `<tr><td>${b.propId}</td><td>${b.name}</td><td>${b.sums}</td><td>${b.vary}</td></tr>`
+    ).join('');
+}).catch(e=>{ document.getElementById('loading').innerHTML='<p style="color:red">加载失败</p>'; });
+
+function apiPost(url,body){ return fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.json()); }
+function giveItem(){
+    var propId=parseInt(document.getElementById('propId').value), count=parseInt(document.getElementById('propCount').value);
+    if(!propId||!count){showMsg('请输入道具ID和数量',false);return;}
+    apiPost('/api/admin/give-item',{playerId:parseInt(pid),propId:propId,count:count})
+    .then(d=>{ showMsg(d.error||('已发放: '+d.prop+' x'+d.count+' → '+d.player),!d.error); if(d.success) setTimeout(()=>location.reload(),1500); });
+}
+function giveCurrency(type){
+    var amount=parseInt(document.getElementById('amount').value);
+    if(!amount){showMsg('请输入数量',false);return;}
+    apiPost('/api/admin/give-currency',{playerId:parseInt(pid),type:type,amount:amount})
+    .then(d=>{ showMsg(d.error||('已发放: '+d.type+' +'+d.amount),!d.error); if(d.success) setTimeout(()=>location.reload(),1500); });
+}
+function banPlayer(){ if(confirm('确定封号?')) apiPost('/api/admin/ban',{playerId:parseInt(pid)}).then(d=>showMsg(d.error||'已封号',!d.error)); }
+function unbanPlayer(){ apiPost('/api/admin/unban',{playerId:parseInt(pid)}).then(d=>showMsg(d.error||'已解封',!d.error)); }
+function mutePlayer(){
+    var min=parseInt(document.getElementById('muteMinutes').value)||60;
+    apiPost('/api/admin/mute',{playerId:parseInt(pid),minutes:min}).then(d=>showMsg(d.error||('已禁言 '+min+' 分钟'),!d.error));
+}
+function unmutePlayer(){ apiPost('/api/admin/unmute',{playerId:parseInt(pid)}).then(d=>showMsg(d.error||'已解禁',!d.error)); }
+</script>
+</body>
+</html>

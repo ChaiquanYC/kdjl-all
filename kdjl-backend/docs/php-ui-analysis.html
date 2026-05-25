@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDJL PHP 原版 UI 布局与界面分析</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--red:#f85149;--green:#3fb950;--yellow:#d2991d;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e;--accent:#1f6feb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.75;padding:20px;font-size:14px}
+.container{max-width:1400px;margin:0 auto}
+h1{font-size:1.6rem;text-align:center;margin-bottom:4px;color:var(--yellow)}
+h1 small{display:block;font-size:.8rem;color:var(--muted);font-weight:400;margin-top:2px}
+h2{font-size:1.15rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin:28px 0 12px;color:var(--blue)}
+h3{font-size:.95rem;margin:16px 0 6px;color:var(--yellow)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin:12px 0}
+.card.diff{border-left:3px solid var(--red)}
+.card.same{border-left:3px solid var(--green)}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.82rem}
+th,td{padding:5px 9px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--accent);font-weight:600;white-space:nowrap}
+tr:hover{background:rgba(255,255,255,0.02)}
+code{font-family:'Cascadia Code','Consolas',monospace;font-size:.8rem;background:rgba(31,111,235,0.08);padding:1px 4px;border-radius:3px}
+.pre-box{background:#0d1117;border:1px solid var(--border);border-radius:6px;padding:10px 14px;overflow-x:auto;font-size:.8rem;line-height:1.5;margin:8px 0;white-space:pre;font-family:'Cascadia Code','Consolas',monospace}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.68rem;font-weight:700}
+.tag-miss{background:var(--red)}.tag-have{background:var(--green);color:#000}.tag-diff{background:var(--yellow);color:#000}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:.75rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL PHP 原版 UI 布局与界面分析<br><small>主界面结构 · 背景图片清单 · 登录页 · 与 React 新版对比 | 2026-05-23</small></h1>
+
+<!-- ====== 1. PHP 主界面布局 ====== -->
+<h2>1. PHP 主界面布局 (index.php, 1684 行)</h2>
+
+<div class="card">
+<h3>1.1 整体结构</h3>
+<div class="pre-box">
+┌─────────────────────────────────────────────────────┐
+│  index.php (主框架页面)                               │
+│  body style="color:#693600"  (深棕色文字)             │
+├────────┬────────────────────────────────┬───────────┤
+│ 左侧   │  中央游戏区 (#gw iframe)       │  右侧     │
+│ 导航   │  788 x 319 px                 │  信息     │
+│ 按钮   │  src="function/Welcome_Mod"   │  面板     │
+│        │                               │           │
+│ ☰ 宠物 │  ┌─────────────────────┐     │  背包面板  │
+│ ☰ 背包 │  │   地图/战斗/城镇     │     │  (17格)   │
+│ ☰ 任务 │  │   游戏主内容区      │     │           │
+│ ☰ 地图 │  │                     │     │  聊天面板  │
+│ ☰ 公会 │  └─────────────────────┘     │  (Flash)  │
+│ ☰ 商城 │                               │           │
+│ ☰ ...  │  聊天输入框 + 发送按钮       │  帮助面板  │
+│        │                               │           │
+├────────┴────────────────────────────────┴───────────┤
+│  底部状态栏 (金币/元宝/在线时间/背包容量)             │
+└─────────────────────────────────────────────────────┘
+</div>
+
+<h3>1.2 关键布局元素</h3>
+<table>
+<tr><th width="18%">元素</th><th width="12%">位置/大小</th><th>实现方式</th></tr>
+<tr><td><b>左侧导航栏</b></td><td>左侧, ~200px宽</td>
+<td><code>&lt;div style="background-image:new_images/index/index_left.jpg" class="side l"&gt;</code><br>包含宠物/背包/任务/地图/公会/商城/排行等按钮</td></tr>
+<tr><td><b>中央游戏区</b></td><td>中央, 788×319px</td>
+<td><code>&lt;iframe id="gw" name="gamewindow" src="function/Welcome_Mod.php"&gt;</code><br>所有游戏内容通过 iframe 加载，每个 Mod.php 替换 iframe 内容</td></tr>
+<tr><td><b>聊天面板</b></td><td>底部, 600×215px</td>
+<td><code>&lt;iframe id="iframechat" src="/socketChat/chatS.php"&gt;</code><br>Flash socket 聊天，absolute 定位</td></tr>
+<tr><td><b>背包弹出面板</b></td><td>右侧覆盖层</td>
+<td>17格背包窗口，使用 kj01~kj04.gif 背景图装饰<br>带"使用""整理""丢弃""关闭"四个按钮</td></tr>
+<tr><td><b>帮助面板</b></td><td>叠加层</td>
+<td>使用 bbz02/bbz04.gif 背景，含宠物/城镇/商店/打怪/技能/聊天/任务/装备 链接</td></tr>
+<tr><td><b>系统提示</b></td><td>居中, 246×142px</td>
+<td><code>background:url(new_images/index/boxk.gif)</code></td></tr>
+<tr><td><b>在线统计</b></td><td>iframe 隐藏</td>
+<td><code>src="/function/onlineStat.php"</code></td></tr>
+</table>
+</div>
+
+<!-- ====== 2. 背景图片清单 ====== -->
+<h2>2. PHP 使用的背景图片清单</h2>
+
+<div class="card">
+<h3>2.1 主界面图片 (new_images/index/)</h3>
+<table>
+<tr><th>文件</th><th>用途</th><th>React 新版</th></tr>
+<tr><td><code>index_left.jpg</code></td><td><b>左侧导航栏背景</b> — 整个左栏的底图</td><td><span class="tag tag-miss">无</span> 纯色 #16213e</td></tr>
+<tr><td><code>boxk.gif</code></td><td>系统提示框背景</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>chat_bg.jpg</code></td><td>聊天区域背景</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>content.jpg</code></td><td>内容区背景</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>footer.jpg</code></td><td>底部状态栏背景</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>bg.gif</code></td><td>通用背景</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>btn.gif, ico_btn.gif, ico_btn2.gif</code></td><td>按钮图标</td><td><span class="tag tag-diff">有</span> CSS按钮替代</td></tr>
+<tr><td><code>ico_1.gif, ico_2.gif, ico_msg.gif</code></td><td>装饰图标</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>inp.gif</code></td><td>输入框背景图</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td><code>list_hover.jpg</code></td><td>列表悬停效果</td><td><span class="tag tag-diff">有</span> CSS :hover</td></tr>
+<tr><td><code>menu_new.swf</code></td><td>Flash 导航菜单</td><td><span class="tag tag-miss">无</span> React 组件替代</td></tr>
+<tr><td><code>ms_f_btn.jpg</code></td><td>按钮图</td><td><span class="tag tag-miss">无</span></td></tr>
+</table>
+
+<h3>2.2 游戏UI图片 (new_images/ui/)</h3>
+<table>
+<tr><th>文件</th><th>用途</th></tr>
+<tr><td><code>cjjzbg03.gif</code></td><td>场景/战斗背景 (419×279px)</td></tr>
+</table>
+
+<h3>2.3 背包/帮助面板图片 (images/ui/help/)</h3>
+<table>
+<tr><th>文件</th><th>用途</th></tr>
+<tr><td><code>kj01.gif</code></td><td>背包面板顶部装饰条</td></tr>
+<tr><td><code>kj02.gif</code></td><td>背包面板标题栏背景 (23px高, "背包 X/30")</td></tr>
+<tr><td><code>kj03.gif</code></td><td>背包面板底部操作栏背景</td></tr>
+<tr><td><code>kj04.gif</code></td><td>背包面板按钮背景 (使用/整理/丢弃/关闭)</td></tr>
+</table>
+
+<h3>2.4 帮助系统图片 (images/help/)</h3>
+<table>
+<tr><th>文件</th><th>用途</th></tr>
+<tr><td><code>bbz02.gif</code></td><td>帮助面板标题栏</td></tr>
+<tr><td><code>bbz04.gif</code></td><td>帮助面板内容区背景</td></tr>
+</table>
+
+<h3>2.5 CSS 中的背景图片 (css/index1.css)</h3>
+<table>
+<tr><th>CSS 引用</th><th>用途</th></tr>
+<tr><td><code>/images/trade/nav_bg.gif</code></td><td>顶部导航条背景 (975×36px)</td></tr>
+<tr><td><code>/images/trade/nav_sprite.gif</code></td><td>导航按钮精灵图 (80×28px)</td></tr>
+<tr><td><code>/images/trade/icon_wen.gif</code></td><td>问号图标 (16×18px)</td></tr>
+</table>
+</div>
+
+<!-- ====== 3. 登录页 ====== -->
+<h2>3. PHP 登录页 (login/login.php)</h2>
+
+<div class="card">
+<h3>3.1 登录页结构</h3>
+<div class="pre-box">
+login/login.php → 检查 session → 如果有用户跳转 index.php
+                → 如果没有 → 跳转 passport/login.php (通行证)
+
+passport/login.php (337行):
+  - 多服务器选择界面
+  - 用户名/密码表单
+  - 验证码 (loginGate.php 防沉迷检查)
+  - 背景: 白色 body (#fff) + 导航背景图
+
+路由:
+  index.php → 无session → login/login.php → 无username → passport/login.php
+</div>
+
+<h3>3.2 登录页 CSS (css/login.css, 1.6KB)</h3>
+<table>
+<tr><th>React 新版</th><th>PHP 原版</th></tr>
+<tr><td>深色主题 (#1a1a2e 背景)</td><td>白色主题 (#fff 背景)</td></tr>
+<tr><td>居中卡片式表单</td><td>全宽页面 + 导航条</td></tr>
+<tr><td>6只宠物卡片选择</td><td>注册页 reg1.php 有 6只宠物选择</td></tr>
+<tr><td>JWT token 管理</td><td>PHP Session + Memcached</td></tr>
+</table>
+</div>
+
+<!-- ====== 4. 核心UI差异 ====== -->
+<h2>4. PHP vs React 核心 UI 差异</h2>
+
+<div class="card diff">
+<h3>4.1 架构差异</h3>
+<table>
+<tr><th width="18%">对比项</th><th width="41%">PHP 原版</th><th width="41%">React 新版</th></tr>
+<tr><td><b>页面架构</b></td>
+<td><b>iframe 多页面</b>: 主框架(index.php) + iframe 动态加载各个 Mod.php</td>
+<td><b>SPA 单页应用</b>: React Router + 面板切换，无 iframe</td></tr>
+<tr><td><b>主题色调</b></td>
+<td><b>棕金色</b> (#693600 文字, 淡黄/白色背景, 金色边框)</td>
+<td><b>深蓝暗色</b> (#1a1a2e/#16213e 背景, #eee 文字, 蓝色边框)</td></tr>
+<tr><td><b>视觉风格</b></td>
+<td><b>图片驱动</b>: 大量 GIF/JPG 背景图、按钮精灵图、装饰边框</td>
+<td><b>CSS 驱动</b>: 纯色背景、CSS 渐变、Emoji 图标、CSS 边框</td></tr>
+<tr><td><b>导航方式</b></td>
+<td>左侧竖排图片按钮 (background-image 切换)</td>
+<td>顶部横排文字按钮 (CSS hover 变色)</td></tr>
+<tr><td><b>聊天实现</b></td>
+<td>Flash Socket (snb.php 1262行 Socket服务器)</td>
+<td>WebSocket STOMP (Java 后端)</td></tr>
+<tr><td><b>游戏区尺寸</b></td>
+<td>固定 788×319px iframe</td>
+<td>自适应 flex 布局</td></tr>
+<tr><td><b>背包展示</b></td>
+<td>弹出覆盖层 17格窗口, 带背景装饰图</td>
+<td>面板内嵌 grid 布局</td></tr>
+</table>
+</div>
+
+<div class="card diff">
+<h3>4.2 缺失的视觉元素</h3>
+<table>
+<tr><th>元素</th><th>PHP 实现</th><th>React 状态</th></tr>
+<tr><td>左侧导航栏背景图</td><td>index_left.jpg 满铺</td><td><span class="tag tag-miss">无</span> 纯色顶栏替代</td></tr>
+<tr><td>游戏区背景图</td><td>cjjzbg03.gif (419×279)</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>聊天区背景图</td><td>chat_bg.jpg</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>底部状态栏背景</td><td>footer.jpg</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>系统提示框背景</td><td>boxk.gif (246×142)</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>背包面板装饰</td><td>kj01~kj04.gif 四张装饰图</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>帮助面板装饰</td><td>bbz02/bbz04.gif</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>按钮精灵图</td><td>nav_sprite.gif / ico_btn.gif</td><td><span class="tag tag-diff">有</span> CSS 替代</td></tr>
+<tr><td>Flash 导航菜单</td><td>menu_new.swf</td><td><span class="tag tag-miss">无</span> 文字按钮替代</td></tr>
+<tr><td>底部在线统计栏</td><td>onlineStat.php iframe</td><td><span class="tag tag-miss">无</span></td></tr>
+<tr><td>帮助系统</td><td>新手帮助面板 (bbz04.gif + 8个链接)</td><td><span class="tag tag-miss">无</span> 欢迎页简化替代</td></tr>
+</table>
+</div>
+
+<div class="card same">
+<h3>4.3 已对齐的功能</h3>
+<table>
+<tr><th>功能</th><th>PHP 实现</th><th>React 实现</th></tr>
+<tr><td>宠物列表</td><td>Pets_Mod.php → tpl_bb.html (9.2K)</td><td>PetList.tsx 卡片+技能面板 ✅</td></tr>
+<tr><td>背包管理</td><td>Base_Mod.php → tpl_base.html (14.3K) + getBag.php</td><td>BagPanel.tsx + 道具图片 ✅</td></tr>
+<tr><td>装备系统</td><td>usedProps.php + Zb_Mod.php (57.7K模板)</td><td>EquipPanel.tsx 10槽位 ✅</td></tr>
+<tr><td>地图探索</td><td>Expore_Mod.php → tpl_map.html (11.6K)</td><td>MapPanel.tsx + 怪物精灵 ✅</td></tr>
+<tr><td>战斗界面</td><td>Fight_Mod.php → tpl_fight.html (7.1K) + fight.js (45K)</td><td>BattlePanel.tsx 回合交互 ✅</td></tr>
+<tr><td>商城</td><td>Shopsm_Mod.php → tpl_smshop.html (23.3K)</td><td>ShopPanel.tsx + 道具图片 ✅</td></tr>
+<tr><td>任务</td><td>taskshow.php + getTask.php</td><td>TaskPanel.tsx + 道具名解析 ✅</td></tr>
+<tr><td>公会</td><td>guild.php (965行)</td><td>GuildPanel.tsx ✅</td></tr>
+<tr><td>排行榜</td><td>King_Mod.php (237行)</td><td>RankPanel.tsx ✅</td></tr>
+<tr><td>组队</td><td>Team_Mod.php (596行)</td><td>TeamPanel.tsx ✅</td></tr>
+</table>
+</div>
+
+<!-- ====== 5. 建议 ====== -->
+<h2>5. 建议的 UI 改进方向</h2>
+
+<div class="card">
+<h3>优先级排序</h3>
+<table>
+<tr><th>#</th><th>改进项</th><th>难度</th><th>效果</th></tr>
+<tr><td>1</td><td><b>登录页加背景图</b> — 用 PHP 项目中的精灵图做装饰</td><td>低</td><td>高</td></tr>
+<tr><td>2</td><td><b>主界面加边框/装饰</b> — 用 cjjzbg03.gif 等做游戏区背景</td><td>低</td><td>中</td></tr>
+<tr><td>3</td><td><b>主题色调整</b> — 从深蓝改为棕金色系，贴近原版</td><td>中</td><td>高</td></tr>
+<tr><td>4</td><td><b>左侧竖排导航</b> — 改为与原版一致的左侧图片按钮布局</td><td>高</td><td>高</td></tr>
+<tr><td>5</td><td><b>背包弹出覆盖层</b> — 17格窗口+装饰边框</td><td>中</td><td>中</td></tr>
+<tr><td>6</td><td><b>帮助系统</b> — 恢复新手引导面板</td><td>低</td><td>低</td></tr>
+<tr><td>7</td><td><b>底部状态栏</b> — 显示在线时间/背包容量等</td><td>低</td><td>中</td></tr>
+<tr><td>8</td><td><b>系统提示框</b> — 捕捉成功/升级等弹窗美化</td><td>低</td><td>中</td></tr>
+</table>
+</div>
+
+<div class="footer">
+KDJL PHP 原版 UI 布局与界面分析 | 基于 index.php(1684行) + login/login.php + css/index1.css + 图片资源目录 | 2026-05-23
+</div>
+
+</div>
+</body>
+</html>

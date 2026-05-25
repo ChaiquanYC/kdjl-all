@@ -1,0 +1,56 @@
+.container{width:788px;height:319px;display:flex;color:#B06A01;font-size:12px}
+.loading{display:flex;align-items:center;justify-content:center;height:100%;width:100%;color:#888}
+.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:12px;white-space:nowrap}
+
+/* Left panel — PHP .task_left */
+.leftBg{width:138px;height:319px;flex-shrink:0;background:url('/images/ui/cangku01.jpg') no-repeat}
+
+/* Right panel — PHP .task_right */
+.rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
+
+/* Top bar — PHP .task_dh */
+.topBar{height:29px;display:flex;align-items:center}
+.topBtn{width:90px;height:29px;margin-left:10px;flex-shrink:0;background:url('/images/ui/cangku03.jpg') no-repeat}
+.topInfo{display:flex;gap:10px;margin-left:100px;font-size:12px}
+.topInfo span{display:flex;align-items:center;gap:4px}
+.topInfo img{width:20px;height:18px}
+
+/* Two columns — PHP .box */
+.columns{height:290px;display:flex}
+.column{width:292px;padding-left:14px;display:flex;flex-direction:column}
+
+/* Column header — PHP .box02 */
+.colHeader{display:flex;align-items:center;height:28px;gap:4px;padding-top:3px}
+.colIcon{width:65px;height:25px}
+.catLabel{color:#F00;font-weight:bold;font-size:12px;margin-left:auto}
+.catSelect{font-size:11px;border:1px solid #D9BD7A;background:#fff;color:#B06A01;padding:1px 2px}
+
+/* Item list — PHP .box03 */
+.itemList{flex:1;border:1px solid #D9BD7A;background:#fff;overflow-y:auto;overflow-x:hidden;
+  scrollbar-face-color:#E1D395;scrollbar-highlight-color:#fff;
+  scrollbar-3dlight-color:#E1D395;scrollbar-shadow-color:#fff;
+  scrollbar-darkshadow-color:#F3EDC9;scrollbar-track-color:#F3EDC9;scrollbar-arrow-color:#fff}
+.itemList::-webkit-scrollbar{width:6px}
+.itemList::-webkit-scrollbar-track{background:#F3EDC9}
+.itemList::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
+.table{width:100%;border-collapse:collapse;font-size:12px;color:#BF7D1A}
+.table thead{position:sticky;top:0;background:#e1cea1;z-index:1}
+.table th{padding:2px 4px;text-align:left;background:#e1cea1;border-bottom:1px solid #b4a449;color:#693600;font-weight:600}
+.thIcon{width:35px}.thName{width:100px}.thPrice{width:60px}
+.table td{padding:1px 4px;line-height:22px}
+.tdIcon{width:35px;text-align:center}
+.tdIcon img{width:25px;height:25px;object-fit:contain}
+.tdName{width:100px}.tdPrice{width:60px}
+.row{cursor:pointer}.row:hover{background:#DFD496}
+.rowSel{background:#DFD496!important}
+.empty{text-align:center;color:#999;padding:20px}
+
+/* Column footer — PHP .box04 */
+.colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px}
+.numInput{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
+.btn{width:39px;height:15px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:15px}
+.btn:disabled{filter:grayscale(100%);cursor:default}
+
+/* Return to city — PHP #Layer1 */
+.leftBg{position:relative}
+.returnBtn{position:absolute;left:86px;bottom:21px;width:39px;height:17px;background:url('/images/ui/cangku04.jpg') no-repeat;cursor:pointer}

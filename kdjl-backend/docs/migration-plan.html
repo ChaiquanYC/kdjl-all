@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>口袋精灵 (KDJL) — PHP → React + Java 迁移计划</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --card: #16213e;
+    --accent: #0f3460;
+    --highlight: #e94560;
+    --text: #eee;
+    --muted: #a0a0b0;
+    --green: #00b894;
+    --orange: #fdcb6e;
+    --red: #e17055;
+    --blue: #74b9ff;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height:1.6; padding:20px; }
+  .container { max-width:1200px; margin:0 auto; }
+  h1 { font-size:2rem; text-align:center; margin-bottom:8px; }
+  h1 small { display:block; font-size:0.9rem; color:var(--muted); font-weight:400; margin-top:4px; }
+  h2 { font-size:1.4rem; border-bottom:2px solid var(--accent); padding-bottom:6px; margin:32px 0 16px; color:var(--blue); }
+  h3 { font-size:1.1rem; margin:16px 0 8px; color:var(--orange); }
+
+  .meta-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:12px; margin:20px 0; }
+  .meta-card { background:var(--card); border-radius:8px; padding:14px; text-align:center; }
+  .meta-card .value { font-size:1.8rem; font-weight:700; color:var(--highlight); }
+  .meta-card .label { font-size:0.8rem; color:var(--muted); margin-top:2px; }
+
+  .phase { background:var(--card); border-radius:10px; padding:20px; margin:20px 0; border-left:4px solid var(--highlight); }
+  .phase-title { font-size:1.2rem; font-weight:700; margin-bottom:4px; }
+  .phase-meta { font-size:0.85rem; color:var(--muted); margin-bottom:12px; }
+
+  table { width:100%; border-collapse:collapse; margin:12px 0; font-size:0.9rem; }
+  th, td { padding:8px 10px; text-align:left; border-bottom:1px solid rgba(255,255,255,0.08); }
+  th { background:var(--accent); font-weight:600; }
+  tr:hover { background:rgba(255,255,255,0.03); }
+
+  .tag { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.75rem; font-weight:600; }
+  .tag-p0 { background:var(--red); }
+  .tag-p1 { background:var(--orange); color:#1a1a2e; }
+  .tag-p2 { background:var(--blue); color:#1a1a2e; }
+  .tag-p3 { background:var(--green); color:#1a1a2e; }
+
+  .risk { display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .risk .sev { min-width:60px; font-weight:700; font-size:0.8rem; }
+  .sev-high { color:var(--red); }
+  .sev-med  { color:var(--orange); }
+  .sev-low  { color:var(--green); }
+
+  .stats-row { display:flex; gap:16px; flex-wrap:wrap; margin:12px 0; }
+  .stat-item { background:var(--accent); border-radius:6px; padding:8px 14px; }
+  .stat-item .num { font-size:1.3rem; font-weight:700; }
+  .stat-item .txt { font-size:0.75rem; color:var(--muted); }
+
+  .footer { margin-top:40px; padding-top:16px; border-top:1px solid var(--accent); color:var(--muted); font-size:0.8rem; text-align:center; }
+
+  @media print { body { background:#fff; color:#000; } .phase, .meta-card { border:1px solid #ccc; background:#f9f9f9; } }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>口袋精灵 (KDJL) 技术迁移计划
+  <small>PHP 5 + MySQL 5.7 + Memcached → React + Spring Boot + MySQL 8.0 + Redis</small>
+</h1>
+
+<div class="meta-grid">
+  <div class="meta-card"><div class="value">319</div><div class="label">PHP 源文件</div></div>
+  <div class="meta-card"><div class="value">~78,000</div><div class="label">PHP 代码行</div></div>
+  <div class="meta-card"><div class="value">117</div><div class="label">数据库表</div></div>
+  <div class="meta-card"><div class="value">~400</div><div class="label">JS/CSS/模板文件</div></div>
+  <div class="meta-card"><div class="value">5.7 MB</div><div class="label">SQL 数据量</div></div>
+  <div class="meta-card"><div class="value">15+</div><div class="label">核心游戏系统</div></div>
+</div>
+
+<!-- ============================================================ -->
+<h2>一、现有系统架构概览</h2>
+
+<h3>技术栈现状</h3>
+<table>
+  <tr><th>层级</th><th>当前技术</th><th>目标技术</th><th>说明</th></tr>
+  <tr><td>前端</td><td>PHP 直接渲染 HTML + Prototype/jQuery + iframe 导航</td><td>React 18 + TypeScript + Vite</td><td>SPA 架构，组件化</td></tr>
+  <tr><td>后端</td><td>PHP 5 (裸脚本，无框架)</td><td>Java 21 + Spring Boot 3.x</td><td>REST API + WebSocket</td></tr>
+  <tr><td>数据库</td><td>MySQL 5.7.44</td><td>MySQL 8.0+</td><td>版本升级 + 引擎统一</td></tr>
+  <tr><td>缓存</td><td>Memcached</td><td>Redis 7.x</td><td>功能更强、生态更好</td></tr>
+  <tr><td>实时通信</td><td>Comet 长轮询 + Flash Socket + WebSocket</td><td>纯 WebSocket (STOMP)</td><td>统一实时通道</td></tr>
+  <tr><td>会话</td><td>PHP Session (MySQL/Memcached)</td><td>JWT + Redis</td><td>无状态认证</td></tr>
+  <tr><td>ORM</td><td>手写 SQL (mysql_* 函数)</td><td>Spring Data JPA / MyBatis</td><td>类型安全、防注入</td></tr>
+</table>
+
+<h3>核心游戏系统清单</h3>
+<div class="stats-row">
+  <div class="stat-item"><div class="num">1</div><div class="txt">战斗引擎 (PvE/PvP/副本/战场)</div></div>
+  <div class="stat-item"><div class="num">2</div><div class="txt">宠物系统 (捕捉/养成/进化/合成)</div></div>
+  <div class="stat-item"><div class="num">3</div><div class="txt">装备系统 (强化/镶嵌/套装/合成)</div></div>
+  <div class="stat-item"><div class="num">4</div><div class="txt">技能系统 (学习/升级/五行)</div></div>
+  <div class="stat-item"><div class="num">5</div><div class="txt">任务系统 (主线/支线/限时)</div></div>
+  <div class="stat-item"><div class="num">6</div><div class="txt">公会系统 (家族/公会战)</div></div>
+  <div class="stat-item"><div class="num">7</div><div class="txt">经济系统 (商店/拍卖/充值)</div></div>
+  <div class="stat-item"><div class="num">8</div><div class="txt">聊天系统 (公聊/私聊/频道)</div></div>
+  <div class="stat-item"><div class="num">9</div><div class="txt">地图系统 (探索/移动/副本)</div></div>
+  <div class="stat-item"><div class="num">10</div><div class="txt">排行榜 (等级/战力/消费)</div></div>
+  <div class="stat-item"><div class="num">11</div><div class="txt">组队系统 (副本组队)</div></div>
+  <div class="stat-item"><div class="num">12</div><div class="txt">卡牌/称号系统</div></div>
+  <div class="stat-item"><div class="num">13</div><div class="txt">塔罗牌/爬塔</div></div>
+  <div class="stat-item"><div class="num">14</div><div class="txt">自动挂机</div></div>
+  <div class="stat-item"><div class="num">15</div><div class="txt">GM管理后台</div></div>
+</div>
+
+<!-- ============================================================ -->
+<h2>二、分阶段迁移计划</h2>
+
+<div class="phase">
+  <div class="phase-title"><span class="tag tag-p0">Phase 0</span> 环境准备 &amp; 基础设施搭建</div>
+  <div class="phase-meta">预估工期: 3-5 天 | 优先级: 必须先做 | 依赖: 无</div>
+
+  <h3>任务清单</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th><th>优先级</th><th>输出</th></tr>
+    <tr><td>0.1</td><td>安装 MySQL 8.0，导入现有 SQL dump，验证兼容性</td><td>4h</td><td><span class="tag tag-p0">P0</span></td><td>可运行的 MySQL 8.0 数据库</td></tr>
+    <tr><td>0.2</td><td>解决 MySQL 8.0 兼容问题：MyISAM→InnoDB、latin1→utf8mb4、保留字处理、显示宽度清理</td><td>8h</td><td><span class="tag tag-p0">P0</span></td><td>清理后的 DDL 脚本</td></tr>
+    <tr><td>0.3</td><td>安装 Redis，配置连接参数</td><td>2h</td><td><span class="tag tag-p0">P0</span></td><td>Redis 运行中</td></tr>
+    <tr><td>0.4</td><td>搭建 Spring Boot 3.x 项目骨架（Maven/Gradle，多模块）</td><td>4h</td><td><span class="tag tag-p0">P0</span></td><td>Git 仓库 + CI 骨架</td></tr>
+    <tr><td>0.5</td><td>搭建 React + TypeScript + Vite 项目骨架</td><td>3h</td><td><span class="tag tag-p0">P0</span></td><td>前端项目可运行</td></tr>
+    <tr><td>0.6</td><td>配置开发/测试/生产环境变量、Docker Compose</td><td>4h</td><td><span class="tag tag-p1">P1</span></td><td>docker-compose.yml</td></tr>
+  </table>
+  <p><strong>小计: 25h (~3-5 天)</strong></p>
+</div>
+
+<div class="phase">
+  <div class="phase-title"><span class="tag tag-p0">Phase 1</span> 数据层完整迁移</div>
+  <div class="phase-meta">预估工期: 2-3 周 | 优先级: 高 | 依赖: Phase 0</div>
+
+  <h3>1.1 数据库升级 (核心关键路径)</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th><th>风险</th></tr>
+    <tr><td>1.1.1</td><td>17 个 MyISAM 表 → InnoDB 转换（重点: chat_login_auth 21万行, T_fight_log 15万行, game_count 31万行）</td><td>6h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>1.1.2</td><td>9 个 latin1 表 + 17 个 utf8 表 → 统一 utf8mb4（含数据校验，防乱码）</td><td>8h</td><td><span class="sev-high">高</span></td></tr>
+    <tr><td>1.1.3</td><td>ROW_FORMAT=FIXED 表改 DYNAMIC（game_count, mty_temp, tmp_mty）</td><td>2h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>1.1.4</td><td>移除 int(11) 等显示宽度语法（MySQL 8.0 已弃用）</td><td>3h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>1.1.5</td><td>处理保留字冲突（lock, merge, key, type, desc）</td><td>3h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>1.1.6</td><td>添加缺失索引（当前表几乎无显式索引，战斗/背包查詢需优化）</td><td>6h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>1.1.7</td><td>编写数据校验脚本（迁移前后行数/校验和对比）</td><td>4h</td><td><span class="sev-med">中</span></td></tr>
+  </table>
+
+  <h3>1.2 JPA 实体映射</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>表数</th><th>工时</th></tr>
+    <tr><td>1.2.1</td><td>核心实体: player, player_ext, userbb, userbag, skill, props, bb, gpc</td><td>8</td><td>16h</td></tr>
+    <tr><td>1.2.2</td><td>战斗相关: battlefield*, war_*, fight_log, battlelog, fuben, tgt, boss_refresh</td><td>18</td><td>12h</td></tr>
+    <tr><td>1.2.3</td><td>公会/社交: guild*, guild_members, team*, friend*</td><td>12</td><td>8h</td></tr>
+    <tr><td>1.2.4</td><td>经济/商店: shop_order, trade, card*, yb*, moneylog, statistics</td><td>10</td><td>8h</td></tr>
+    <tr><td>1.2.5</td><td>任务/活动: task, task1, task_accept, tasklog, system_activity, timeconfig</td><td>8</td><td>8h</td></tr>
+    <tr><td>1.2.6</td><td>其余配置/日志表</td><td>61</td><td>16h</td></tr>
+    <tr><td>1.2.7</td><td>Repository 层 + 基础 CRUD 测试</td><td>-</td><td>12h</td></tr>
+  </table>
+
+  <h3>1.3 Redis 替代 Memcached</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th></tr>
+    <tr><td>1.3.1</td><td>分析现有 Memcached 键使用模式（db_*, user*, chat*, session*）</td><td>4h</td></tr>
+    <tr><td>1.3.2</td><td>实现 Redis 缓存抽象层（替代 kernel/memory.v1.php）</td><td>8h</td></tr>
+    <tr><td>1.3.3</td><td>实现 Redis Session 管理（替代 kernel/memSession.v1.php）</td><td>6h</td></tr>
+  </table>
+
+  <p><strong>小计: ~126h (~3 周)</strong></p>
+</div>
+
+<div class="phase">
+  <div class="phase-title"><span class="tag tag-p0">Phase 2</span> 后端 API 重建</div>
+  <div class="phase-meta">预估工期: 6-8 周 | 优先级: 高 | 依赖: Phase 1</div>
+
+  <h3>2.1 基础架构</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th></tr>
+    <tr><td>2.1.1</td><td>Spring Security + JWT 认证（替代 PHP Session 检查）</td><td>16h</td></tr>
+    <tr><td>2.1.2</td><td>统一 API 响应格式（code/message/data 信封）</td><td>4h</td></tr>
+    <tr><td>2.1.3</td><td>全局异常处理 + 参数校验（Bean Validation）</td><td>8h</td></tr>
+    <tr><td>2.1.4</td><td>API 文档 + Swagger/OpenAPI 配置</td><td>4h</td></tr>
+    <tr><td>2.1.5</td><td>WebSocket 配置（STOMP + Redis Pub/Sub 支持集群）</td><td>12h</td></tr>
+    <tr><td>2.1.6</td><td>敏感词过滤服务（迁移 chatProto.php 730行 + badWord.txt 40KB）</td><td>8h</td></tr>
+    <tr><td>2.1.7</td><td>防沉迷/外挂检测中间件</td><td>8h</td></tr>
+  </table>
+
+  <h3>2.2 核心游戏 API（按复杂度排序）</h3>
+  <table>
+    <tr><th>#</th><th>模块</th><th>源 PHP 文件</th><th>工时</th><th>复杂度</th></tr>
+    <tr><td>2.2.1</td><td><strong>战斗引擎</strong></td><td>Fight_Mod.php(1719行), FightGate.php(1569行), Fight_Mod_Mobile.php(1733行), fbfight_Mod.php(773行), fbfightGate.php(1056行), BattleFight_Mod.php(491行)</td><td>80h</td><td><span class="sev-high">极高</span></td></tr>
+    <tr><td>2.2.2</td><td><strong>宠物系统</strong></td><td>Pets_Mod.php, get.Catch.php, merge.php, Merge_Mod.php, Sd_Mod.php</td><td>48h</td><td><span class="sev-high">高</span></td></tr>
+    <tr><td>2.2.3</td><td><strong>装备系统</strong></td><td>Zb_Mod.php(444行), zbstrength_Mod.php(264行), equipment.v1.php(1224行)</td><td>40h</td><td><span class="sev-high">高</span></td></tr>
+    <tr><td>2.2.4</td><td><strong>聊天系统</strong></td><td>chatGate.php(632行), chatProto.php(730行), socketChat/server/snb.php(1262行), chatMessage.php</td><td>40h</td><td><span class="sev-high">高</span></td></tr>
+    <tr><td>2.2.5</td><td><strong>任务系统</strong></td><td>task.v1.php(1936行), getTask.php, getTaskItem.php, getTaskinfo.php</td><td>32h</td><td><span class="sev-med">中高</span></td></tr>
+    <tr><td>2.2.6</td><td><strong>道具系统</strong></td><td>usedProps.php(1982行), Props_Mod.php, getProps.php, getBag.php</td><td>32h</td><td><span class="sev-med">中高</span></td></tr>
+    <tr><td>2.2.7</td><td><strong>用户系统</strong></td><td>User_Mod.php(146行), loginGate.php(419行), loginCheck.php, user.v1.php(412行)</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>2.2.8</td><td><strong>公会系统</strong></td><td>Family_Mod.php(201行), FamilyGate.php, guild*.php, guild_battle_mod.php</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>2.2.9</td><td><strong>商城/经济</strong></td><td>smbuyGate.php(378行), ybbuyGate.php(320行), Pai_Mod.php(338行), pay_Mod.php(570行)</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>2.2.10</td><td><strong>地图系统</strong></td><td>mapGate.php, openMap.php, City_Mod.php(104行)</td><td>16h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>2.2.11</td><td><strong>组队系统</strong></td><td>Team_Mod.php(478行), team.php, getTeaminfo.php</td><td>16h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>2.2.12</td><td><strong>排行榜</strong></td><td>Public_Mod.php(422行), GrowthRanking_Mod.php, consumptionTop.php</td><td>12h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>2.2.13</td><td><strong>爬塔/塔罗牌</strong></td><td>Tt_Mod.php, tarotGate.php, tarot_Mod.php, CqGate.php</td><td>12h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>2.2.14</td><td><strong>自动挂机</strong></td><td>Tuoguan_Mod.php(199行), tuoGuanGate.php(767行)</td><td>12h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>2.2.15</td><td><strong>GM 管理后台</strong></td><td>Gamemaster.php(4086行), custom/*, api/*</td><td>16h</td><td><span class="sev-low">中低</span></td></tr>
+  </table>
+
+  <p><strong>小计: ~468h (~8 周，按 2 人并行)</strong></p>
+</div>
+
+<div class="phase">
+  <div class="phase-title"><span class="tag tag-p1">Phase 3</span> 前端 React 重建</div>
+  <div class="phase-meta">预估工期: 6-8 周 | 优先级: 中高 | 依赖: Phase 2 开始后可并行</div>
+
+  <h3>3.1 项目基础</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th></tr>
+    <tr><td>3.1.1</td><td>React Router 路由设计（替代 iframe 导航）</td><td>8h</td></tr>
+    <tr><td>3.1.2</td><td>Zustand/Redux 全局状态管理（用户信息、背包、宠物列表、在线状态）</td><td>16h</td></tr>
+    <tr><td>3.1.3</td><td>Axios 封装 + React Query 数据获取层</td><td>8h</td></tr>
+    <tr><td>3.1.4</td><td>WebSocket 客户端 Hook（替代 Comet + Flash）</td><td>12h</td></tr>
+    <tr><td>3.1.5</td><td>UI 组件库搭建（按钮、面板、HP/MP/EXP 进度条、道具格子、模态框）</td><td>24h</td></tr>
+    <tr><td>3.1.6</td><td>游戏布局框架（替代 index.php 的 1000px 固定布局）</td><td>12h</td></tr>
+    <tr><td>3.1.7</td><td>CSS 主题系统（宠物品质色、五行色、战斗特效色）</td><td>8h</td></tr>
+  </table>
+
+  <h3>3.2 页面重建（按用户可见顺序）</h3>
+  <table>
+    <tr><th>#</th><th>页面/组件</th><th>源文件</th><th>工时</th><th>复杂度</th></tr>
+    <tr><td>3.2.1</td><td>登录/注册页</td><td>login/*, passport/*</td><td>16h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>3.2.2</td><td>游戏主框架（导航栏+工具栏+聊天栏）</td><td>index.php(1684行)</td><td>32h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.3</td><td><strong>战斗界面（最核心）</strong></td><td>tpl_fight.html + fight.js(45KB) + tpl_battle_fight.html + battle.js(19KB)</td><td>80h</td><td><span class="sev-high">极高</span></td></tr>
+    <tr><td>3.2.4</td><td>地图探索</td><td>tpl_map.html + tpl_mapnew.html + tpl_city.html</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.5</td><td>宠物查看/管理</td><td>tpl_bb.html + bb.js + Pets_Mod.php</td><td>20h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.6</td><td>背包/物品栏</td><td>tpl_props.html + tpl_base.html + index.js(背包部分)</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.7</td><td>装备强化</td><td>tpl_zb.html + tpl_zbstrength.html</td><td>16h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>3.2.8</td><td>宠物合成/进化</td><td>tpl_merge.html + tpl_compose.html</td><td>16h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>3.2.9</td><td>聊天面板</td><td>msg_html.js(14.5KB) + chat_html5.js(10KB)</td><td>20h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.10</td><td>商城/拍卖行</td><td>tpl_smshop.html + tpl_pai.html</td><td>20h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.11</td><td>任务面板</td><td>taskshow.php + getTaskinfo.php</td><td>16h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>3.2.12</td><td>公会/家族</td><td>tpl_family.html + tpl_fortress.html</td><td>16h</td><td><span class="sev-low">中低</span></td></tr>
+    <tr><td>3.2.13</td><td>排行榜</td><td>tpl_public.html + tpl_growthranking.html</td><td>12h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>3.2.14</td><td>副本界面</td><td>tpl_fb.html + tpl_fbfight.html</td><td>16h</td><td><span class="sev-med">中</span></td></tr>
+    <tr><td>3.2.15</td><td>组队面板</td><td>tpl_team.html + tpl_cteam.html</td><td>12h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>3.2.16</td><td>自动挂机</td><td>tpl_tuoguan.html</td><td>8h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>3.2.17</td><td>塔罗牌/爬塔</td><td>tpl_tarot.html + tpl_tt.html</td><td>12h</td><td><span class="sev-low">低</span></td></tr>
+    <tr><td>3.2.18</td><td>GM 管理后台</td><td>custom/*, api/Gamemaster.php</td><td>24h</td><td><span class="sev-med">中</span></td></tr>
+  </table>
+
+  <h3>3.3 动画/特效</h3>
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th></tr>
+    <tr><td>3.3.1</td><td>战斗动画系统（攻击/技能/伤害数字/HP条动画）</td><td>24h</td></tr>
+    <tr><td>3.3.2</td><td>宠物出场/捕捉/进化动画</td><td>16h</td></tr>
+    <tr><td>3.3.3</td><td>UI 过渡动画（面板切换、道具使用、升级特效）</td><td>12h</td></tr>
+  </table>
+
+  <p><strong>小计: ~464h (~8 周，按 2 人并行)</strong></p>
+</div>
+
+<div class="phase">
+  <div class="phase-title"><span class="tag tag-p2">Phase 4</span> 集成测试 &amp; 上线</div>
+  <div class="phase-meta">预估工期: 3-4 周 | 优先级: 中 | 依赖: Phase 2 + Phase 3</div>
+
+  <table>
+    <tr><th>#</th><th>任务</th><th>工时</th></tr>
+    <tr><td>4.1</td><td>后端单元测试（JUnit 5 + Mockito，目标 80% 覆盖率）</td><td>40h</td></tr>
+    <tr><td>4.2</td><td>后端集成测试（Spring Boot Test + Testcontainers MySQL/Redis）</td><td>32h</td></tr>
+    <tr><td>4.3</td><td>前端组件测试（Vitest + React Testing Library）</td><td>24h</td></tr>
+    <tr><td>4.4</td><td>E2E 测试（Playwright — 核心用户流程：登录→战斗→捕捉→商店→聊天）</td><td>24h</td></tr>
+    <tr><td>4.5</td><td>性能测试 — 战斗引擎并发（JMeter，模拟 500+ 并发战斗请求）</td><td>16h</td></tr>
+    <tr><td>4.6</td><td>性能测试 — 聊天系统并发（WebSocket 1000+ 连接）</td><td>12h</td></tr>
+    <tr><td>4.7</td><td>数据迁移验证（新旧数据库逐表校验）</td><td>16h</td></tr>
+    <tr><td>4.8</td><td>安全审计（OWASP Top 10: SQL注入/XSS/CSRF/会话劫持/支付安全）</td><td>16h</td></tr>
+    <tr><td>4.9</td><td>灰度发布方案 + 回滚预案</td><td>12h</td></tr>
+    <tr><td>4.10</td><td>Bug 修复缓冲（预留 20% 工时）</td><td>40h</td></tr>
+  </table>
+
+  <p><strong>小计: ~232h (~4 周)</strong></p>
+</div>
+
+<!-- ============================================================ -->
+<h2>三、总工时汇总</h2>
+
+<table>
+  <tr><th>阶段</th><th>内容</th><th>工时 (h)</th><th>工期 (周)</th><th>建议人数</th></tr>
+  <tr><td>Phase 0</td><td>环境准备 &amp; 基础设施</td><td>25</td><td>0.6</td><td>1</td></tr>
+  <tr><td>Phase 1</td><td>数据层迁移</td><td>126</td><td>3</td><td>1-2</td></tr>
+  <tr><td>Phase 2</td><td>后端 API 重建</td><td>468</td><td>8</td><td>2-3</td></tr>
+  <tr><td>Phase 3</td><td>前端 React 重建</td><td>464</td><td>8</td><td>2-3</td></tr>
+  <tr><td>Phase 4</td><td>集成测试 &amp; 上线</td><td>232</td><td>4</td><td>2</td></tr>
+  <tr style="font-weight:700; background:rgba(233,69,96,0.15);"><td colspan="2">总计</td><td>1,315</td><td>~6 个月</td><td>2-3 人</td></tr>
+</table>
+
+<p style="margin-top:8px; color:var(--muted);">
+* Phase 2 和 Phase 3 可部分并行（后端先出 API 文档，前端同步开发）。<br>
+* 如果 3 人全职 + Phase 2/3 并行，总工期可压缩到 <strong>4-5 个月</strong>。<br>
+* 如果先做 MVP（战斗+宠物+背包+聊天），可缩减到 <strong>~800h / 3 个月</strong>。
+</p>
+
+<!-- ============================================================ -->
+<h2>四、技术风险 &amp; 缓解措施</h2>
+
+<div class="risk">
+  <div class="sev sev-high">高风险</div>
+  <div>
+    <strong>战斗引擎逻辑迁移错误</strong> — 原 PHP 代码无文档，1700+ 行战斗计算有大量隐式规则（五行克制、暴击公式、属性加成）。<br>
+    <em>缓解：先写战斗引擎的集成对比测试（同样输入 → PHP 和新 Java 输出对比），逐用例验证。</em>
+  </div>
+</div>
+<div class="risk">
+  <div class="sev sev-high">高风险</div>
+  <div>
+    <strong>字符集迁移导致中文乱码</strong> — 混合 latin1/utf8/gbk/utf8mb4 的历史数据。<br>
+    <em>缓解：逐表分析原始字节编码，使用 HEX 校验 + 抽样人工验证。</em>
+  </div>
+</div>
+<div class="risk">
+  <div class="sev sev-high">高风险</div>
+  <div>
+    <strong>实时聊天系统行为差异</strong> — Comet 长轮询 → WebSocket 语义不同，可能有消息丢失/乱序。<br>
+    <em>缓解：保留消息序列号，客户端去重 + 重连补拉机制。</em>
+  </div>
+</div>
+<div class="risk">
+  <div class="sev sev-med">中风险</div>
+  <div>
+    <strong>支付/充值系统兼容</strong> — 涉及外部平台 API（4399、webgame 等），接口可能已变更。<br>
+    <em>缓解：提前梳理所有外部依赖，与平台确认 API 文档。</em>
+  </div>
+</div>
+<div class="risk">
+  <div class="sev sev-med">中风险</div>
+  <div>
+    <strong>前端动画性能</strong> — 原 Flash/简单 JS 动画 → React 动画，需确保 60fps。<br>
+    <em>缓解：使用 CSS animation + requestAnimationFrame，Canvas 渲染战斗场景（备选方案）。</em>
+  </div>
+</div>
+<div class="risk">
+  <div class="sev sev-low">低风险</div>
+  <div>
+    <strong>MySQL 8.0 语法兼容</strong> — 已识别的问题均可自动/半自动修复。<br>
+    <em>缓解：编写 SQL 转换脚本，CI 中跑全量 schema 导入验证。</em>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2>五、建议的 MVP 范围（如果工期紧张）</h2>
+
+<table>
+  <tr><th>模块</th><th>工时 (h)</th><th>说明</th></tr>
+  <tr><td>Phase 0 全部</td><td>25</td><td>基础设施</td></tr>
+  <tr><td>Phase 1 精简（核心表映射）</td><td>60</td><td>只做 30 张核心表 JPA 映射 + Redis</td></tr>
+  <tr><td>用户认证 + 宠物系统 API</td><td>80</td><td>注册/登录/宠物查看/捕捉</td></tr>
+  <tr><td>战斗引擎 API</td><td>80</td><td>PvE 战斗核心</td></tr>
+  <tr><td>背包/道具 API</td><td>40</td><td>背包 CRUD + 道具使用</td></tr>
+  <tr><td>聊天 API</td><td>40</td><td>WebSocket 聊天</td></tr>
+  <tr><td>登录页 + 主框架 + 战斗 UI</td><td>140</td><td>核心前端页面</td></tr>
+  <tr><td>宠物/背包 UI</td><td>60</td><td>宠物管理 + 背包</td></tr>
+  <tr><td>聊天 UI</td><td>20</td><td>聊天面板</td></tr>
+  <tr><td>集成测试</td><td>80</td><td>核心流程测试</td></tr>
+  <tr style="font-weight:700;"><td>MVP 合计</td><td>~625h</td><td>~10-12 周 / 2 人</td></tr>
+</table>
+<p style="color:var(--muted);">MVP 之后逐步补充: 公会、装备、任务、塔罗牌、排行榜、自动挂机、GM 后台等。</p>
+
+<!-- ============================================================ -->
+<h2>六、关键技术决策记录</h2>
+
+<table>
+  <tr><th>决策点</th><th>选择</th><th>理由</th></tr>
+  <tr><td>后端框架</td><td>Spring Boot 3.x + JDK 21</td><td>当前环境 Java 21；Spring 生态成熟，WebSocket 支持好</td></tr>
+  <tr><td>ORM</td><td>Spring Data JPA (主) + MyBatis (战斗日志等高性能查询)</td><td>JPA 快速开发 CRUD，MyBatis 应对复杂查询</td></tr>
+  <tr><td>缓存</td><td>Redis 7.x + Spring Cache</td><td>替代 Memcached，支持 Pub/Sub 用于聊天</td></tr>
+  <tr><td>实时通信</td><td>WebSocket (STOMP) + Redis Pub/Sub</td><td>统一替代 Comet + Flash + WebSocket 三套方案</td></tr>
+  <tr><td>前端框架</td><td>React 18 + TypeScript + Vite</td><td>生态最大，Hooks 模式适合游戏 UI 交互</td></tr>
+  <tr><td>状态管理</td><td>Zustand (轻量) + React Query (服务端状态)</td><td>Zustand 比 Redux 简洁，适合游戏实时状态</td></tr>
+  <tr><td>战斗动画</td><td>CSS Animation + Framer Motion</td><td>优先 CSS；性能不足时切 Canvas</td></tr>
+  <tr><td>测试框架</td><td>JUnit 5 + Testcontainers + Playwright</td><td>真实数据库测试 + E2E</td></tr>
+  <tr><td>部署</td><td>Docker Compose (dev) / K8s (prod)</td><td>渐进式，先用 Compose 快速迭代</td></tr>
+</table>
+
+<div class="footer">
+  生成时间: 2026-05-22 | 项目: kdjl (口袋精灵) | 源路径: D:\code\kdjl\kdjl\kdjl
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+.container{width:780px;height:310px;background:#fdfde3;border:2px solid #f9e061;display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #d7c060}
+.title{color:#513a11;font-size:15px;font-weight:600}
+.backBtn{background:#80b860;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:3px 12px}
+.backBtn:hover{background:#609040}
+.addRow{display:flex;gap:4px;padding:8px 12px}
+.addInput{flex:1;border:1px solid #d7c060;border-radius:3px;padding:4px 8px;font-size:12px;outline:none}
+.addBtn{background:#e08040;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:3px 10px;white-space:nowrap}
+.addBtn:hover{background:#c06020}
+.msg{color:#c04040;font-size:12px;padding:0 12px 4px;cursor:pointer}
+.list{flex:1;overflow-y:auto;padding:4px 12px}
+.empty{color:#888;font-size:13px;text-align:center;padding:40px 0}
+.friendRow{display:flex;align-items:center;gap:6px;padding:5px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:13px}
+.friendRow:hover{background:rgba(0,0,0,0.03)}
+.status{font-size:10px;width:14px;text-align:center}
+.online{color:#609040}
+.offline{color:#aaa}
+.name{flex:1;color:#513a11;font-weight:500}
+.level{color:#9a3803;font-size:11px;width:45px}
+.state{color:#888;font-size:11px;width:35px}
+.removeBtn{background:none;border:1px solid #c04040;color:#c04040;border-radius:3px;cursor:pointer;font-size:10px;padding:1px 6px}
+.removeBtn:hover{background:#c04040;color:#fff}

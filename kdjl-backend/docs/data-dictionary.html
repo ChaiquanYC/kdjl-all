@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>KDJL 数据字典 — 完整字段含义与PHP使用参考</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--red:#f85149;--green:#3fb950;--yellow:#d2991d;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e;--accent:#1f6feb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.75;padding:20px;font-size:15px}
+.container{max-width:1400px;margin:0 auto}
+h1{font-size:1.7rem;text-align:center;margin-bottom:4px;color:var(--yellow)}
+h1 small{display:block;font-size:.82rem;color:var(--muted);font-weight:400;margin-top:2px}
+h2{font-size:1.2rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin:32px 0 14px;color:var(--blue)}
+h3{font-size:1rem;margin:20px 0 8px;color:var(--yellow)}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.82rem}
+th,td{padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+th{background:var(--accent);font-weight:600;white-space:nowrap}
+tr:hover{background:rgba(255,255,255,0.02)}
+.tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:.7rem;font-weight:700}
+.tag-pk{background:var(--red)}.tag-int{background:var(--blue);color:#000}
+.tag-str{background:var(--green);color:#000}.tag-bool{background:var(--yellow);color:#000}
+code{font-family:'Cascadia Code','Consolas',monospace;font-size:.8rem;background:rgba(31,111,235,0.08);padding:1px 4px;border-radius:3px}
+.footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;text-align:center}
+.note{background:rgba(210,153,29,0.1);border:1px solid rgba(210,153,29,0.3);border-radius:6px;padding:8px 14px;margin:8px 0;font-size:.83rem;color:var(--yellow)}
+.php-ref{font-size:.78rem;color:var(--muted)}
+.php-ref::before{content:"PHP: "}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL 数据字典 — 完整字段含义与 PHP 源码使用参考<br><small>
+  涵盖 12 张核心表，117 字段详解，PHP 读写位置标注 | 基于 PHP 319 源文件 + MySQL Schema 逐字段分析 | 2026-05-22
+</small></h1>
+
+<!-- ============ player ============ -->
+<h2>1. player (玩家表)</h2>
+<div class="note">PHP 读取: <code>$_pm['user']->getUserById($uid)</code> → 几乎所有模块。<br>PHP 写入: FightGate.php (金币/经验), getTask.php (任务状态), Shopsm_Mod.php (购买扣款)</div>
+
+<table>
+<tr><th width="12%">字段</th><th width="10%">类型</th><th width="38%">含义</th><th width="40%">PHP 使用说明</th></tr>
+<tr>
+  <td><code>id</code> <span class="tag tag-pk">PK</span></td>
+  <td>int</td>
+  <td>玩家唯一ID</td>
+  <td class="php-ref">所有查询的 uid 条件</td>
+</tr>
+<tr>
+  <td><code>name</code></td>
+  <td>varchar(255)</td>
+  <td>登录用户名</td>
+  <td class="php-ref">loginCheck.php 验证; 用作 $_SESSION['username']</td>
+</tr>
+<tr>
+  <td><code>password</code></td>
+  <td>varchar(255)</td>
+  <td>密码 (实际存储 secret MD5)</td>
+  <td class="php-ref">注意: 这个字段实际存的是 MD5(password)，不是原文。PHP loginCheck.php 用 secret 字段验证</td>
+</tr>
+<tr>
+  <td><code>nickname</code></td>
+  <td>varchar(255)</td>
+  <td>游戏内显示昵称</td>
+  <td class="php-ref">全服公告/聊天/捕捉广播中使用 $_SESSION['nickname']</td>
+</tr>
+<tr>
+  <td><code>secret</code></td>
+  <td>varchar(255)</td>
+  <td>MD5(password) 认证用</td>
+  <td class="php-ref">loginCheck.php: <code>WHERE secret=MD5($password)</code></td>
+</tr>
+<tr>
+  <td><code>vip</code></td>
+  <td>int</td>
+  <td>VIP 等级 (0=普通)</td>
+  <td class="php-ref">vip.php 显示; vipbuyGate.php 购买权限检查</td>
+</tr>
+<tr>
+  <td><code>money</code></td>
+  <td>int</td>
+  <td>金币数量</td>
+  <td class="php-ref">FightGate.php: 战斗奖励 +money; Shopsm_Mod.php: 购买 -money; 上限 10亿</td>
+</tr>
+<tr>
+  <td><code>yb</code></td>
+  <td>int</td>
+  <td>元宝 (付费货币)</td>
+  <td class="php-ref">ybbuyGate.php: 元宝购买扣款; pay_Mod.php: 充值增加</td>
+</tr>
+<tr>
+  <td><code>score</code></td>
+  <td>int</td>
+  <td>积分</td>
+  <td class="php-ref">活动/排名使用</td>
+</tr>
+<tr>
+  <td><code>prestige</code></td>
+  <td>int</td>
+  <td>声望值</td>
+  <td class="php-ref">Prestige_Mod.php: 声望兑换装备; 排行榜使用</td>
+</tr>
+<tr>
+  <td><code>active_score</code></td>
+  <td>int</td>
+  <td>活跃积分</td>
+  <td class="php-ref">活动系统使用</td>
+</tr>
+<tr>
+  <td><code>mbid</code></td>
+  <td>int</td>
+  <td><b>主战宠物 ID</b> (userbb.id)</td>
+  <td class="php-ref"><b>核心字段</b>。FightGate.php: 战斗默认使用 mbid 宠物; usedProps.php: 装备穿戴到此宠物; Pets_Mod.php: 设置主战</td>
+</tr>
+<tr>
+  <td><code>fightbb</code></td>
+  <td>int</td>
+  <td>当前战斗中的宠物 ID</td>
+  <td class="php-ref">FightGate.php: 战斗开始时 mbid → fightbb; 战斗结束后可能恢复</td>
+</tr>
+<tr>
+  <td><code>inmap</code></td>
+  <td>int</td>
+  <td>当前所在地图 ID</td>
+  <td class="php-ref">Expore_Mod.php: 点击地图 → UPDATE inmap; Fight_Mod.php: 根据 inmap 加载怪物</td>
+</tr>
+<tr>
+  <td><code>openmap</code></td>
+  <td>varchar(255)</td>
+  <td>已解锁地图列表 (逗号分隔)</td>
+  <td class="php-ref">openMap.php: 使用钥匙道具 → 追加 mapId; "1,2,5" 表示已解锁地图 1/2/5</td>
+</tr>
+<tr>
+  <td><code>maxbag</code></td>
+  <td>int</td>
+  <td>背包最大容量</td>
+  <td class="php-ref">get.Catch.php: 掉落时检查 <code>$l >= $user['maxbag']</code>; 默认 30</td>
+</tr>
+<tr>
+  <td><code>maxmc</code></td>
+  <td>int</td>
+  <td>宠物牧场最大容量</td>
+  <td class="php-ref">autoCatch.php: <code>$resBBNum >= $resMaxMC</code> 牧场满检查</td>
+</tr>
+<tr>
+  <td><code>maxbase</code></td>
+  <td>int</td>
+  <td>仓库最大容量</td>
+  <td class="php-ref">Base_Mod.php 使用</td>
+</tr>
+<tr>
+  <td><code>task</code></td>
+  <td>varchar(255)</td>
+  <td><b>当前任务步骤</b></td>
+  <td class="php-ref">getTask.php: startTask 设置 task=任务ID; completeTask 清零 task=""</td>
+</tr>
+<tr>
+  <td><code>tasklog</code></td>
+  <td>varchar(255)</td>
+  <td><b>任务进度日志</b></td>
+  <td class="php-ref"><code>"see:6,giveitem:888:3,killmon:1:2"</code>。completeTask 检查此字段判断条件是否满足</td>
+</tr>
+<tr>
+  <td><code>fighttop</code></td>
+  <td>int</td>
+  <td>PVP 战力排名</td>
+  <td class="php-ref">King_Mod.php 排行榜</td>
+</tr>
+<tr>
+  <td><code>sex</code></td>
+  <td>varchar(255)</td>
+  <td>性别</td>
+  <td class="php-ref">reg1.php: 注册时选择</td>
+</tr>
+<tr>
+  <td><code>headimg</code></td>
+  <td>int</td>
+  <td>头像ID</td>
+  <td>—</td>
+</tr>
+<tr>
+  <td><code>mapinfo</code></td>
+  <td>varchar(255)</td>
+  <td>地图扩展信息</td>
+  <td>—</td>
+</tr>
+<tr>
+  <td><code>dblexpflag</code></td>
+  <td>int</td>
+  <td>双倍经验标记 (1=开启)</td>
+  <td class="php-ref">FightGate.php: 双倍时间内战斗经验×2</td>
+</tr>
+<tr>
+  <td><code>autofitflag</code></td>
+  <td>int</td>
+  <td>自动战斗标记 (1=托管中)</td>
+  <td class="php-ref">Tuoguan_Mod.php: 挂机自动战斗开关</td>
+</tr>
+<tr>
+  <td><code>sysautosum</code></td>
+  <td>int</td>
+  <td>系统自动战斗剩余次数</td>
+  <td class="php-ref">FightGate.php: 次数用完 → echo 'autoend'</td>
+</tr>
+<tr>
+  <td><code>maxautofitsum</code></td>
+  <td>int</td>
+  <td>最大自动战斗次数</td>
+  <td>—</td>
+</tr>
+<tr>
+  <td><code>fieldpwd</code></td>
+  <td>varchar(255)</td>
+  <td>二级密码</td>
+  <td class="php-ref">安全验证使用</td>
+</tr>
+<tr>
+  <td><code>friendlist</code></td>
+  <td>varchar(255)</td>
+  <td>好友列表 (逗号分隔ID)</td>
+  <td class="php-ref">friendGate.php: 添加/删除好友</td>
+</tr>
+</table>
+
+<!-- ============ player_ext ============ -->
+<h2>2. player_ext (玩家扩展表)</h2>
+<div class="note">1:1 关联 player。存储不常用的扩展数据和状态字段。</div>
+
+<table>
+<tr><th width="12%">字段</th><th width="40%">含义</th><th width="48%">PHP 使用说明</th></tr>
+<tr>
+  <td><code>uid</code> <span class="tag tag-pk">PK</span></td>
+  <td>= player.id</td>
+  <td class="php-ref">关联键</td>
+</tr>
+<tr>
+  <td><code>sj</code></td>
+  <td><b>水晶数量</b> (高级货币)</td>
+  <td class="php-ref">merge.php: 离婚消耗 2000 水晶; Chuancheng.php: 立即完成消耗水晶</td>
+</tr>
+<tr>
+  <td><code>merge</code></td>
+  <td><b>配偶 ID</b> (0=未婚)</td>
+  <td class="php-ref">merge.php: 结婚时互设; merge=0 表示单身</td>
+</tr>
+<tr>
+  <td><code>request_merge</code></td>
+  <td>向谁求婚 (player.id)</td>
+  <td class="php-ref">merge.php type=4: 赠送定情信物 → set request_merge=对方ID</td>
+</tr>
+<tr>
+  <td><code>request</code></td>
+  <td>0=正常 1=请求离婚 2=已拒绝</td>
+  <td class="php-ref">merge.php: type=1 离婚请求 set request=1</td>
+</tr>
+<tr>
+  <td><code>nomergetime</code></td>
+  <td>提出离婚的时间戳</td>
+  <td class="php-ref">24h检查: time() - nomergetime >= 86400 → 自动取消</td>
+</tr>
+<tr>
+  <td><code>send</code></td>
+  <td>求婚信物 "count,prop_id"</td>
+  <td class="php-ref">merge.php: 赠送时存储; 接受时读取发放</td>
+</tr>
+<tr>
+  <td><code>chchengbb</code></td>
+  <td><b>当前传承配对宠物ID</b></td>
+  <td class="php-ref">Chuancheng.php: 加入传承 → set chchengbb=对方宠物ID</td>
+</tr>
+<tr>
+  <td><code>team_auto_times</code></td>
+  <td>队伍自动战斗剩余次数</td>
+  <td class="php-ref">FightGate.php: 队长自动战斗消耗</td>
+</tr>
+<tr>
+  <td><code>online_time</code></td>
+  <td>累计在线时长</td>
+  <td class="php-ref">在线奖励统计</td>
+</tr>
+<tr>
+  <td><code>new_guide_step</code></td>
+  <td>新手引导步骤 (0-20)</td>
+  <td class="php-ref">guide.php: 引导进度追踪</td>
+</tr>
+<tr>
+  <td><code>F_Medicine_Buff</code></td>
+  <td><b>战斗药品Buff</b></td>
+  <td class="php-ref">FightGate.php: "addac:10,addmc:5%" → 战斗时挂载属性</td>
+</tr>
+</table>
+
+<!-- ============ userbb ============ -->
+<h2>3. userbb (用户宠物表)</h2>
+<div class="note">PHP 读取: <code>$_pm['user']->getUserPetById($uid)</code> → Pets_Mod.php, FightGate.php, get.Catch.php<br>PHP 写入: get.Catch.php (新宠物), Chuancheng.php (传承结果), usedProps.php (装备穿戴)</div>
+
+<table>
+<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
+<tr><td><code>id</code> <span class="tag tag-pk">PK</span></td><td>宠物唯一ID</td><td class="php-ref">所有宠物操作的主键</td></tr>
+<tr><td><code>uid</code></td><td>所属玩家 ID</td><td class="php-ref">关联 player.id</td></tr>
+<tr><td><code>name</code></td><td>宠物名字 (从 bb.name 复制)</td><td class="php-ref">战斗显示/捕捉公告/合成界面</td></tr>
+<tr><td><code>level</code></td><td>等级</td><td class="php-ref">FightGate.php: 升级判定; get.Skill.php: 学习技能等级检查</td></tr>
+<tr><td><code>wx</code></td><td><b>五行属性</b>: 1=金 2=木 3=水 4=火 5=土 6=超神 7=神圣</td><td class="php-ref">FightGate.php: 五行克制计算; Chuancheng.php: wx=6 神宠才能传承; usedProps.php: 装备穿戴五行检查</td></tr>
+<tr><td><code>ac</code></td><td><b>物理攻击力</b></td><td class="php-ref">Ack.getSkillAck(): <code>base = (ac + ackvalue) * plus - 对方mc</code></td></tr>
+<tr><td><code>mc</code></td><td><b>魔法攻击/防御力</b></td><td class="php-ref">作为防御方时: 对方的(ac+ackvalue)*plus - 我的mc = 基础伤害</td></tr>
+<tr><td><code>srchp</code></td><td><b>基础 HP</b> (Source HP)</td><td class="php-ref">最大HP = srchp + addhp。创建时 = bb.hp</td></tr>
+<tr><td><code>addhp</code></td><td><b>附加 HP</b> (装备加成)</td><td class="php-ref">getzbAttrib(): 装备提供的额外HP; 战斗中加血时优先填充 srchp 再填 addhp</td></tr>
+<tr><td><code>hp</code></td><td><b>当前 HP</b></td><td class="php-ref">FightGate.php: <code>$rs['hp'] -= $gwac1</code>; 捕捉时 <code>1 - hp/maxHp</code></td></tr>
+<tr><td><code>srcmp</code></td><td>基础 MP</td><td class="php-ref">同 srchp 概念</td></tr>
+<tr><td><code>addmp</code></td><td>附加 MP (装备)</td><td class="php-ref">同 addhp 概念</td></tr>
+<tr><td><code>mp</code></td><td>当前 MP</td><td class="php-ref">技能消耗检查 <code>ump > mp → 拒绝</code></td></tr>
+<tr><td><code>speed</code></td><td>速度</td><td class="php-ref">影响战斗出手顺序</td></tr>
+<tr><td><code>hits</code></td><td><b>命中值</b></td><td class="php-ref">Ack.getHitsP(): <code>hitsp = (attack.hits - defend.miss) / 100</code></td></tr>
+<tr><td><code>miss</code></td><td><b>闪避值</b></td><td class="php-ref">同上公式; 钳制 hitsp ∈ [0.1, 1.5]</td></tr>
+<tr><td><code>czl</code></td><td><b>成长率</b> (全游戏核心指标)</td><td class="php-ref">getCzl(): 随机生成 如 "1.2~1.5" → rand(1.2, 1.5); 影响宠物战力评价、传承条件 czl≥60</td></tr>
+<tr><td><code>skillist</code></td><td><b>技能列表</b></td><td class="php-ref">格式: "skillsysId:level,skillsysId:level"。如 "1:1,302:3" 表示技能1为Lv.1, 技能302为Lv.3</td></tr>
+<tr><td><code>zb</code></td><td><b>装备字符串</b></td><td class="php-ref"><code>"pos:bagId,pos:bagId"</code>。如 "0:1283,4:1286" 表示位置0(userbag id=1283)和位置4(userbag id=1286)有装备</td></tr>
+<tr><td><code>kx</code></td><td><b>五行抗性</b></td><td class="php-ref">逗号分隔: "金抗,木抗,水抗,火抗,土抗"。战斗时影响伤害计算</td></tr>
+<tr><td><code>nowexp</code></td><td>当前经验值</td><td class="php-ref">FightGate.php: 战斗后 +exps; when nowexp >= lexp → 升级</td></tr>
+<tr><td><code>lexp</code></td><td>升级所需经验</td><td class="php-ref">初始 55-170; 升级后更新</td></tr>
+<tr><td><code>imgstand / imgack / imgdie</code></td><td>站立/攻击/死亡 精灵图文件名</td><td class="php-ref">如 "t353.gif" / "a353.gif" / "d353.gif"; 战斗界面渲染</td></tr>
+<tr><td><code>headimg / cardimg / effectimg</code></td><td>头像/卡片/特效图</td><td class="php-ref">Pets_Mod.php: 宠物卡片显示 cardimg</td></tr>
+<tr><td><code>subyl~subkl</code></td><td>7 个成长值 (金/木/水/火/土/生命/速度)</td><td class="php-ref">从 bb 模板复制; 影响宠物各维度成长</td></tr>
+<tr><td><code>muchang</code></td><td><b>宠物状态</b></td><td class="php-ref">1=携带 3=配对中 4=已配对 5=等待确认 6=传承中 7=传承完成; Chuancheng.php/Merge_Mod.php 使用</td></tr>
+<tr><td><code>chchengbb</code></td><td>配对/传承对方宠物ID</td><td class="php-ref">Chuancheng.php: 配对时互设</td></tr>
+<tr><td><code>chchengtime</code></td><td>传承开始时间</td><td class="php-ref">24h 倒计时</td></tr>
+<tr><td><code>chchengcz</code></td><td>传承次数记录</td><td class="php-ref">"次数,上次czl" 用于控制传承频率</td></tr>
+<tr><td><code>chchengsx</code></td><td>传承时对方的属性快照</td><td class="php-ref">"ac,mc,srchp,hits,miss,speed,srcmp,level" 用于公式计算</td></tr>
+<tr><td><code>addsx</code></td><td>传承累计属性增长</td><td class="php-ref">记录每次传承的增长量</td></tr>
+<tr><td><code>chchengcolor</code></td><td>传承后名字颜色</td><td class="php-ref">传承完成→ '#FF66CC' 粉色</td></tr>
+</table>
+
+<!-- ============ userbag ============ -->
+<h2>4. userbag (背包表)</h2>
+<div class="note">PHP: <code>$_pm['user']->getUserBagById($uid)</code></div>
+
+<table>
+<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
+<tr><td><code>pid</code></td><td>道具ID (→ props.id)</td><td class="php-ref">关联 props 获取名称/效果/价格</td></tr>
+<tr><td><code>uid</code></td><td>所属玩家ID</td><td>—</td></tr>
+<tr><td><code>sums</code></td><td><b>堆叠数量</b></td><td class="php-ref">可堆叠道具 vary=1 累加; 不可堆叠 vary=2 固定1</td></tr>
+<tr><td><code>vary</code></td><td><b>1=可堆叠(消耗品) 2=不可堆叠(装备/技能书)</b></td><td class="php-ref">getBag.php: 分类过滤; sellBag.php: 批量出售只处理 vary=1</td></tr>
+<tr><td><code>zbing</code></td><td><b>0=未装备 1=已装备到宠物</b></td><td class="php-ref">usedProps.php: 穿戴→ set zbing=1; 卸下→ set zbing=0</td></tr>
+<tr><td><code>zbpets</code></td><td>装备在哪个宠物上 (userbb.id)</td><td class="php-ref">usedProps.php: 穿戴时设置; 卸下时清零</td></tr>
+<tr><td><code>sell</code></td><td>售价 (金币)</td><td class="php-ref">sellBag.php: 出售时加到玩家金币</td></tr>
+<tr><td><code>stime</code></td><td>获得时间戳</td><td>—</td></tr>
+<tr><td><code>pyb</code></td><td>拍卖元宝价</td><td class="php-ref">拍卖行系统</td></tr>
+<tr><td><code>psell</code></td><td>拍卖出售标记</td><td>—</td></tr>
+<tr><td><code>pstime/petime</code></td><td>拍卖开始/结束时间</td><td class="php-ref">paisellGate.php 使用</td></tr>
+<tr><td><code>cantrade</code></td><td>可否交易</td><td>—</td></tr>
+<tr><td><code>holeInfo</code></td><td>镶嵌孔信息</td><td class="php-ref">装备镶嵌宝石系统</td></tr>
+</table>
+
+<!-- ============ props ============ -->
+<h2>5. props (道具定义表)</h2>
+
+<table>
+<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
+<tr><td><code>vary</code></td><td><b>1=可堆叠(消耗品) 2=不可堆叠</b></td><td class="php-ref">同 userbag.vary; 决定掉落时新增还是累加</td></tr>
+<tr><td><code>varyname</code></td><td><b>物品类别</b></td><td class="php-ref"><b>关键字段</b>: 0=普通 1=辅助 2=增益 3=捕捉 4=收集 5=技能书 7=卡片 8=进化 9=装备 10=合成 20=传承道具<br>usedProps.php: <code>$rs['varyname']==9</code> 走装备逻辑</td></tr>
+<tr><td><code>name</code></td><td>道具名称</td><td class="php-ref">所有界面显示</td></tr>
+<tr><td><code>effect</code></td><td><b>效果定义</b> (核心字段)</td><td class="php-ref"><code>"hp:200"</code> 回血; <code>"mp:500"</code> 回蓝; <code>"catch:1|2|3:5%:2"</code> 捕捉; <code>"openmap:2"</code> 解锁地图; <code>"chuanc:X"</code> 传承珠; <code>"skills:X"</code> 技能保留</td></tr>
+<tr><td><code>usages</code></td><td>使用条件描述</td><td class="php-ref">展示给玩家的文本 "战斗中可使用"</td></tr>
+<tr><td><code>requires</code></td><td><b>使用要求</b></td><td class="php-ref">装备: <code>"lv:10,wx:3"</code> → 等级≥10且五行=水<br>技能书: <code>"1:1:only:bbid"</code> → 宠物等级≥1, 五行匹配, 专属技能</td></tr>
+<tr><td><code>buy</code></td><td>金币购买价格</td><td class="php-ref">Props_Mod.php: 金币商店</td></tr>
+<tr><td><code>yb</code></td><td>元宝购买价格</td><td class="php-ref">Shopsm_Mod.php: 元宝商店</td></tr>
+<tr><td><code>sell</code></td><td>出售价格</td><td class="php-ref">sellBag.php: 卖价</td></tr>
+<tr><td><code>postion</code></td><td><b>装备槽位 0-10</b></td><td class="php-ref">0=武器 1=衣服 2=头盔 3=鞋子 4=项链 5=戒指左 6=戒指右 7=护腕 8=腰带 9=特殊 10=翅膀</td></tr>
+<tr><td><code>img</code></td><td>图标文件名</td><td class="php-ref">如 "1.gif" → /images/props/1.gif</td></tr>
+<tr><td><code>pluseffect</code></td><td>附加效果</td><td class="php-ref">强化/精炼时附加属性</td></tr>
+<tr><td><code>propscolor</code></td><td>品质颜色</td><td class="php-ref">1白 2绿 3蓝 4紫 5橙 6红</td></tr>
+<tr><td><code>merge</code></td><td>是否为求婚道具 (1=是)</td><td class="php-ref">Merge_Mod.php: 求婚界面筛选 merge=1 的道具</td></tr>
+</table>
+
+<!-- ============ skill / skillsys ============ -->
+<h2>6. skillsys (技能模板) + skill (宠物已学技能)</h2>
+
+<table>
+<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
+<tr><td colspan="3"><b>skillsys (技能模板表)</b></td></tr>
+<tr><td><code>id</code></td><td>技能模板ID</td><td class="php-ref">get.Skill.php: <code>$_REQUEST['id']</code> = skillsys.id</td></tr>
+<tr><td><code>pid</code></td><td>对应技能书道具ID (→ props.id)</td><td class="php-ref">学习技能: 背包中需要有 userbag.pid == skillsys.pid 的道具</td></tr>
+<tr><td><code>name</code></td><td>技能名称</td><td class="php-ref">"普通攻击" "连击" "暴风雪" 等</td></tr>
+<tr><td><code>vary</code></td><td>类型: 1=主动 4=被动</td><td class="php-ref">升级道具区分: vary≠4 用 733, vary=4 用 1666</td></tr>
+<tr><td><code>wx</code></td><td>技能五行 (0=无限制)</td><td class="php-ref">学习检查: 宠物 wx == 技能 wx 或 技能 wx==0</td></tr>
+<tr><td><code>ackvalue</code></td><td><b>10级攻击值</b> (逗号分隔)</td><td class="php-ref"><code>"10,20,30,40,50,60,70,80,90,100"</code>。get.sjSkill.php: 升级时取 <code>$ack[currentLevel]</code></td></tr>
+<tr><td><code>plus</code></td><td><b>10级加成</b> (逗号分隔)</td><td class="php-ref"><code>"hp:1%,hp:2%,...,hp:10%"</code>。伤害公式: base × (plus/100+1)</td></tr>
+<tr><td><code>uhp</code></td><td><b>10级 HP 消耗</b></td><td class="php-ref">负数=给自己加血 (吸血技能)。战斗时检查 <code>uhp > petHp → 拒绝</code></td></tr>
+<tr><td><code>ump</code></td><td><b>10级 MP 消耗</b></td><td class="php-ref">同上</td></tr>
+<tr><td><code>requires</code></td><td><b>学习/升级等级要求</b></td><td class="php-ref"><code>"1,5,10,15,20,30,40,50,60,70"</code> → 升到Lv.3需要宠物≥10级</td></tr>
+<tr><td><code>img</code> / <code>imgeft</code></td><td>技能特效 / 永久属性加成</td><td class="php-ref"><code>"addac:5%"</code> 学习时永久增加5%攻击; <code>"hitshp:10%"</code> 吸血10%</td></tr>
+<tr><td colspan="3"><b>skill (宠物已学技能表)</b></td></tr>
+<tr><td><code>bid</code></td><td>宠物ID (→ userbb.id)</td><td>—</td></tr>
+<tr><td><code>sid</code></td><td>技能模板ID (→ skillsys.id)</td><td class="php-ref">关联查询技能详情</td></tr>
+<tr><td><code>level</code></td><td>当前技能等级 (1-10)</td><td class="php-ref">get.sjSkill.php: level++ 最多到10</td></tr>
+</table>
+
+<!-- ============ gpc ============ -->
+<h2>7. gpc (怪物表)</h2>
+
+<table>
+<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
+<tr><td><code>catchv</code></td><td><b>捕捉基础概率值</b></td><td class="php-ref">get.Catch.php: <code>rate = (catchv/100) * (1 - hp/maxHp)</code>; 6-33 范围</td></tr>
+<tr><td><code>catchid</code></td><td><b>捕捉后生成的宠物模板ID</b> (→ bb.id)</td><td class="php-ref">get.Catch.php: 捕捉成功→用 catchid 查 bb 表获取模板数据来创建 userbb</td></tr>
+<tr><td><code>boss</code></td><td>0=普通 1=Boss</td><td class="php-ref">bossCheck(): Boss 怪物需验证刷新; MapPanel 显示 BOSS 标签</td></tr>
+<tr><td><code>droplist</code></td><td>掉落列表</td><td class="php-ref">"propId:count,propId:count" → FightGate.php parseDropList()</td></tr>
+<tr><td><code>exps</code></td><td>击败经验值</td><td class="php-ref">FightGate.php: 基础经验奖励</td></tr>
+<tr><td><code>money</code></td><td>击败金币</td><td class="php-ref">FightGate.php: 基础金币奖励</td></tr>
+<tr><td><code>skill</code></td><td>怪物技能</td><td class="php-ref">FightGate.php: 随机选择技能ID攻击</td></tr>
+<tr><td><code>kx</code></td><td>怪物五行/抗性</td><td class="php-ref">战斗五行克制使用</td></tr>
+</table>
+
+<!-- ============ bb ============ -->
+<h2>8. bb (宠物模板表)</h2>
+<div class="note">定义每种宠物的基础属性。捕捉时从此表复制到 userbb。</div>
+
+<table>
+<tr><th width="12%">字段</th><th width="40%">含义</th><th width="48%">PHP 使用说明</th></tr>
+<tr><td><code>czl</code></td><td><b>成长率范围</b></td><td class="php-ref">"1.2~1.5" → getCzl() 在此范围内随机生成实际 czl</td></tr>
+<tr><td><code>skillist</code></td><td>初始技能列表</td><td class="php-ref">get.Catch.php: 捕捉后为宠物创建初始技能 (Lv.1)</td></tr>
+<tr><td><code>remakelevel/id/pid</code></td><td>进化/重制ID链</td><td>—</td></tr>
+</table>
+
+<!-- ============ 枚举值速查 ============ -->
+<h2>9. 枚举值速查表</h2>
+
+<table>
+<tr><th>表.字段</th><th>值</th><th>含义</th></tr>
+<tr><td>userbb.wx</td><td>1-7</td><td>1=金 2=木 3=水 4=火 5=土 6=超神 7=神圣</td></tr>
+<tr><td>props.varyname</td><td>0-27</td><td>0=普通 1=辅助 2=增益 3=捕捉 5=技能书 8=进化 <b>9=装备</b> 20=传承道具</td></tr>
+<tr><td>props.postion</td><td>0-10</td><td>0=武器 1=衣服 2=头盔 3=鞋子 4=项链 5=戒指左 6=戒指右 7=护腕 8=腰带 9=特殊 10=翅膀</td></tr>
+<tr><td>userbb.muchang</td><td>1-7</td><td>1=携带 3=配对中 4=已配对 5=等待确认 6=培育中 7=完成</td></tr>
+<tr><td>userbb.czl</td><td>数值</td><td>成长率 (1.0-2.0+), ≥60 才能传承</td></tr>
+<tr><td>skill.level</td><td>1-10</td><td>技能等级上限 10</td></tr>
+<tr><td>gpc.boss</td><td>0/1/4</td><td>0=普通 1=Boss 4=组队副本Boss</td></tr>
+<tr><td>fight_log.vary</td><td>1</td><td>1=战斗操作记录 (防加速检查)</td></tr>
+<tr><td>props.propscolor</td><td>1-6</td><td>1=白 2=绿 3=蓝 4=紫 5=橙 6=红</td></tr>
+</table>
+
+<!-- ============ PHP核心函数索引 ============ -->
+<h2>10. PHP 核心函数/方法索引</h2>
+
+<table>
+<tr><th>PHP 位置</th><th>函数/方法</th><th>功能</th></tr>
+<tr><td>kernel/user.v1.php</td><td><code>getUserById($uid)</code></td><td>读取 player 表</td></tr>
+<tr><td>kernel/user.v1.php</td><td><code>getUserPetById($uid)</code></td><td>读取 userbb 表 (该玩家所有宠物)</td></tr>
+<tr><td>kernel/user.v1.php</td><td><code>getUserBagById($uid)</code></td><td>读取 userbag 表</td></tr>
+<tr><td>kernel/user.v1.php</td><td><code>getUserPetSkillById($uid)</code></td><td>读取 skill 表</td></tr>
+<tr><td>sec/sec_common_fnc.php:2358</td><td><code>class Ack</code></td><td>伤害计算引擎</td></tr>
+<tr><td>sec/sec_common_fnc.php:2390</td><td><code>Ack::getHitsP()</code></td><td>命中率: (hits-miss)/100</td></tr>
+<tr><td>sec/sec_common_fnc.php:2435</td><td><code>Ack::getSkillAck()</code></td><td>伤害: (ac+ackval)*plus-mc → *hitsp → float → final</td></tr>
+<tr><td>FightGate.php:571</td><td><code>new Ack($pet, $monster)</code></td><td>创建战斗计算器 (宠物攻击怪物)</td></tr>
+<tr><td>get.Catch.php:237</td><td>捕捉公式</td><td>(catchv/100)*(1-hp/maxHp)+道具% → rand判定</td></tr>
+<tr><td>Chuancheng.php:582</td><td>传承属性公式</td><td>new=(base+own*Lv/400+mate*Lv/800)*pearl</td></tr>
+<tr><td>usedProps.php:53</td><td>装备穿戴逻辑</td><td>检查 requires → 10槽位替换 → 更新 zb 字段</td></tr>
+<tr><td>kernel/task.v1.php</td><td><code>task::startTask()</code></td><td>接受任务, 更新 player.task/tasklog</td></tr>
+<tr><td>kernel/task.v1.php</td><td><code>task::completeTask()</code></td><td>检查 tasklog 条件 → 发奖励</td></tr>
+<tr><td>merge.php</td><td>merge操作</td><td>求婚/接受/离婚 (消耗2000水晶/24h冷却)</td></tr>
+</table>
+
+<div class="footer">KDJL 数据字典 v1.0 | 基于 PHP 319 源文件 + MySQL 117 表 Schema 逐字段分析 | 2026-05-22</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KDJL 后台管理 - 登录</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #001529 0%, #003a70 100%); display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .login-box { background: #fff; border-radius: 8px; padding: 40px; width: 360px; box-shadow: 0 8px 32px rgba(0,0,0,.3); }
+        .login-box h2 { text-align: center; color: #001529; margin-bottom: 24px; letter-spacing: 3px; }
+        .login-box input { width: 100%; padding: 10px 12px; border: 1px solid #d9d9d9; border-radius: 4px; font-size: 14px; margin-bottom: 16px; outline: none; }
+        .login-box input:focus { border-color: #1890ff; box-shadow: 0 0 0 2px rgba(24,144,255,.2); }
+        .login-box button { width: 100%; padding: 10px; background: #1890ff; color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; transition: .2s; }
+        .login-box button:hover { background: #40a9ff; }
+        .error { color: #ff4d4f; font-size: 13px; margin-bottom: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="login-box">
+    <h2>口袋精灵2 后台管理</h2>
+    <div th:if="${param.error}" class="error">用户名或密码错误</div>
+    <form method="post" action="/login">
+        <input type="text" name="username" placeholder="管理员账号" required autofocus>
+        <input type="password" name="password" placeholder="密码" required>
+        <button type="submit">登 录</button>
+    </form>
+</div>
+</body>
+</html>

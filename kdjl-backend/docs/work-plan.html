@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KDJL 迁移工作计划 — 任务分解与排期</title>
+<style>
+:root{--bg:#0d1117;--card:#161b22;--border:#30363d;--red:#f85149;--green:#3fb950;--yellow:#d2991d;--blue:#58a6ff;--text:#e6edf3;--muted:#8b949e;--accent:#1f6feb}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Microsoft YaHei',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.75;padding:20px;font-size:15px}
+.container{max-width:1300px;margin:0 auto}
+h1{font-size:1.7rem;text-align:center;margin-bottom:4px;color:var(--yellow)}
+h1 small{display:block;font-size:.82rem;color:var(--muted);font-weight:400;margin-top:2px}
+h2{font-size:1.2rem;border-bottom:1px solid var(--border);padding-bottom:6px;margin:28px 0 14px;color:var(--blue)}
+h3{font-size:1rem;margin:18px 0 8px;color:var(--yellow)}
+h4{font-size:.9rem;margin:10px 0 4px;color:#79c0ff}
+
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:16px 0}
+.summary-card{background:var(--card);border-radius:8px;padding:14px;text-align:center;border:1px solid var(--border)}
+.summary-card .num{font-size:1.8rem;font-weight:700}
+.summary-card .lbl{font-size:.75rem;color:var(--muted)}
+
+.phase{background:var(--card);border-radius:10px;padding:18px 22px;margin:18px 0}
+.phase.p0{border-left:4px solid var(--red)}
+.phase.p1{border-left:4px solid var(--yellow)}
+.phase.p2{border-left:4px solid var(--green)}
+.phase.p3{border-left:4px solid var(--muted)}
+.phase-title{font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.phase-meta{font-size:.8rem;color:var(--muted);margin-bottom:10px}
+
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:.85rem}
+th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--border)}
+th{background:var(--accent);font-weight:600;white-space:nowrap}
+tr:hover{background:rgba(255,255,255,0.02)}
+
+.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:.7rem;font-weight:700}
+.tag-be{background:var(--blue);color:#000}
+.tag-fe{background:var(--green);color:#000}
+.tag-both{background:var(--yellow);color:#000}
+.tag-p0{background:var(--red)}
+.tag-p1{background:var(--yellow);color:#000}
+.tag-p2{background:var(--green);color:#000}
+.tag-p3{background:var(--muted)}
+
+.dep{font-size:.78rem;color:var(--muted);margin-left:6px}
+.dep::before{content:"依赖: "}
+
+.note{background:rgba(210,153,29,0.1);border:1px solid rgba(210,153,29,0.3);border-radius:6px;padding:8px 14px;margin:8px 0;font-size:.83rem;color:var(--yellow)}
+
+.timeline{display:flex;gap:0;margin:16px 0;overflow-x:auto}
+.tl-phase{flex:1;min-width:100px;padding:10px;text-align:center;font-size:.8rem;border:1px solid var(--border)}
+.tl-phase.p0{background:rgba(248,81,73,0.15)}
+.tl-phase.p1{background:rgba(210,153,29,0.1)}
+.tl-phase.p2{background:rgba(63,185,80,0.1)}
+.tl-phase.now{background:rgba(31,111,235,0.2);font-weight:700}
+
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:.78rem;text-align:center}
+
+.bar-wrap{background:rgba(255,255,255,0.05);border-radius:4px;height:8px;overflow:hidden;margin-top:2px}
+.bar-fill{height:100%;border-radius:4px}
+.bar-done{background:var(--green)}
+.bar-prog{background:var(--yellow)}
+.bar-todo{background:rgba(255,255,255,0.05)}
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>KDJL 迁移工作计划 — 任务分解与排期<br><small>基于 PHP 原版 319 源文件 vs 新项目 23 API 的完整差异分析 | 2026-05-22</small></h1>
+
+<!-- ====== 总览 ====== -->
+<div class="summary-grid">
+  <div class="summary-card"><div class="num" style="color:var(--red)">4</div><div class="lbl">P0 核心 (必须)</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--yellow)">5</div><div class="lbl">P1 重要 (尽快)</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--green)">4</div><div class="lbl">P2 增强 (计划)</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--muted)">6</div><div class="lbl">P3 扩展 (远期)</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--blue)">19</div><div class="lbl">总任务项</div></div>
+  <div class="summary-card"><div class="num" style="color:var(--green)">~280h</div><div class="lbl">估算总工时</div></div>
+</div>
+
+<!-- ====== 时间线 ====== -->
+<h2>时间线概览</h2>
+<div class="timeline">
+  <div class="tl-phase now"><b>当前</b><br>20% MVP</div>
+  <div class="tl-phase p0"><b>第1-2周</b><br>P0 战斗核心<br>~80h</div>
+  <div class="tl-phase p1"><b>第3-5周</b><br>P1 养成+社交<br>~120h</div>
+  <div class="tl-phase p2"><b>第6-8周</b><br>P2 内容丰富<br>~56h</div>
+  <div class="tl-phase p3"><b>第9周+</b><br>P3 扩展<br>~24h+</div>
+</div>
+
+<!-- ====== P0 ====== -->
+<h2>P0 — 核心战斗体验 (必须修复)</h2>
+<div class="note">这部分是原版与新项目差异最大的地方。战斗从即时回合制变成批处理，完全改变了游戏体验。必须先修。</div>
+
+<!-- P0-1 -->
+<div class="phase p0">
+<div class="phase-title">P0-1. 战斗回合交互 — 即时回合制 <span class="tag tag-p0">P0</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 40h | 优先级: 最高 | 当前完成度: 5%</div>
+
+<h4>现状问题</h4>
+<p>当前 BattleService 一次性算完所有回合并返回结果，玩家只能被动看日志。原版是每回合选择技能→AJAX→冷却→下一回合。</p>
+
+<h4>后端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>1</td><td>战斗会话管理</td><td>6h</td><td>创建 BattleSession 存储在 Redis，包含: petHp/monsterHp/round/logs/state。替代 PHP $_SESSION['fight']</td></tr>
+<tr><td>2</td><td>单回合 API</td><td>6h</td><td><code>POST /api/battle/action</code> — 接受 {skillId} 或 {itemId}，执行单回合战斗，返回本回合结果</td></tr>
+<tr><td>3</td><td>回合状态机</td><td>4h</td><td>WAITING→PET_ACT→MONSTER_ACT→ROUND_END→检查胜负→WAITING 或 BATTLE_END</td></tr>
+<tr><td>4</td><td>操作冷却</td><td>2h</td><td>防加速: 2s 最小间隔 (fight_log 表) + Redis lastAction 检查</td></tr>
+<tr><td>5</td><td>初始化 API</td><td>2h</td><td><code>POST /api/battle/init</code> — 传入 petId + monsterId，创建 BattleSession，返回第一回合初始状态</td></tr>
+<tr><td>6</td><td>逃跑/结束 API</td><td>2h</td><td><code>POST /api/battle/flee</code> / <code>POST /api/battle/end</code></td></tr>
+</table>
+
+<h4>前端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>7</td><td>BattlePanel 重构</td><td>8h</td><td>替换批处理显示为回合交互: 技能列表按钮、HP实时更新、回合日志增量追加</td></tr>
+<tr><td>8</td><td>操作冷却 UI</td><td>2h</td><td>冷却倒计时显示，冷却中按钮灰色+倒计时数字</td></tr>
+<tr><td>9</td><td>战斗动画</td><td>4h</td><td>伤害数字飘动、HP 条动画过渡、暴击特效</td></tr>
+<tr><td>10</td><td>道具使用入口</td><td>2h</td><td>战斗中打开背包选择道具 (调用现有 bag/use API)</td></tr>
+<tr><td>11</td><td>捕捉按钮</td><td>2h</td><td>战斗中显示捕捉按钮，调用 pets/capture API</td></tr>
+</table>
+</div>
+
+<!-- P0-2 -->
+<div class="phase p0">
+<div class="phase-title">P0-2. 技能消耗 + 冷却系统 <span class="tag tag-p0">P0</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 16h | 优先级: 最高 | 当前完成度: 0%</div>
+
+<h4>后端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>1</td><td>技能 HP/MP 消耗</td><td>4h</td><td>skill.uhp/ump 字段解析，战斗中使用技能时扣除宠物 HP/MP，HP不够则拒绝使用</td></tr>
+<tr><td>2</td><td>技能冷却</td><td>3h</td><td>Redis 存储冷却状态 (key=skillId+uid, TTL=cool_time)，冷却中返回 "SKILLCOLD"</td></tr>
+<tr><td>3</td><td>冷却配置</td><td>1h</td><td>5 个冷却技能: 319→299s, 320→299s, 321→179s, 322→179s, 323→119s</td></tr>
+<tr><td>4</td><td>技能学习/升级改造</td><td>4h</td><td>当前用金币，改为: 学习需要技能书道具(userbag.pid==skillsys.pid)，升级需要升级道具(733/1666)，检查宠物等级条件</td></tr>
+</table>
+
+<h4>前端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>5</td><td>技能按钮禁用态</td><td>2h</td><td>HP/MP 不足时灰色+红字提示、冷却中显示倒计时秒数</td></tr>
+<tr><td>6</td><td>PetList 技能面板改造</td><td>2h</td><td>学习/升级显示所需道具名称 (替代金币标价)</td></tr>
+</table>
+</div>
+
+<!-- P0-3 -->
+<div class="phase p0">
+<div class="phase-title">P0-3. 装备 10 槽位 + 穿戴约束 <span class="tag tag-p0">P0</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 24h | 优先级: 最高 | 当前完成度: 15%</div>
+
+<h4>后端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>1</td><td>10 槽位装备引擎</td><td>6h</td><td>userbb.zb 字段格式 "pos:bagId,pos:bagId"。穿戴: 替换同位置旧装备→清除旧zbing。卸下: 移除位置→设置旧装备 zbing=0</td></tr>
+<tr><td>2</td><td>等级/五行约束</td><td>3h</td><td>解析 props.requires: "lv:10,wx:3" → 宠物等级≥10且五行=水。不满足→拒绝</td></tr>
+<tr><td>3</td><td>装备属性加成计算</td><td>3h</td><td>getzbAttrib() → ac/mc/hits/speed/miss/hp/mp/crit 8 属性加成，战斗时挂载</td></tr>
+<tr><td>4</td><td>装备分类商店 API</td><td>4h</td><td>按 postion 分类: /api/shop/equipment?position=0 (武器/衣服/头盔/鞋子/项链/戒指/护腕/腰带/特殊/翅膀)</td></tr>
+</table>
+
+<h4>前端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>5</td><td>EquipPanel 重写</td><td>6h</td><td>10 槽位可视化: 宠物模型+10个装备槽(对应position)，拖放或点击穿戴。显示当前装备图标+属性概要</td></tr>
+<tr><td>6</td><td>装备 Tooltip</td><td>2h</td><td>悬浮显示装备详情: 名称/属性加成/等级要求/五行要求/镶嵌孔</td></tr>
+</table>
+</div>
+
+<!-- P0-4 -->
+<div class="phase p0">
+<div class="phase-title">P0-4. 捕捉系统增强 <span class="tag tag-p0">P0</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 12h | 优先级: 最高 | 当前完成度: 30%</div>
+
+<h4>后端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>1</td><td>捕捉公式修正</td><td>3h</td><td>改为 <code>(catchv/100)*(1-hp/maxHp)+道具加成%</code> → rand 判定。战斗中捕捉支持</td></tr>
+<tr><td>2</td><td>3 种捕捉道具模式</td><td>3h</td><td>catch: 捕捉宠物(创建 userbb+skill)。get: 获取装备道具。getitems: 随机获取多道具</td></tr>
+<tr><td>3</td><td>捕捉公告</td><td>1h</td><td>effect[3]==2 → WebSocket 广播系统公告 "恭喜XX捕捉了YY"</td></tr>
+<tr><td>4</td><td>宠物携带上限</td><td>1h</td><td>最多 3 只 (牧场中的不计入)</td></tr>
+</table>
+
+<h4>前端任务</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>说明</th></tr>
+<tr><td>5</td><td>战斗中捕捉按钮</td><td>2h</td><td>BattlePanel 增加捕捉道具选择+捕捉动画 (精灵球摇动)</td></tr>
+<tr><td>6</td><td>捕捉结果展示</td><td>2h</td><td>成功: 宠物卡片弹出+公告。失败: 摇动后破裂动画</td></tr>
+</table>
+</div>
+
+<!-- ====== P1 ====== -->
+<h2>P1 — 养成系统 + 社交基础 (尽快实现)</h2>
+
+<!-- P1-1 -->
+<div class="phase p1">
+<div class="phase-title">P1-1. 任务系统 <span class="tag tag-p1">P1</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 48h | 优先级: 高 | 当前完成度: 0%</div>
+
+<h4>后端</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>TaskEngine 任务引擎 — startTask/completeTask/条件检查/奖励发放</td><td>12h</td></tr>
+<tr><td>2</td><td>12 种任务类型支持 — killmon/giveitem/see/lv/wx/props/itemrand/gonggao/givemoney/givejifen/giveww/giveml 等</td><td>10h</td></tr>
+<tr><td>3</td><td>任务进度追踪 — tasklog 字段解析 (see:npc1,killmon:1,getitem:5)</td><td>6h</td></tr>
+<tr><td>4</td><td>NPC 对话系统 — /api/npc/list + /api/npc/talk/{npcId} + /api/npc/accept/{taskId}</td><td>6h</td></tr>
+<tr><td>5</td><td>任务奖励发放 — saveGetProps/saveExps/金币/公告 复用现有 Service</td><td>4h</td></tr>
+</table>
+
+<h4>前端</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>6</td><td>TaskPanel 任务面板 — 任务列表+进度+可接任务</td><td>6h</td></tr>
+<tr><td>7</td><td>NPC 对话 UI — 对话框+NPC立绘+选项</td><td>4h</td></tr>
+</table>
+</div>
+
+<!-- P1-2 -->
+<div class="phase p1">
+<div class="phase-title">P1-2. 宠物传承(转生) <span class="tag tag-p1">P1</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 32h | 优先级: 高 | 当前完成度: 0%</div>
+
+<h4>后端</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>传承状态机 — muchang: 1→3(加入)→4(配对)→5(确认)→6(培育24h)→7(完成)</td><td>6h</td></tr>
+<tr><td>2</td><td>传承公式引擎 — <code>new=(base+own*Lv/400+mate*Lv/800)*pearl</code> 7 属性</td><td>6h</td></tr>
+<tr><td>3</td><td>传承珠 + 技能保留道具 — 道具 effect 解析 "chuanc:X" / "skills:X"</td><td>4h</td></tr>
+<tr><td>4</td><td>传承条件检查 — 神宠(wx=6) Lv≥90 czl≥60 无装备 24h冷却</td><td>3h</td></tr>
+<tr><td>5</td><td>立即完成 — 水晶消耗 = floor((86400-已过秒)/60)</td><td>1h</td></tr>
+</table>
+
+<h4>前端</h4>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>6</td><td>传承面板 — 宠物列表+对方搜索+配对状态+倒计时</td><td>8h</td></tr>
+<tr><td>7</td><td>传承结果展示 — 属性对比 (传承前 vs 传承后)</td><td>4h</td></tr>
+</table>
+</div>
+
+<!-- P1-3 -->
+<div class="phase p1">
+<div class="phase-title">P1-3. 公会/家族 <span class="tag tag-p1">P1</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 40h | 优先级: 高 | 当前完成度: 0%</div>
+
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>类型</th></tr>
+<tr><td>1</td><td>公会 CRUD — 创建(命名+检查)/加入/离开/解散/搜索</td><td>8h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>2</td><td>公会成员管理 — 职级(会长/长老/成员)/审批/踢人</td><td>6h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>3</td><td>公会升级 — 消耗水晶/元宝，提升等级上限+商店等级</td><td>4h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>4</td><td>公会商店 — /api/guild/shop (贡献购买)</td><td>4h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>5</td><td>公会战 — 匹配→选人→PvP战斗→积分</td><td>8h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>6</td><td>GuildPanel — 公会列表/信息/成员/操作</td><td>6h</td><td><span class="tag tag-fe">前端</span></td></tr>
+<tr><td>7</td><td>公会商店 UI</td><td>4h</td><td><span class="tag tag-fe">前端</span></td></tr>
+</table>
+</div>
+
+<!-- P1-4 -->
+<div class="phase p1">
+<div class="phase-title">P1-4. 背包增强 <span class="tag tag-p1">P1</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 20h | 优先级: 高 | 当前完成度: 25%</div>
+
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>类型</th></tr>
+<tr><td>1</td><td>16 种物品分类 — 辅助/增益/捕捉/收集/技能书/卡片/进化/合成/装备/精炼/宝箱/特殊/功能/宠物卵</td><td>4h</td><td><span class="tag tag-both">前后端</span></td></tr>
+<tr><td>2</td><td>批量出售 — 选中多个道具→一键出售→金币入账</td><td>3h</td><td><span class="tag tag-both">前后端</span></td></tr>
+<tr><td>3</td><td>仓库系统 — Base_Mod.php 对应，独立存储空间，存入/取出</td><td>6h</td><td><span class="tag tag-both">前后端</span></td></tr>
+<tr><td>4</td><td>背包容量检查 — maxbag 限制，购买/掉落时校验</td><td>2h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>5</td><td>物品锁定 — lockItem/unLockItem 防并发</td><td>3h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>6</td><td>道具进化/宝箱/卡片 — 扩展 useItem 支持更多道具类型</td><td>2h</td><td><span class="tag tag-be">后端</span></td></tr>
+</table>
+</div>
+
+<!-- P1-5 -->
+<div class="phase p1">
+<div class="phase-title">P1-5. 合成/结婚系统 <span class="tag tag-p1">P1</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 24h | 优先级: 高 | 当前完成度: 0%</div>
+
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th><th>类型</th></tr>
+<tr><td>1</td><td>婚姻状态机 — player_ext: merge/request_merge/request/send/nomergetime</td><td>6h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>2</td><td>求婚流程 — 选择 merge=1 道具→赠送→通知→对方接受/拒绝</td><td>6h</td><td><span class="tag tag-both">前后端</span></td></tr>
+<tr><td>3</td><td>离婚系统 — 2000水晶→24h冷却→自动退回→强制离婚</td><td>4h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>4</td><td>宠物配对培育 — muchang 状态管理 + 培育道具</td><td>4h</td><td><span class="tag tag-be">后端</span></td></tr>
+<tr><td>5</td><td>MergePanel — 伴侣信息/离婚操作/宠物配对/培育状态</td><td>4h</td><td><span class="tag tag-fe">前端</span></td></tr>
+</table>
+</div>
+
+<!-- ====== P2 ====== -->
+<h2>P2 — 内容丰富 (计划实现)</h2>
+
+<!-- P2-1 -->
+<div class="phase p2">
+<div class="phase-title">P2-1. 注册 & 新手引导 <span class="tag tag-p2">P2</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 16h</div>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>注册 API — 创建 player + 初始 userbb (6只初始宠物选1) + 新手道具入包</td><td>4h</td></tr>
+<tr><td>2</td><td>注册页 UI — 性别选择 + 6只宠物展示 + 昵称输入</td><td>4h</td></tr>
+<tr><td>3</td><td>新手引导 20 步 — new_guide_step 0→20: 首次战斗→首次捕捉→使用道具→学技能→进地图</td><td>8h</td></tr>
+</table>
+</div>
+
+<!-- P2-2 -->
+<div class="phase p2">
+<div class="phase-title">P2-2. 组队/副本 <span class="tag tag-p2">P2</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 48h</div>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>队伍管理 — 创建/加入/离开/踢人，team + team_members 表</td><td>8h</td></tr>
+<tr><td>2</td><td>副本系统 — 每日限制/进入条件/关卡进度/翻牌奖励(tarot)</td><td>12h</td></tr>
+<tr><td>3</td><td>组队战斗 — 轮流出战(isMyTurn)+掉落轮流分配+组队经验加成</td><td>12h</td></tr>
+<tr><td>4</td><td>副本翻牌 UI — 战斗后选牌→随机奖励</td><td>6h</td></tr>
+<tr><td>5</td><td>TeamPanel — 队伍列表/创建/管理/副本选择</td><td>6h</td></tr>
+<tr><td>6</td><td>组队聊天频道</td><td>4h</td></tr>
+</table>
+</div>
+
+<!-- P2-3 -->
+<div class="phase p2">
+<div class="phase-title">P2-3. 排行榜 <span class="tag tag-p2">P2</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 16h</div>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>排行计算 — 等级榜/财富榜/声望榜/宠物战力榜，Redis Sorted Set 缓存</td><td>6h</td></tr>
+<tr><td>2</td><td>排行 API — /api/rank/{type}?page=&limit= 分页查询</td><td>2h</td></tr>
+<tr><td>3</td><td>RankPanel — 分类Tab+排行列表+自己的排名高亮</td><td>4h</td></tr>
+<tr><td>4</td><td>成长排行榜 — 宠物战力/czl 排行</td><td>4h</td></tr>
+</table>
+</div>
+
+<!-- P2-4 -->
+<div class="phase p2">
+<div class="phase-title">P2-4. 拍卖行 <span class="tag tag-p2">P2</span> <span class="tag tag-both">前后端</span></div>
+<div class="phase-meta">工时: 24h</div>
+<table>
+<tr><th>#</th><th>任务</th><th>工时</th></tr>
+<tr><td>1</td><td>挂售 — 选择背包道具→设价格(金币/水晶)→上架</td><td>6h</td></tr>
+<tr><td>2</td><td>竞拍 — 出价/自动加价/拍卖结束→最高者得</td><td>8h</td></tr>
+<tr><td>3</td><td>AuctionPanel — 商品列表/搜索/出价/我的拍卖</td><td>6h</td></tr>
+<tr><td>4</td><td>拍卖通知 — 被超过/拍卖成功 WebSocket 通知</td><td>4h</td></tr>
+</table>
+</div>
+
+<!-- ====== P3 ====== -->
+<h2>P3 — 扩展内容 (远期规划)</h2>
+
+<div class="phase p3">
+<div class="phase-title">P3-1. 战场 PvP <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 80h | 红蓝阵营 + 军功积分 + 战场道具/宝箱 + 按成长率分组 + 定时开放 (周五20-21点)</div>
+</div>
+
+<div class="phase p3">
+<div class="phase-title">P3-2. 要塞系统 <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 40h | 占领/掠夺 + 卡牌对战 + 要塞商店</div>
+</div>
+
+<div class="phase p3">
+<div class="phase-title">P3-3. 卡片系统 <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 24h | 抽卡收集 + 卡牌对战 + 卡组配置</div>
+</div>
+
+<div class="phase p3">
+<div class="phase-title">P3-4. 活动系统 <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 32h | 限时活动 + 奥运主题活动 + 幸运转盘 + 塔罗牌 + 在线时长奖励</div>
+</div>
+
+<div class="phase p3">
+<div class="phase-title">P3-5. 安全/反外挂 <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 24h | 操作频率检测 + 输入验证 + 异常行为识别 + 自动封号</div>
+</div>
+
+<div class="phase p3">
+<div class="phase-title">P3-6. GM 后台 <span class="tag tag-p3">P3</span></div>
+<div class="phase-meta">工时: 24h | 玩家搜索/道具发放/宠物修改/数据查询/公告管理</div>
+</div>
+
+
+<!-- ====== 依赖关系 ====== -->
+<h2>依赖关系图</h2>
+
+<div class="card" style="padding:16px">
+<pre style="background:transparent;border:none;padding:0;overflow-x:auto;font-size:.82rem">
+P0-1 战斗回合交互 ─────────────────────────┐
+P0-2 技能消耗+冷却 ──┤                      ├── P1-2 传承(转生)
+P0-3 装备10槽位  ──┤                      ├── P1-3 公会/家族 ── P3-1 战场PvP
+P0-4 捕捉增强    ──┘                      ├── P1-5 合成/结婚
+                                           │
+P1-1 任务系统    ─────────────────────────┤
+P1-4 背包增强    ─────────────────────────┤
+                                           │
+P2-1 注册+引导   ─────────────────────────┼── P2-2 组队/副本
+P2-3 排行榜      ─────────────────────────┤
+                                           │
+P2-4 拍卖行      ─────────────────────────┘
+
+P3-2 要塞 / P3-3 卡片 / P3-4 活动 / P3-5 安全 / P3-6 GM ← 可在 P2 完成后并行开发
+</pre>
+</div>
+
+<!-- ====== 累计进度 ====== -->
+<h2>累计进度预估</h2>
+
+<div class="card">
+<table>
+<tr><th>阶段完成</th><th>累计 API</th><th>累计系统覆盖</th><th>游戏可玩度</th></tr>
+<tr><td>当前 MVP</td><td>23 (23%)</td><td>9/41 (22%)</td><td>核心循环可跑</td></tr>
+<tr><td>P0 完成后</td><td>~35 (35%)</td><td>~13/41 (32%)</td><td>战斗体验对齐原版</td></tr>
+<tr><td>P1 完成后</td><td>~55 (55%)</td><td>~18/41 (44%)</td><td>养成+社交体系完整</td></tr>
+<tr><td>P2 完成后</td><td>~70 (70%)</td><td>~22/41 (54%)</td><td>内容丰富度接近原版</td></tr>
+<tr><td>P3 完成后</td><td>~100 (100%)</td><td>~28/41 (68%)</td><td>高端内容全覆盖</td></tr>
+</table>
+</div>
+
+<div class="footer">KDJL 迁移工作计划 v1.0 | 基于 PHP 319 源文件深度分析 | 生成: 2026-05-22</div>
+
+</div>
+</body>
+</html>
