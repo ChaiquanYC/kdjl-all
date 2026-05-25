@@ -1,103 +1,162 @@
-.container {
-  padding: 12px;
+/* ---- Main box: 788x319 matches PHP .box ---- */
+.box {
+  width: 788px;
+  height: 319px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ---- Left panel: avatar + name — PHP .self_l ---- */
+.selfL {
+  position: relative;
+  width: 290px;
+  height: 319px;
+  float: left;
+  background: url('/images/ui/index/myinfobgleft.jpg') no-repeat;
+}
+
+.selfName {
+  padding: 23px 0 0 32px;
+}
+
+.selfName strong {
+  color: #4a3520;
   font-size: 13px;
-  height: 100%;
+}
+
+.selfRole {
+  padding: 8px 25px 0 0;
+  text-align: center;
+  height: 280px;
+}
+
+.selfRole img {
+  max-height: 246px;
+}
+
+/* ---- Right panel: tabs + content — PHP .self_r ---- */
+.selfR {
+  position: relative;
+  width: 498px;
+  height: 319px;
+  float: left;
+  background: url('/images/ui/index/myinfobgright.jpg') no-repeat;
+}
+
+/* ---- Tab bar ---- */
+.selftab {
+  margin: 0 0 0 27px;
+  height: 30px;
+  list-style: none;
+  padding: 0;
+}
+
+.selftab li {
+  float: left;
+  width: 89px;
+  height: 30px;
+  cursor: pointer;
+  text-align: center;
+  line-height: 30px;
+}
+
+.tabLabel {
+  font-size: 13px;
+  color: #693600;
+  cursor: pointer;
+}
+
+.tabActive {
+  font-size: 13px;
+  color: #c0a060;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.selftab li.on {
+  border-bottom: 2px solid #c0a060;
+}
+
+/* ---- Tab content — PHP .self_cont ---- */
+.selfCont {
+  margin-top: 9px;
+}
+
+/* ---- Attributes tab — PHP .mi_box ---- */
+.miBox {
+  width: 450px;
+  height: 260px;
+  padding-left: 20px;
+}
+
+.top {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.top li {
+  line-height: 22px;
+  color: #693600;
+  width: 225px;
+  float: left;
+  font-size: 12px;
+}
+
+.bot {
+  list-style: none;
+  margin: 0;
+  padding-top: 10px;
+  clear: both;
+}
+
+.bot li {
+  line-height: 22px;
+  color: #693600;
+  width: 470px;
+  font-size: 12px;
+}
+
+.bot li.v {
+  color: #ff3c00;
+}
+
+/* ---- Friends tab — PHP .mf_box ---- */
+.mfBox {
+  background: url('/images/ui/index/ms_firend_box.jpg') no-repeat;
+  width: 225px;
+  height: 258px;
+  padding: 1px;
+  margin: 5px 0 0 15px;
+  float: left;
+}
+
+.mfBox h2 {
+  line-height: 26px;
+  padding: 1px 0 0 6px;
+  font-size: 13px;
+  color: #4a3520;
+  margin: 0;
+}
+
+.mfBoxCont {
+  line-height: 22px;
+  height: 173px;
+  width: 212px;
+  padding: 1px 0 0 10px;
+  color: #666666;
+  overflow-x: hidden;
   overflow-y: auto;
 }
 
-.header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #c0a060;
-}
-
-.avatar {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 2px solid #c0a060;
-  flex-shrink: 0;
-}
-
-.avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.basic {
-  flex: 1;
-}
-
-.nickname {
-  font-size: 16px;
-  font-weight: bold;
+.friendItem {
+  display: block;
+  cursor: pointer;
+  padding: 2px 4px;
   color: #4a3520;
 }
 
-.username {
-  font-size: 12px;
-  color: #888;
-  margin-top: 2px;
-}
-
-.vip {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 8px;
-  background: linear-gradient(135deg, #ffd700, #ff8c00);
-  color: #fff;
-  font-size: 11px;
-  font-weight: bold;
-  border-radius: 3px;
-}
-
-.stats {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stats h3 {
-  font-size: 13px;
+.friendItem:hover {
   color: #c0a060;
-  margin: 10px 0 4px 0;
-  padding-bottom: 3px;
-  border-bottom: 1px solid #e8dcc8;
-}
-
-.stats h3:first-child {
-  margin-top: 0;
-}
-
-.row {
-  display: flex;
-  justify-content: space-between;
-  padding: 3px 6px;
-  border-bottom: 1px solid #f0ede4;
-}
-
-.label {
-  color: #666;
-}
-
-.value {
-  color: #4a3520;
-  font-weight: 500;
-}
-
-.expBuff {
-  margin-top: 6px;
-  padding: 4px 8px;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-radius: 4px;
-  text-align: center;
-  color: #856404;
-  font-size: 12px;
-  font-weight: bold;
+  text-decoration: underline;
 }
