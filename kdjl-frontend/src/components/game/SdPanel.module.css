@@ -1,0 +1,60 @@
+.container { width: 788px; height: 319px; background: #f2ebc5; color: #B06A01; font-size: 12px; position: relative; }
+.left { width: 138px; height: 319px; float: left; background: url('/new_images/ui/sd01.jpg') no-repeat; }
+.right { width: 650px; height: 319px; float: left; background: url('/new_images/ui/cangku02.jpg') no-repeat; position: relative; }
+
+.tabs { width: 640px; height: 29px; list-style: none; padding: 0; margin: 0; }
+.tabs li { float: left; height: 29px; cursor: pointer; }
+.tabs li a { width: 90px; display: block; height: 29px; background: url('/images/sd03.jpg') no-repeat; }
+.tab1 { background-position: 0 0 !important; }
+.tab2 { background-position: -90px 0 !important; }
+.tab3 { background-position: -179px 0 !important; }
+.tab4 { background-position: -268px 0 !important; }
+.tab5 { background-position: -357px 0 !important; }
+.tabs li.on a { background-position-y: -29px; }
+
+.tabContent { clear: both; height: 290px; }
+
+.sdL { width: 360px; height: 281px; float: left; background: url('/new_images/ui/sd03.jpg') no-repeat; }
+.sdL p { color: #333; line-height: 18px; padding: 50px 90px 20px 20px; }
+.petRow { width: 320px; margin: 0 auto; display: flex; gap: 10px; }
+.petItem { width: 67px; height: 84px; cursor: pointer; opacity: 0.5; display: flex; align-items: center; justify-content: center; }
+.petItem img { max-width: 67px; max-height: 84px; }
+.petSel { opacity: 1; }
+.sdR { height: 281px; float: left; width: 290px; }
+.step { height: 140px; width: 290px; position: relative; }
+.step p { color: #bf7d1a; line-height: 20px; padding-top: 20px; position: relative; }
+.step p img { position: absolute; right: 22px; top: 23px; }
+
+.composeL { width: 300px; height: 281px; float: left; padding-left: 20px; }
+.composePets { width: 263px; height: 212px; background: url('/new_images/ui/sd06.jpg') no-repeat; float: left; margin: 2px 0 0 0; position: relative; }
+.composeSlot { width: 71px; height: 107px; margin: 20px 0 0 30px; float: left; display: flex; align-items: center; justify-content: center; }
+.composeSlot:last-child { float: right; margin: 20px 30px 0 0; }
+.composeSlot img { max-width: 71px; max-height: 107px; }
+.composeSelects { width: 263px; float: left; padding-top: 5px; }
+.composeSelects select { margin-top: 3px; }
+.composeCost { text-align: center; padding: 5px 0; }
+.composeR { width: 300px; height: 261px; float: left; line-height: 22px; color: #630; padding: 20px 20px 0 0; }
+.composeR select { margin: 2px 0; }
+
+.ssBg { width: 650px; height: 290px; float: left; background: url('/images/sdbg01.jpg') no-repeat; }
+.ssL { width: 300px; height: 281px; float: left; }
+.ssL .petRow { margin-top: 55px; }
+.ssInfo { width: 210px; float: left; margin: 20px 0 0 35px; color: #653E17; line-height: 20px; font-size: 12px; }
+.ssInfo table { width: 210px; }
+.ssR { height: 281px; float: left; width: 330px; }
+.ssSection { width: 330px; float: left; margin-top: 35px; color: #653E17; line-height: 20px; font-size: 12px; }
+.ssSection table { width: 330px; }
+.ssSection td { height: 25px; }
+
+.ssBg2 { width: 650px; height: 290px; float: left; background: url('/images/sdbg02.jpg') no-repeat; }
+.ssBg2 .ssL .petRow { margin-top: 55px; }
+
+.btn { background: url('/images/bnt.gif') no-repeat; width: 79px; height: 24px; cursor: pointer; border: 0 none; margin: 0 5px; font-size: 12px; color: #B06A01; }
+.btn:disabled { opacity: 0.6; cursor: default; }
+.btnLg { width: 106px; height: 70px; cursor: pointer; border: 0 none; background: #cdb13b; color: #653E17; font-size: 12px; }
+.btnLg:disabled { opacity: 0.6; cursor: default; }
+.btnSm { width: 79px; height: 24px; cursor: pointer; border: 0 none; background: #cdb13b; color: #653E17; font-size: 12px; }
+.btnSm:disabled { opacity: 0.6; cursor: default; }
+
+.backBtn { position: absolute; left: 89px; top: 281px; width: 39px; height: 17px; background: url('/new_images/ui/cangku04.jpg') no-repeat; cursor: pointer; z-index: 1; }
+.backBtn label { display: block; width: 100%; height: 100%; cursor: pointer; }

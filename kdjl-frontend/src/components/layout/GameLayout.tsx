@@ -26,6 +26,7 @@ import RanchPanel from '@/components/game/RanchPanel';
 import FriendPanel from '@/components/game/FriendPanel';
 import PvpPanel from '@/components/game/PvpPanel';
 import ZhanBuPanel from '@/components/game/ZhanBuPanel';
+import SdPanel from '@/components/game/SdPanel';
 import OverlayPanel from './OverlayPanel';
 import styles from './GameLayout.module.css';
 
@@ -243,6 +244,8 @@ export default function GameLayout() {
                 <PvpPanel/>
               ) : gameView==='zhanbu' ? (
                 <ZhanBuPanel/>
+              ) : gameView==='sd' ? (
+                <SdPanel/>
               ) : gameView==='auction' ? (
                 <AuctionPanel/>
               ) : gameView==='smshop' ? (

@@ -24,11 +24,10 @@ const BUILDINGS: Building[] = [
   { id: 'slei',   label: '扫雷',   panel: null, left: 560, top: 260, width: 50, height: 30, page: 1, imgIcon: '/images/city/slei.png' },
   { id: 'mtlun',  label: '摩天轮', panel: null, left: 690, top: 260, width: 55, height: 30, page: 1, imgIcon: '/images/city/mtlun.png' },
   // Page 2
-  { id: 'cwsd',    label: '宠物商店', panel: 'shop',     left: 10,  top: 150, width: 70,  height: 30,  page: 2 },
-  { id: 'jzsd',    label: '家族商店', panel: 'guild',    left: 430, top: 145, width: 70,  height: 30,  page: 2 },
-  { id: 'mfwu',    label: '魔法屋',   panel: 'zhanbu',  left: 180, top: 100, width: 50,  height: 30,  page: 2 },
-  { id: 'mkzhi',   label: '卡牌',     panel: null,       left: 630, top: 215, width: 50,  height: 30,  page: 2 },
-  { id: 'qrdao',   label: '情人岛',   panel: 'marry',    left: 600, top: 40,  width: 70,  height: 30,  page: 2 },
+  { id: 'cwsd',    label: '宠物神殿', panel: 'sd',       left: 10,  top: 150, width: 70,  height: 30,  page: 2, imgIcon: '/images/city/cwsdian.png' },
+  { id: 'jzsd',    label: '家族商店', panel: 'guild',    left: 430, top: 145, width: 70,  height: 30,  page: 2, imgIcon: '/images/city/jzsdian.png' },
+  { id: 'mkzhi',   label: '卡牌',     panel: null,       left: 630, top: 215, width: 50,  height: 30,  page: 2, imgIcon: '/images/city/mkzhi.png' },
+  { id: 'qrdao',   label: '情人岛',   panel: 'marry',    left: 600, top: 40,  width: 70,  height: 30,  page: 2, imgIcon: '/images/city/qrdao.png' },
 ];
 
 export default function CityPanel() {
@@ -39,7 +38,7 @@ export default function CityPanel() {
   const handleBuildingClick = (b: Building) => {
     if (b.panel) {
       // Game views use setGameView, overlays use setActivePanel
-      if (b.panel === 'depot' || b.panel === 'shop' || b.panel === 'zb' || b.panel === 'pets' || b.panel === 'smshop' || b.panel === 'auction' || b.panel === 'ranch' || b.panel === 'zhanbu') {
+      if (b.panel === 'depot' || b.panel === 'shop' || b.panel === 'zb' || b.panel === 'pets' || b.panel === 'smshop' || b.panel === 'auction' || b.panel === 'ranch' || b.panel === 'zhanbu' || b.panel === 'sd') {
         setGameView(b.panel);
       } else {
         setActivePanel(b.panel);
