@@ -57,6 +57,9 @@ public class PlayerService {
         m.put("yb", p.getYb() != null ? p.getYb() : 0);
         m.put("score", p.getScore() != null ? p.getScore() : 0);
         m.put("prestige", p.getPrestige() != null ? p.getPrestige() : 0);
+        m.put("jPrestige", p.getJPrestige() != null ? p.getJPrestige() : 0);
+        m.put("activeScore", p.getActiveScore() != null ? p.getActiveScore() : 0);
+        m.put("vipLast", p.getVipLast() != null ? p.getVipLast() : 0);
         m.put("inMap", p.getInMap() != null ? p.getInMap() : 0);
         m.put("openMap", p.getOpenMap());
         m.put("fightTop", p.getFightTop() != null ? p.getFightTop() : 0);
@@ -71,6 +74,16 @@ public class PlayerService {
         m.put("maxMc", p.getMaxMc() != null ? p.getMaxMc() : 10);
         m.put("headImg", p.getHeadImg() != null ? p.getHeadImg() : 0);
         m.put("dblExpFlag", p.getDblExpFlag() != null ? p.getDblExpFlag() : 0);
+        m.put("dblsTime", p.getDblsTime());
+        m.put("maxDblExpTime", p.getMaxDblExpTime());
+        m.put("sysAutoSum", p.getSysAutoSum() != null ? p.getSysAutoSum() : 0);
+        m.put("maxAutoFitSum", p.getMaxAutoFitSum() != null ? p.getMaxAutoFitSum() : 0);
+        m.put("friendList", p.getFriendList());
+        m.put("teamAutoTimes", ext != null && ext.getTeamAutoTimes() != null ? ext.getTeamAutoTimes() : 0);
+        m.put("tiaozhan", ext != null && ext.getTiaozhan() != null ? ext.getTiaozhan() : 1);
+        // Pet count
+        long petCount = userPetRepo.findByPlayerId(playerId.longValue()).size();
+        m.put("petCount", (int) petCount);
         return m;
     }
 

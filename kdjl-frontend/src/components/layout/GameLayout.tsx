@@ -212,7 +212,7 @@ export default function GameLayout() {
               <a className={`${styles.sideBtn} ${gameView==='pets'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('pets')}}>
                 <img src="/images/ui/menu/m_pet.png" alt="宠物" />
               </a>
-              <a className={`${styles.sideBtn} ${activePanel==='profile'?styles.sideBtnActive:''}`} onClick={()=>setActivePanel(activePanel==='profile' ? null : 'profile')}>
+              <a className={`${styles.sideBtn} ${gameView==='profile'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('profile')}}>
                 <img src="/images/ui/menu/m_info.png" alt="个人信息" />
               </a>
             </div>
@@ -263,6 +263,8 @@ export default function GameLayout() {
                 <MapPanel onChallenge={handleChallenge}/>
               ) : gameView==='pets' ? (
                 <PetList/>
+              ) : gameView==='profile' ? (
+                <PlayerInfoPanel/>
               ) : (
                 <div className={styles.welcomeBox}>
                   <div className={styles.welcomeLeft}>
@@ -304,7 +306,6 @@ export default function GameLayout() {
             {activePanel==='marry' && <OverlayPanel title="婚姻" width={420} height={380} defaultLeft={200} defaultTop={20} onClose={()=>setActivePanel(null)}><MarryPanel/></OverlayPanel>}
             {activePanel==='friend' && <OverlayPanel title="好友" width={420} height={380} defaultLeft={200} defaultTop={20} onClose={()=>setActivePanel(null)}><FriendPanel/></OverlayPanel>}
             {activePanel==='gm' && <OverlayPanel title="GM工具" width={500} height={420} defaultLeft={150} defaultTop={10} onClose={()=>setActivePanel(null)}><GmPanel/></OverlayPanel>}
-            {activePanel==='profile' && <OverlayPanel title="个人信息" width={350} height={400} defaultLeft={220} defaultTop={10} onClose={()=>setActivePanel(null)}><PlayerInfoPanel/></OverlayPanel>}
           </div>
         </div>
 

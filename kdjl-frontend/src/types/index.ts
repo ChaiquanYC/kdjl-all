@@ -16,6 +16,9 @@ export interface Player {
   yb: number;
   score: number;
   prestige: number;
+  jPrestige?: number;
+  activeScore?: number;
+  vipLast?: number;
   sj: number;
   inMap: number;
   openMap: string;
@@ -24,12 +27,19 @@ export interface Player {
   sex: string;
   mbid: number;
   fightbb: number;
-  sj: number;
   merge: number;
   onlineTime: number;
   maxMc: number;
   headImg: number;
   dblExpFlag?: number;
+  dblsTime?: number;
+  maxDblExpTime?: number;
+  sysAutoSum?: number;
+  maxAutoFitSum?: number;
+  friendList?: string;
+  teamAutoTimes?: number;
+  tiaozhan?: number;
+  petCount?: number;
   newGuideStep: number;
 }
 

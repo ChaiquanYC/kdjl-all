@@ -70,6 +70,9 @@ public class PlayerExt {
     @Column(name = "team_auto_times")
     private Integer teamAutoTimes;
 
+    @Column(name = "tiaozhan")
+    private Integer tiaozhan;
+
     @Column(name = "new_guide_step")
     private Integer newGuideStep;
 
@@ -124,6 +127,8 @@ public class PlayerExt {
     public String getWelfareTime() { return welfareTime; }
     public Integer getGuildRequest() { return guildRequest; }
     public Integer getTeamAutoTimes() { return teamAutoTimes; }
+    public Integer getTiaozhan() { return tiaozhan; }
+    public void setTiaozhan(Integer tiaozhan) { this.tiaozhan = tiaozhan; }
     public Integer getNewGuideStep() { return newGuideStep; }
     public String getConsumptionDay() { return consumptionDay; }
     public String getRegAddStr() { return regAddStr; }
