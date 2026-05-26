@@ -86,4 +86,13 @@ public class BagController {
         int count = body.get("count") != null ? Integer.parseInt(body.get("count").toString()) : 1;
         return ApiResponse.success(bagService.sellItem(uid, id, count));
     }
+
+    @PostMapping("/drop/{id}")
+    public ApiResponse<Map<String, Object>> dropItem(
+            Authentication auth,
+            @PathVariable Long id) {
+        Long uid = (Long) auth.getPrincipal();
+        bagService.dropItem(uid, id);
+        return ApiResponse.success(Map.of("dropped", true));
+    }
 }

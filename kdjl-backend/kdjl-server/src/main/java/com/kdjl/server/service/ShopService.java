@@ -35,14 +35,15 @@ public class ShopService {
                 if (p.getId() == null || p.getId() <= 0) return false;
                 Integer buy = p.getBuy(); Integer yb = p.getYb();
                 Integer prestige = p.getPrestige(); Integer sj = p.getSj();
-                Integer varyname = p.getVaryname();
+                Integer varyname = p.getVaryname(); Long stime = p.getStime();
                 return switch (shopType != null ? shopType : "props") {
                     case "equip" -> buy != null && buy > 0 && (yb == null || yb == 0) && (varyname != null && varyname == 9);
                     case "prestige" -> prestige != null && prestige > 0 && (varyname == null || varyname != 9);
                     case "zprestige" -> prestige != null && prestige > 0 && (varyname != null && varyname == 9);
                     case "yb" -> yb != null && yb > 0;
                     case "sj" -> sj != null && sj > 0;
-                    case "vip" -> false; // VIP field not in Props entity, skip for now
+                    case "vip" -> false;
+                    case "smshop" -> stime != null && stime > 0;
                     default -> buy != null && buy > 0 && (yb == null || yb == 0) && (varyname == null || varyname != 9); // props
                 };
             })
@@ -62,6 +63,10 @@ public class ShopService {
                 m.put("postion", p.getPostion());
                 m.put("requires", p.getRequires());
                 m.put("propsColor", p.getPropscolor());
+                m.put("pluseffect", p.getPluseffect());
+                m.put("plusflag", p.getPlusflag());
+                m.put("usages", p.getUsages());
+                m.put("sell", p.getSell());
                 int cat = p.getVaryname() != null ? p.getVaryname() : 0;
                 m.put("category", BagService.CATEGORIES.getOrDefault(cat, "其他" + cat));
                 return m;
@@ -115,7 +120,8 @@ public class ShopService {
 
         // Add to bag
         List<UserBag> existingItems = bagRepo.findByPlayerId(playerId).stream()
-            .filter(b -> b.getPropId() != null && b.getPropId().longValue() == propsId.longValue())
+            .filter(b -> b.getPropId() != null && b.getPropId().longValue() == propsId.longValue()
+                && (b.getVary() == null || b.getVary() != 2))
             .collect(Collectors.toList());
 
         UserBag bagItem;

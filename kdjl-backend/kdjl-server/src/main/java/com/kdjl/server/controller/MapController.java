@@ -90,7 +90,7 @@ public class MapController {
         if ("needww".equals(needType)) {
             // PHP: prestige deduction
             int currentPrestige = player.getPrestige() != null ? player.getPrestige() : 0;
-            if (currentPrestige < needValue) return ApiResponse.error("威望不足！需要 " + needValue + " 威望");
+            if (currentPrestige < needValue) return ApiResponse.error("您的当前威望不够！");
             player.setPrestige(currentPrestige - needValue);
         } else if ("needitem".equals(needType) || "needtime".equals(needType)) {
             // PHP: consume item from userbag
@@ -102,7 +102,7 @@ public class MapController {
                     break;
                 }
             }
-            if (target == null) return ApiResponse.error("缺少解锁道具！需要道具ID: " + needValue);
+            if (target == null) return ApiResponse.error("您没有这个物品！");
             target.setSums(target.getSums() - 1);
             userBagRepo.save(target);
         } else {

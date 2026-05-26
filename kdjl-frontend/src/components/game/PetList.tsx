@@ -21,8 +21,18 @@ interface PetData {
 
 interface BagItem {
   id: number; name?: string; img?: string; propId: number;
-  effect?: string; requires?: string; sell?: number; buy?: number;
-  usages?: string; expire?: string; propsColor?: number;
+  effect?: string; effectDesc?: string; requires?: string; requiresDesc?: string;
+  pluseffect?: string; pluseffectDesc?: string; plusTimesEffect?: string; plusTimesEffectDesc?: string;
+  sell?: number; buy?: number; usages?: string; usagesDesc?: string;
+  expire?: string; propsColor?: number; holeInfo?: string; holeInfoDesc?: string;
+  series?: string; serieseffect?: string; serieseffectDesc?: string;
+  plusflag?: number; plusget?: string; plusnum?: number; postion?: number; varyname?: number;
+  prestige?: number; propslock?: number; cantrade?: number; zbing?: number; plusTimesLevel?: number;
+  seriesDisplay?: {
+    name: string; totalCount: number; equipCount: number;
+    pieces: { name: string; equipped: boolean }[];
+    stages: { stage: number; effect: string; active: boolean }[];
+  };
 }
 
 interface SkillInfo {
@@ -35,6 +45,9 @@ interface LearnableSkill {
 
 const ELE_RESIST = ['金抗','木抗','水抗','火抗','土抗'];
 const SLOT_LABELS = ['翅膀','头部','身体','脚部','武器','项链','戒指','翅膀','手镯','宝石','道具','特殊'];
+const PROPS_COLORS: Record<number, string> = {
+  1: '#FEFDFA', 2: '#0067CB', 3: '#9833DC', 4: '#14FD10', 5: '#FED625', 6: '#ED9037',
+};
 
 export default function PetList() {
   const [pets, setPets] = useState<PetData[]>([]);
@@ -156,12 +169,36 @@ export default function PetList() {
           {(() => {
             const item = bagItems.find(b => b.id === etip.itemId);
             if (!item) return <span>装备 #{etip.itemId}</span>;
+            const effText = item.effectDesc || item.effect;
+            const plusText = item.pluseffectDesc || item.pluseffect;
+            const enhanceVal = item.plusTimesEffectDesc || '';
+            const nameColor = PROPS_COLORS[item.propsColor ?? 1] ?? '#FEFDFA';
             return (
               <>
                 {item.img && <img src={`/images/props/${item.img}`} className={styles.tipImg} alt="" />}
-                <div className={styles.tipName}>{item.name}</div>
-                {item.effect && <div className={styles.tipRow}>效果：{item.effect}</div>}
-                {item.requires && <div className={styles.tipRow}>需要：{item.requires}</div>}
+                <div className={styles.tipName} style={{ color: nameColor }}>
+                  <b>{item.name}{item.plusTimesLevel ? ' (+' + item.plusTimesLevel + ')' : ''}</b>
+                </div>
+                {effText && (
+                  <div className={styles.tipRow}>
+                    效果：<span>{effText}</span>
+                    {enhanceVal && <span style={{ color: '#FF4444' }}> {enhanceVal}</span>}
+                  </div>
+                )}
+                {item.requiresDesc && <div className={styles.tipRow}>需求：{item.requiresDesc}</div>}
+                {plusText && <div className={styles.tipRow}>附加：{plusText}</div>}
+                {item.seriesDisplay && item.seriesDisplay.pieces.length > 0 ? (
+                  <>
+                    <div className={styles.tipRow}>
+                      <span style={{ color: '#FED625' }}>{item.seriesDisplay.name}({item.seriesDisplay.equipCount}/{item.seriesDisplay.totalCount})</span>
+                    </div>
+                    {item.seriesDisplay.stages.map((s) => (
+                      <div key={s.stage} className={styles.tipRow} style={{ paddingLeft: 12, color: s.active ? '#14FD10' : '#00AA00' }}>
+                        ({s.stage})套装：{s.effect}
+                      </div>
+                    ))}
+                  </>
+                ) : (item.series && <div className={styles.tipRow}>套装：{item.series}</div>)}
                 {item.usages && <div className={styles.tipRow}>{item.usages}</div>}
                 {item.expire && <div className={styles.tipRow}>{item.expire}</div>}
                 {item.sell != null && <div className={styles.tipRow}>售价：{item.sell}金</div>}

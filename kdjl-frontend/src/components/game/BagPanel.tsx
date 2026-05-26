@@ -17,6 +17,12 @@ interface BagItemRaw {
   postion?: number; holeInfo?: string; holeInfoDesc?: string;
   effectDesc?: string; requiresDesc?: string; usagesDesc?: string;
   serieseffectDesc?: string; pluseffectDesc?: string;
+  plusTimesEffect?: string; plusTimesEffectDesc?: string; plusTimesLevel?: number;
+  seriesDisplay?: {
+    name: string; totalCount: number; equipCount: number;
+    pieces: { name: string; equipped: boolean }[];
+    stages: { stage: number; effect: string; active: boolean }[];
+  };
 }
 
 const PROPS_COLORS: Record<number, string> = {
@@ -77,12 +83,17 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
     const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
     const requiresLines = requiresText ? requiresText.split('，') : [];
     const holeLines = item.holeInfoDesc ? item.holeInfoDesc.split('\n') : [];
+    const enhanceVal = item.plusTimesEffectDesc;
     body = (
       <>
         {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}装备{item.plusflag === 1 ? '(可强化)' : '(不可强化)'}</div>}
-        {renderRows([
-          { label: '效果', value: effectText, color: '#FEFDFA' },
-        ])}
+        {effectText && (
+          <div className={styles.tipRow}>
+            <span className={styles.tipLabel}>效果：</span>
+            <span style={{ color: '#FEFDFA' }}>{effectText}</span>
+            {enhanceVal && <span style={{ color: '#FF4444' }}> {enhanceVal}</span>}
+          </div>
+        )}
         {requiresLines.length > 0 && (
           <>
             <div className={styles.tipRow}><span className={styles.tipLabel}>需求：</span></div>
@@ -91,9 +102,6 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
             ))}
           </>
         )}
-        {renderRows([
-          { label: '强化', value: item.plusget },
-        ])}
         {item.plusnum != null && item.plusnum > 0 && (
           <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>
         )}
@@ -108,12 +116,24 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
         {renderRows([
           { label: '附加', value: plusText, color: '#9833DC' },
         ])}
-        {item.series && (
+        {item.seriesDisplay && item.seriesDisplay.pieces.length > 0 ? (
+          <>
+            <div className={styles.tipRow}>
+              <span className={styles.tipLabel}>套装：</span>
+              <span style={{ color: '#FED625' }}>{item.seriesDisplay.name}({item.seriesDisplay.equipCount}/{item.seriesDisplay.totalCount})</span>
+            </div>
+            {item.seriesDisplay.stages.map((s) => (
+              <div key={s.stage} className={styles.tipRow} style={{ paddingLeft: 12, color: s.active ? '#14FD10' : '#00AA00' }}>
+                ({s.stage})套装：{s.effect}
+              </div>
+            ))}
+          </>
+        ) : (item.series && (
           <div className={styles.tipRow}>
             <span className={styles.tipLabel}>套装：</span>
             <span style={{ color: '#FED625' }}>{item.series}{seriesText ? '（' + seriesText + '）' : ''}</span>
           </div>
-        )}
+        ))}
         {usageText && <div className={styles.tipUsage}>{usageText}</div>}
         {item.prestige != null && item.prestige > 0 && (
           <div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{item.prestige}</div>
@@ -165,7 +185,7 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
     <div className={styles.tooltip} style={{ left: x + 12, top: Math.max(0, y - 120) }}>
       <div className={styles.tipFrame}>
         <div className={styles.tipName} style={{ color: nameColor }}>
-          <b>{item.name}</b>
+          <b>{item.name}{item.plusTimesLevel ? ' (+' + item.plusTimesLevel + ')' : ''}</b>
         </div>
         <div className={styles.tipTrade}>{getTradeStatus(item)}</div>
         <div className={styles.tipExpire}>{item.expire ?? '永久'}</div>

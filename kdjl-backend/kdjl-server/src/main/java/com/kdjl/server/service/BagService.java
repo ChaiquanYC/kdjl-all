@@ -74,13 +74,17 @@ public class BagService {
                 m.put("propslock", p.getPropslock() != null ? p.getPropslock() : 0);
                 m.put("series", p.getSeries());
                 m.put("serieseffect", p.getSerieseffect());
-                m.put("serieseffectDesc", resolveEffect(p.getSerieseffect(), null));
+                m.put("serieseffectDesc", resolveAttribList(p.getSerieseffect()));
+                m.put("seriesDisplay", resolveSeriesDisplay(p, i, playerId));
                 m.put("pluseffect", p.getPluseffect());
                 m.put("pluseffectDesc", resolvePlusEffect(p.getPluseffect()));
                 m.put("plusflag", p.getPlusflag());
                 m.put("pluspid", p.getPlusPropId());
                 m.put("plusget", p.getPlusget());
                 m.put("plusnum", p.getPlusnum());
+                m.put("plusTimesEffect", i.getPlusTimesEffect());
+                m.put("plusTimesEffectDesc", resolvePlusTimesEffect(i.getPlusTimesEffect()));
+                m.put("plusTimesLevel", (i.getPlusTimesEffect() != null && !i.getPlusTimesEffect().isEmpty()) ? 1 : 0);
                 m.put("holeInfo", i.getHoleInfo());
                 m.put("holeInfoDesc", resolveHoleInfo(i.getHoleInfo()));
                 m.put("prestige", p.getPrestige());
@@ -1049,7 +1053,7 @@ public class BagService {
             .orElseThrow(() -> new IllegalArgumentException("装备不存在"));
         if (!bagItem.getPlayerId().equals(playerId))
             throw new IllegalArgumentException("不是你的装备");
-        if (bagItem.getVary() == null || bagItem.getVary() != 2)
+        if (bagItem.getVary() == null || (bagItem.getVary() != 1 && bagItem.getVary() != 2))
             throw new IllegalArgumentException("该物品不能穿戴");
 
         UserPet pet = userPetRepo.findById(petId)
@@ -1076,7 +1080,7 @@ public class BagService {
                         throw new IllegalArgumentException("宠物等级不足，需要" + reqLv + "级");
                 } else if ("wx".equals(kv[0]) && !kv[1].isEmpty()) {
                     int reqWx = Integer.parseInt(kv[1]);
-                    if (!Integer.valueOf(reqWx).equals(pet.getWx()))
+                    if (reqWx > 0 && !Integer.valueOf(reqWx).equals(pet.getWx()))
                         throw new IllegalArgumentException("宠物五行不匹配");
                 }
             }
@@ -1193,14 +1197,27 @@ public class BagService {
             UserBag item = bagRepo.findById(bagId).orElse(null);
             if (item == null || item.getPropId() == null) continue;
             Props props = propsRepo.findById(item.getPropId().longValue()).orElse(null);
-            if (props == null || props.getEffect() == null) continue;
-            for (String part : props.getEffect().split(",")) {
-                String[] kv = part.split(":");
-                if (kv.length < 2) continue;
-                try {
-                    long v = Long.parseLong(kv[1].trim());
-                    bonuses.merge(kv[0].trim(), v, Long::sum);
-                } catch (NumberFormatException ignored) {}
+            if (props == null) continue;
+            // Process both effect and pluseffect (flat stats only), deduplicating keys
+            String[] effectSources = {props.getEffect(), props.getPluseffect()};
+            Set<String> seenKeys = new HashSet<>();
+            for (String source : effectSources) {
+                if (source == null || source.isEmpty()) continue;
+                for (String part : source.split(",")) {
+                    String[] kv = part.split(":");
+                    if (kv.length < 2) continue;
+                    String key = kv[0].trim();
+                    if (key.endsWith("rate") || key.equals("dxsh") || key.equals("shjs")
+                        || key.equals("hitshp") || key.equals("hitsmp")
+                        || key.equals("sdmp") || key.equals("szmp")
+                        || key.equals("crit") || key.equals("addmoney"))
+                        continue;
+                    if (!seenKeys.add(key)) continue;
+                    try {
+                        long v = Long.parseLong(kv[1].trim());
+                        bonuses.merge(key, v, Long::sum);
+                    } catch (NumberFormatException ignored) {}
+                }
             }
         }
         return bonuses;
@@ -1264,32 +1281,77 @@ public class BagService {
         return result;
     }
 
+    /** Drop (discard) an item permanently. Unequips first if equipped. */
+    @Transactional
+    public void dropItem(Long playerId, Long bagItemId) {
+        UserBag item = bagRepo.findById(bagItemId)
+            .orElseThrow(() -> new IllegalArgumentException("物品不存在"));
+        if (!item.getPlayerId().equals(playerId))
+            throw new IllegalArgumentException("不是你的物品");
+
+        // If equipped, unequip first
+        if (item.getZbing() != null && item.getZbing() == 1) {
+            Long petId = item.getEquipPetId();
+            if (petId != null) {
+                UserPet pet = userPetRepo.findById(petId).orElse(null);
+                if (pet != null) {
+                    applyEquipmentStats(pet, item.getPropId(), false);
+                    Map<Integer, Long> zbMap = parseZb(pet.getZb());
+                    zbMap.values().removeIf(v -> v.equals(bagItemId));
+                    pet.setZb(zbMapToString(zbMap));
+                    userPetRepo.save(pet);
+                }
+            }
+        }
+        bagRepo.delete(item);
+    }
+
     private void applyEquipmentStats(UserPet pet, Long propId, boolean apply) {
         Props props = propsRepo.findById(propId).orElse(null);
-        if (props == null || props.getEffect() == null || props.getEffect().isEmpty()) return;
+        if (props == null) return;
         long sign = apply ? 1 : -1;
-        for (String part : props.getEffect().split(",")) {
-            String[] kv = part.split(":");
-            if (kv.length < 2) continue;
-            long value;
-            try { value = Long.parseLong(kv[1].trim()); } catch (NumberFormatException e) { continue; }
-            long delta = value * sign;
-            switch (kv[0].trim()) {
-                case "ac" -> pet.setAc((pet.getAc() != null ? pet.getAc() : 0) + delta);
-                case "mc" -> pet.setMc((pet.getMc() != null ? pet.getMc() : 0) + delta);
-                case "hp" -> {
-                    pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + delta);
-                    if (apply) pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
-                    else pet.setHp(Math.max(1, (pet.getHp() != null ? pet.getHp() : 0) + delta));
+        Set<String> seenKeys = new HashSet<>();
+
+        // Process both effect and pluseffect (flat stats only), deduplicating keys
+        String[] effectSources = {
+            props.getEffect(),
+            props.getPluseffect()
+        };
+
+        for (String source : effectSources) {
+            if (source == null || source.isEmpty()) continue;
+            for (String part : source.split(",")) {
+                String[] kv = part.split(":");
+                if (kv.length < 2) continue;
+                String key = kv[0].trim();
+                // Skip percentage/special effects — handled by EquipEffectService
+                if (key.endsWith("rate") || key.equals("dxsh") || key.equals("shjs")
+                    || key.equals("hitshp") || key.equals("hitsmp")
+                    || key.equals("sdmp") || key.equals("szmp")
+                    || key.equals("crit") || key.equals("addmoney"))
+                    continue;
+                // Dedup: effect wins over pluseffect for same key
+                if (!seenKeys.add(key)) continue;
+                long value;
+                try { value = Long.parseLong(kv[1].trim()); } catch (NumberFormatException e) { continue; }
+                long delta = value * sign;
+                switch (key) {
+                    case "ac" -> pet.setAc((pet.getAc() != null ? pet.getAc() : 0) + delta);
+                    case "mc" -> pet.setMc((pet.getMc() != null ? pet.getMc() : 0) + delta);
+                    case "hp" -> {
+                        pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + delta);
+                        if (apply) pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
+                        else pet.setHp(Math.max(1, (pet.getHp() != null ? pet.getHp() : 0) + delta));
+                    }
+                    case "mp" -> {
+                        pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + delta);
+                        if (apply) pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
+                        else pet.setMp(Math.max(0, (pet.getMp() != null ? pet.getMp() : 0) + delta));
+                    }
+                    case "speed" -> pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 0) + delta);
+                    case "hits" -> pet.setHits((pet.getHits() != null ? pet.getHits() : 0) + delta);
+                    case "miss" -> pet.setMiss((pet.getMiss() != null ? pet.getMiss() : 0) + delta);
                 }
-                case "mp" -> {
-                    pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + delta);
-                    if (apply) pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
-                    else pet.setMp(Math.max(0, (pet.getMp() != null ? pet.getMp() : 0) + delta));
-                }
-                case "speed" -> pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 0) + delta);
-                case "hits" -> pet.setHits((pet.getHits() != null ? pet.getHits() : 0) + delta);
-                case "miss" -> pet.setMiss((pet.getMiss() != null ? pet.getMiss() : 0) + delta);
             }
         }
         userPetRepo.save(pet);
@@ -1370,7 +1432,8 @@ public class BagService {
         }
         // 3) Percentage attribute (hprate, mprate, acrate, mcrate, hitsrate, missrate, speedrate)
         if (FJZB1.containsKey(key)) {
-            return "+" + value + "% " + FJZB1.get(key);
+            String cleanVal = value.replace("%", "");
+            return "+" + cleanVal + "% " + FJZB1.get(key);
         }
         // 4) Special effect (dxsh, shjs, shft)
         if (FJZB2.containsKey(key)) {
@@ -1530,6 +1593,15 @@ public class BagService {
         return resolveAttribList(pluseffect);
     }
 
+    /** Resolve plus_tms_eft from userbag for inline enhancement display. Format: "stat,value" e.g. "ac,50" → "+50" */
+    private String resolvePlusTimesEffect(String plusTimesEffect) {
+        if (plusTimesEffect == null || plusTimesEffect.isEmpty()) return "";
+        String[] kv = plusTimesEffect.split(",");
+        if (kv.length < 2) return "";
+        String val = kv[1].trim();
+        return "+" + val;
+    }
+
     private static final Map<String, String> HOLE_STAT_NAMES = Map.ofEntries(
         Map.entry("ac", "攻击"), Map.entry("mc", "魔攻"), Map.entry("hp", "生命"),
         Map.entry("mp", "魔法"), Map.entry("speed", "速度"), Map.entry("hits", "命中"),
@@ -1655,6 +1727,80 @@ public class BagService {
             }
         }
         return sb.toString();
+    }
+
+    /** Build structured series display data matching PHP getZbSeriesAttrib format. */
+    private Map<String, Object> resolveSeriesDisplay(Props p, UserBag bagItem, Long playerId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        String series = p.getSeries();
+        if (series == null || series.isEmpty()) return result;
+
+        String[] parts = series.split(":", 2);
+        if (parts.length < 2) return result;
+        String seriesName = parts[0];
+        String[] pieceIdStrs = parts[1].split("\\|");
+        int totalCount = pieceIdStrs.length;
+
+        result.put("name", seriesName);
+        result.put("totalCount", totalCount);
+
+        List<Long> pieceIds = new ArrayList<>();
+        for (String s : pieceIdStrs) {
+            try { pieceIds.add(Long.parseLong(s.trim())); } catch (NumberFormatException ignored) {}
+        }
+
+        // Count equipped pieces on the same pet
+        Long equipPetId = bagItem.getEquipPetId();
+        Set<Long> equippedPropIds = new HashSet<>();
+        int equipCount = 0;
+        if (equipPetId != null && equipPetId > 0 && !pieceIds.isEmpty()) {
+            List<UserBag> equipped = bagRepo.findByPlayerIdAndPropIdInAndEquipPetId(playerId, pieceIds, equipPetId);
+            for (UserBag ub : equipped) {
+                equippedPropIds.add(ub.getPropId());
+            }
+            equipCount = equipped.size();
+        }
+        result.put("equipCount", equipCount);
+
+        // Piece name list with equipped status
+        List<Map<String, Object>> pieces = new ArrayList<>();
+        for (Long propId : pieceIds) {
+            Map<String, Object> piece = new LinkedHashMap<>();
+            Props pieceProp = propsRepo.findById(propId).orElse(null);
+            piece.put("name", pieceProp != null ? pieceProp.getName() : ("#" + propId));
+            piece.put("equipped", equippedPropIds.contains(propId));
+            pieces.add(piece);
+        }
+        result.put("pieces", pieces);
+
+        // Stage effects with activation status
+        String serieseffect = p.getSerieseffect();
+        List<Map<String, Object>> stages = new ArrayList<>();
+        if (serieseffect != null && !serieseffect.isEmpty() && !"0".equals(serieseffect)) {
+            String[] effects = serieseffect.split(",");
+            int stage = 1;
+            for (String eff : effects) {
+                eff = eff.trim();
+                if (eff.isEmpty()) continue;
+                int ci = eff.indexOf(':');
+                if (ci < 0) continue;
+                String key = eff.substring(0, ci).trim();
+                String val = eff.substring(ci + 1).trim();
+                if (key.isEmpty() || val.isEmpty()) continue;
+                String resolved = resolveAttribKey(key, val);
+                if (!resolved.isEmpty()) {
+                    Map<String, Object> stageMap = new LinkedHashMap<>();
+                    stageMap.put("stage", stage);
+                    stageMap.put("effect", resolved);
+                    stageMap.put("active", stage <= equipCount);
+                    stages.add(stageMap);
+                }
+                stage++;
+            }
+        }
+        result.put("stages", stages);
+
+        return result;
     }
 
     private String resolveUsages(String usages) {

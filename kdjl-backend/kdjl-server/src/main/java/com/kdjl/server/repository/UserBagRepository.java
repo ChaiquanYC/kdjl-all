@@ -12,4 +12,6 @@ public interface UserBagRepository extends JpaRepository<UserBag, Long> {
     List<UserBag> findByPlayerIdAndVary(Long playerId, Integer vary);
     List<UserBag> findByPlayerIdAndPropIdIn(Integer playerId, List<Integer> propIds);
     List<UserBag> findByEquipPetId(Long equipPetId);
+    List<UserBag> findByPlayerIdAndEquipPetId(Long playerId, Long equipPetId);
+    List<UserBag> findByPlayerIdAndPropIdInAndEquipPetId(Long playerId, List<Long> propIds, Long equipPetId);
 }

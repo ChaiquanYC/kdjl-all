@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { systips } from '@/stores/systipsStore';
 import type { ApiResponse } from '@/types';
 import DungeonPanel from './DungeonPanel';
 import TowerPanel from './TowerPanel';
@@ -215,16 +216,16 @@ export default function MapPanel({ onChallenge }: Props) {
         const parts = needsStr.split(':');
         if (parts[0] === 'needww') {
           const detail = (parts[1] || '').split('|');
-          unlockMsg = `需要 ${detail[0] || '?'} 威望来解锁此地图`;
+          unlockMsg = `需要消耗 ${detail[0] || '?'} 威望来开启此地图`;
         } else if (parts[0] === 'needitem' || parts[0] === 'needtime') {
           const detail = (parts[1] || '').split('|');
-          unlockMsg = `需要消耗道具来解锁此地图（道具ID: ${detail[0] || '?'}）`;
+          unlockMsg = `需要消耗道具来开启此地图（道具ID: ${detail[0] || '?'}）`;
         }
       }
       if (!confirm(unlockMsg + '\n\n是否尝试解锁？')) return;
       apiPost<{unlocked:boolean}>('/map/unlock/' + mapId, {}).then((res) => {
         if (res.code === 0 && res.data?.unlocked) {
-          alert('地图解锁成功！');
+          systips('开启地图成功！');
           // Refresh map list to update unlock state
           apiGet<MapInfo[]>('/map/list').then((r) => {
             if (r.code === 0 && r.data) {
@@ -233,8 +234,8 @@ export default function MapPanel({ onChallenge }: Props) {
               if (refreshed?.unlocked) handleEnterMap(mapId);
             }
           });
-        } else alert(res.message || '解锁失败');
-      }).catch(() => alert('解锁请求失败'));
+        } else systips(res.message || '开启地图失败');
+      }).catch(() => systips('开启地图失败'));
       return;
     }
     setSelectedMap(map);

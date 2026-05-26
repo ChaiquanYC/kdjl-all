@@ -171,7 +171,9 @@ public class AdminService {
         if (prop == null) return Map.of("error", "道具不存在");
 
         UserBag existing = bagRepo.findByPlayerId(playerId.longValue()).stream()
-            .filter(b -> b.getPropId() != null && b.getPropId().equals(propId)).findFirst().orElse(null);
+            .filter(b -> b.getPropId() != null && b.getPropId().equals(propId)
+                && (b.getVary() == null || b.getVary() != 2))
+            .findFirst().orElse(null);
         if (existing != null) {
             existing.setSums((existing.getSums() != null ? existing.getSums() : 0) + count);
             bagRepo.save(existing);

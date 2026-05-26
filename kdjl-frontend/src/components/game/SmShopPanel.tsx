@@ -7,16 +7,139 @@ import styles from './SmShopPanel.module.css';
 interface ShopItem {
   id: number; name: string; buy: number; yb: number; sj?: number; prestige?: number;
   img?: string; varyname?: number; timelimit?: number; stime?: number;
+  effect?: string; requires?: string; propsColor?: number;
+  vary?: number; postion?: number; plusflag?: number; category?: string;
 }
 interface BagItem {
   id: number; propId: number; count: number; sell: number;
   name?: string; img?: string; varyname?: number;
+  effect?: string; effectDesc?: string; requires?: string; requiresDesc?: string;
+  propsColor?: number; vary?: number; usages?: string;
 }
 
 const SUB_CATS = [
   { label: '热卖', style: 1 }, { label: '进化合成', style: 2 },
   { label: '宠物相关', style: 3 }, { label: '装备相关', style: 4 },
 ];
+
+const PROPS_COLORS: Record<number, string> = {
+  1: '#FEFDFA', 2: '#0067CB', 3: '#9833DC', 4: '#14FD10', 5: '#FED625', 6: '#ED9037',
+};
+const SLOT_NAMES = ['翅膀','头部','身体','脚部','武器','项链','戒指','翅膀','手镯','宝石','道具','特殊'];
+
+const ATTR_KEYS: Record<string, string> = {
+  ac:'攻击', mc:'防御', hp:'生命', mp:'魔法', speed:'速度', hits:'命中', miss:'闪避',
+  addmoney:'获得金币', time:'时间', acrate:'攻击%', mcrate:'防御%', hprate:'生命%',
+  mprate:'魔法%', speedrate:'速度%', hitsrate:'命中%', missrate:'闪避%',
+  hitshp:'吸血%', hitsmp:'吸蓝%', dxsh:'多行伤害', shjs:'伤害减少', szmp:'数值魔法', sdmp:'速度魔法', crit:'暴击率',
+  srchp:'生命上限', srcmp:'魔法上限', addhp:'生命', addmp:'魔法',
+};
+
+function resolveEffect(effect?: string): string {
+  if (!effect) return '';
+  return effect.split('|').map(p => {
+    const [k, v] = p.split(',');
+    if (!k || !v) return '';
+    const label = ATTR_KEYS[k] || k;
+    if (k.endsWith('rate') || k === 'hitshp' || k === 'hitsmp' || k === 'crit' || k === 'dxsh')
+      return `+${v}% ${label}`;
+    return `+${v} ${label}`;
+  }).filter(Boolean).join(' ');
+}
+
+const WX_NAMES = ['所有','金','木','水','火','土','神','神圣'];
+
+function parseRequires(requires?: string) {
+  if (!requires) return null;
+  const parts = requires.split(',');
+  let lv: string | null = null;
+  let wx: string | null = null;
+  for (const p of parts) {
+    const [k, v] = p.split(':');
+    if (k === 'lv') lv = v;
+    else if (k === 'wx') wx = WX_NAMES[Number(v)] ?? v;
+  }
+  return { lv, wx };
+}
+
+const EP_BASE = '#FEFDFA';
+const EP_PLUS = '#0067CB';
+const EP_GRAY = '#A8A7A4';
+
+function ShopTooltip({ item, x, y }: { item: ShopItem | BagItem; x: number; y: number }) {
+  const propsColor = (item as any).propsColor ?? 1;
+  const nameColor = PROPS_COLORS[propsColor] ?? '#FEFDFA';
+  const effect = (item as any).effectDesc || resolveEffect((item as any).effect);
+  const pluseffect = resolveEffect((item as any).pluseffect);
+  const req = parseRequires((item as any).requiresDesc || (item as any).requires);
+  const slotName = (item as any).postion != null ? SLOT_NAMES[(item as any).postion] : null;
+  const sell = (item as any).sell ?? (item as any).buy;
+  const varyname = (item as any).varyname;
+
+  const tipImg = (name: string) => `/images/ui/tips/border4_${name}.gif`;
+
+  const content = (
+    <>
+      {varyname === 9 ? (
+        <>
+          <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
+          <div style={{ color: EP_GRAY }}>可交易</div>
+          {slotName && <div style={{ color: EP_BASE }}>{slotName}装备 ({((item as any).plusflag ?? 0) === 1 ? '可强化' : '不可强化'})</div>}
+          {effect && <div style={{ color: EP_BASE }}>{effect}</div>}
+          {req && (req.wx || req.lv) && (
+            <>
+              {req.wx && <div style={{ color: EP_BASE }}>五行需求：{req.wx}系</div>}
+              {req.lv && <div style={{ color: EP_BASE }}>需求等级：{req.lv}级</div>}
+            </>
+          )}
+          {pluseffect && <div style={{ color: EP_PLUS }}>{pluseffect}</div>}
+          {(item as any).usages && <div style={{ color: EP_BASE }}>{(item as any).usages}</div>}
+        </>
+      ) : (
+        <>
+          <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
+          {effect && <div style={{ color: EP_BASE }}>{effect}</div>}
+          {req && (req.wx || req.lv) && (
+            <>
+              {req.wx && <div style={{ color: EP_BASE }}>五行需求：{req.wx}系</div>}
+              {req.lv && <div style={{ color: EP_BASE }}>需求等级：{req.lv}级</div>}
+            </>
+          )}
+          {(item as any).usages && <div style={{ color: EP_BASE }}>{(item as any).usages}</div>}
+        </>
+      )}
+      {sell != null && <div style={{ color: EP_BASE }}>售价：{sell}金</div>}
+      {(item as any).expire && <div style={{ color: EP_BASE }}>{(item as any).expire}</div>}
+    </>
+  );
+
+  return (
+    <table className={styles.tooltip} style={{ left: x + 12, top: Math.max(0, y - 160) }} cellPadding={0} cellSpacing={0} border={0}>
+      <tbody>
+        <tr>
+          <td className={styles.tipCorner}><img src={tipImg('tl')} alt="" /></td>
+          <td className={styles.tipEdge} style={{ backgroundImage: `url(${tipImg('t')})` }} />
+          <td className={styles.tipCorner}><img src={tipImg('tr')} alt="" /></td>
+        </tr>
+        <tr>
+          <td className={styles.tipEdgeL} style={{ backgroundImage: `url(${tipImg('l')})` }} />
+          <td className={styles.tipBorderTd} />
+          <td className={styles.tipEdgeL} style={{ backgroundImage: `url(${tipImg('r')})` }} />
+        </tr>
+        <tr>
+          <td className={styles.tipEdgeL} style={{ backgroundImage: `url(${tipImg('l')})` }} />
+          <td className={styles.tipBorderTd}>{content}</td>
+          <td className={styles.tipEdgeL} style={{ backgroundImage: `url(${tipImg('r')})` }} />
+        </tr>
+        <tr>
+          <td className={styles.tipCorner}><img src={tipImg('bl')} alt="" /></td>
+          <td className={styles.tipEdge} style={{ backgroundImage: `url(${tipImg('b')})` }} />
+          <td className={styles.tipCorner}><img src={tipImg('br')} alt="" /></td>
+        </tr>
+      </tbody>
+    </table>
+  );
+}
 
 export default function SmShopPanel() {
   const player = useAuthStore((s) => s.player);
@@ -31,11 +154,12 @@ export default function SmShopPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ item: ShopItem | BagItem; x: number; y: number } | null>(null);
   const maxBag = player?.maxBag ?? 30;
 
   useEffect(() => {
     Promise.all([
-      apiGet<ShopItem[]>('/shop/list?type=yb'),
+      apiGet<ShopItem[]>('/shop/list?type=smshop'),
       apiGet<BagItem[]>('/bag'),
     ]).then(([s, b]) => {
       if (s.code === 0 && s.data) setShopItems(s.data);
@@ -82,11 +206,18 @@ export default function SmShopPanel() {
     });
   };
 
+  const hoverProps = (item: ShopItem | BagItem) => ({
+    onMouseEnter: (e: React.MouseEvent) => setTooltip({ item, x: e.clientX, y: e.clientY }),
+    onMouseMove: (e: React.MouseEvent) => setTooltip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null),
+    onMouseLeave: () => setTooltip(null),
+  });
+
   if (loading) return <div className={styles.loading}>加载中...</div>;
 
   return (
     <div className={styles.container}>
       {msg && <div className={styles.toast}>{msg}</div>}
+      {tooltip && <ShopTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
 
       <div className={styles.leftBg}>
         <div className={styles.returnBtn} onClick={() => setGameView('city')} />
@@ -110,27 +241,32 @@ export default function SmShopPanel() {
             <div className={styles.subCats}>
               {SUB_CATS.map(c => (
                 <img key={c.style} src={`/images/ui/smshop_0${c.style}.jpg`} alt={c.label}
-                  className={subCat===c.style?styles.subOn:styles.subOff}
+                  style={subCat===c.style?{filter:'brightness(1.2)',borderBottom:'2px solid #FED625'}:{}}
                   onClick={() => setSubCat(c.style)} />
               ))}
             </div>
             <div className={styles.itemList}>
               <table className={styles.table}>
                 <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>{curLabel}</th><th className={styles.thType}>属性</th></tr></thead>
-                <tbody>
+              </table>
+              <div className={styles.itemBody}>
+                <table className={styles.table}>
+                  <tbody>
                   {displayItems.length === 0 ? (
                     <tr><td colSpan={4} className={styles.empty}>暂无商品</td></tr>
                   ) : displayItems.map(item => (
                     <tr key={item.id} className={`${styles.row} ${selShop===item.id?styles.rowSel:''}`}
-                      onClick={() => { setSelShop(item.id); setSelBag(null); }}>
+                      onClick={() => { setSelShop(item.id); setSelBag(null); }}
+                      {...hoverProps(item)}>
                       <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
                       <td className={styles.tdName}>{item.name}</td>
                       <td className={styles.tdPrice}>{tab===1?item.yb:tab===2?item.sj:item.yb}</td>
-                      <td className={styles.tdType}>{item.timelimit ? `限时` : ''}</td>
+                      <td className={styles.tdType}>{item.category || ''}</td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className={styles.colFoot}>
               数量：<input className={styles.numInp} type="text" value={count} onChange={e => setCount(Number(e.target.value)||1)} />
@@ -146,20 +282,25 @@ export default function SmShopPanel() {
             <div className={styles.itemList}>
               <table className={styles.table}>
                 <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.thType}>数量</th></tr></thead>
-                <tbody>
+              </table>
+              <div className={styles.itemBody}>
+                <table className={styles.table}>
+                  <tbody>
                   {bagItems.filter(i => i.count > 0).length === 0 ? (
                     <tr><td colSpan={4} className={styles.empty}>背包空空</td></tr>
                   ) : bagItems.filter(i => i.count > 0).map(item => (
                     <tr key={item.id} className={`${styles.row} ${selBag===item.id?styles.rowSel:''}`}
-                      onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}>
+                      onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+                      {...hoverProps(item)}>
                       <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
                       <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
                       <td className={styles.tdPrice}>{item.sell ?? 0}</td>
                       <td className={styles.tdType}>{item.count}</td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             </div>
             <div className={styles.colFoot}>背包空间：{bagTotal}/{maxBag}</div>
           </div>

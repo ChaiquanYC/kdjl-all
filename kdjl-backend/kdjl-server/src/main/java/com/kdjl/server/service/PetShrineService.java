@@ -135,6 +135,7 @@ public class PetShrineService {
     }
 
     private Props getPropsByBagId(Long playerId, Long bagId) {
+        if (bagId == null || bagId <= 0) return null;
         UserBag bag = bagRepo.findById(bagId).orElse(null);
         if (bag == null || !bag.getPlayerId().equals(playerId)) return null;
         return propsRepo.findById(bag.getPropId().longValue()).orElse(null);
