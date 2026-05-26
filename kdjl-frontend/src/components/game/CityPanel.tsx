@@ -25,9 +25,9 @@ const BUILDINGS: Building[] = [
   { id: 'mtlun',  label: '摩天轮', panel: null, left: 690, top: 260, width: 55, height: 30, page: 1, imgIcon: '/images/city/mtlun.png' },
   // Page 2
   { id: 'cwsd',    label: '宠物神殿', panel: 'sd',       left: 10,  top: 150, width: 70,  height: 30,  page: 2, imgIcon: '/images/city/cwsdian.png' },
-  { id: 'jzsd',    label: '家族商店', panel: 'guild',    left: 430, top: 145, width: 70,  height: 30,  page: 2, imgIcon: '/images/city/jzsdian.png' },
+  { id: 'jzsd',    label: '家族商店', panel: null,       left: 430, top: 145, width: 70,  height: 30,  page: 2, imgIcon: '/images/city/jzsdian.png' },
   { id: 'mkzhi',   label: '卡牌',     panel: null,       left: 630, top: 215, width: 50,  height: 30,  page: 2, imgIcon: '/images/city/mkzhi.png' },
-  { id: 'qrdao',   label: '情人岛',   panel: 'marry',    left: 600, top: 40,  width: 70,  height: 30,  page: 2, imgIcon: '/images/city/qrdao.png' },
+  { id: 'qrdao',   label: '情人岛',   panel: null,       left: 600, top: 40,  width: 70,  height: 30,  page: 2, imgIcon: '/images/city/qrdao.png' },
 ];
 
 export default function CityPanel() {
