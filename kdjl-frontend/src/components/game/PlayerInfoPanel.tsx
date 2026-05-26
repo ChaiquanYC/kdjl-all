@@ -16,7 +16,9 @@ export default function PlayerInfoPanel() {
     apiGet<{ id: number }[]>('/pets').then(r => {
       if (r.code === 0 && r.data) setPetCount(r.data.length);
     });
-  }, [refreshTrigger]); return <div className={styles.container}>加载中...</div>;
+  }, [refreshTrigger]);
+
+  if (!player) return <div className={styles.box}>加载中...</div>;
 
   const sexLabel = player.sex === '1' ? '男' : player.sex === '2' ? '女' : '保密';
   const fightTop = player.fightTop ? String(player.fightTop).replace(':', ', 败：') : '0, 败：0';

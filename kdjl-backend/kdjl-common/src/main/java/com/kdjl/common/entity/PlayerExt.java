@@ -28,6 +28,9 @@ public class PlayerExt {
     @Column
     private Integer paisj;
 
+    @Column
+    private Integer paiyb;
+
     @Column(name = "active_lastvtime")
     private Integer activeLastTime;
 
@@ -111,6 +114,8 @@ public class PlayerExt {
     public Integer getLoginTime() { return loginTime; }
     public Integer getSj() { return sj; }
     public Integer getPaisj() { return paisj; }
+    public Integer getPaiyb() { return paiyb; }
+    public void setPaiyb(Integer paiyb) { this.paiyb = paiyb; }
     public Integer getActiveLastTime() { return activeLastTime; }
     public Integer getMl() { return ml; }
     public Integer getMerge() { return merge; }
@@ -141,6 +146,7 @@ public class PlayerExt {
     public Integer getLastOnlineDay() { return lastOnlineDay; }
     public void setPlayerId(Integer playerId) { this.playerId = playerId; }
     public void setSj(Integer sj) { this.sj = sj; }
+    public void setPaisj(Integer paisj) { this.paisj = paisj; }
     public void setPetShow(Integer petShow) { this.petShow = petShow; }
     public void setMerge(Integer merge) { this.merge = merge; }
     public void setMl(Integer ml) { this.ml = ml; }
