@@ -8,22 +8,27 @@ interface Props {
   defaultTop?: number;
   width?: number;
   height?: number;
-  showHeader?: boolean;
   onClose: () => void;
 }
 
 export default function OverlayPanel({
-  title, children,
+  children,
   defaultLeft = 200, defaultTop = 30,
   width = 400, height = 350,
-  showHeader = true,
   onClose,
 }: Props) {
   const [pos, setPos] = useState({ left: defaultLeft, top: defaultTop });
   const dragRef = useRef<{ startX: number; startY: number; startLeft: number; startTop: number } | null>(null);
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
+    let el = e.target as HTMLElement | null;
+    while (el) {
+      const tag = el?.tagName;
+      if (tag && (tag === 'SELECT' || tag === 'INPUT' || tag === 'BUTTON' || tag === 'TEXTAREA' || tag === 'OPTION')) return;
+      if (el?.getAttribute?.('data-drag') === 'false') return;
+      if (el?.classList?.contains(styles.body)) break;
+      el = el.parentElement;
+    }
     dragRef.current = {
       startX: e.clientX, startY: e.clientY,
       startLeft: pos.left, startTop: pos.top,
@@ -53,25 +58,9 @@ export default function OverlayPanel({
     <div
       className={styles.overlay}
       style={{ left: pos.left, top: pos.top, width, height }}
-      onMouseDown={!showHeader ? (e: React.MouseEvent) => {
-        let el = e.target as HTMLElement | null;
-        while (el) {
-          const tag = el?.tagName;
-          if (tag && (tag === 'SELECT' || tag === 'INPUT' || tag === 'BUTTON' || tag === 'TEXTAREA' || tag === 'OPTION')) return;
-          if (el?.getAttribute?.('data-drag') === 'false') return;
-          if (el?.classList?.contains(styles.body)) break;
-          el = el.parentElement;
-        }
-        onMouseDown(e);
-      } : undefined}
+      onMouseDown={onMouseDown}
     >
-      {showHeader && (
-        <div className={styles.header} onMouseDown={onMouseDown}>
-          <span className={styles.title}>{title}</span>
-          <button className={styles.closeBtn} onClick={onClose}>×</button>
-        </div>
-      )}
-      <div className={styles.body} style={!showHeader ? { height: '100%' } : undefined}>
+      <div className={styles.body} style={{ height: '100%' }}>
         {children}
       </div>
     </div>

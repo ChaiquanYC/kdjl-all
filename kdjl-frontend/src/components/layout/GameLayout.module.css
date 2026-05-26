@@ -12,8 +12,6 @@
 .content{width:803px;height:337px;padding-top:32px;box-sizing:border-box;background:url('/images/ui/content.jpg') no-repeat;position:relative}
 .toolsBar{position:absolute;right:0;top:0;width:185px;height:45px;display:flex;align-items:center;justify-content:flex-end;z-index:5;padding-right:0;gap:0}
 .toolsBar a{width:46px;height:45px;border:none;cursor:pointer;color:transparent;font-size:0;opacity:.7;background:no-repeat}
-.toolsBar a:nth-child(1){background-image:url('/images/ui/tools_btn1.png')}
-.toolsBar a:nth-child(2){background-image:url('/images/ui/tools_btn3.png')}
 .toolsBar a:hover{opacity:1}
 .toolsActive{opacity:1!important}
 .gameBox{width:788px;height:319px;overflow:visible;margin:0 auto;position:relative}

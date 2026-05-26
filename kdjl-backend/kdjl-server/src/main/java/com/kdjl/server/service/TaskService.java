@@ -4,6 +4,7 @@ import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.annotation.PostConstruct;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +33,12 @@ public class TaskService {
     private final PlayerExtRepository playerExtRepo;
     private final PetRepository petRepo;
 
+    // Name caches — mirrors PHP memcache (MEM_TASK_KEY, MEM_BB_KEY)
+    private Map<Long, TaskDef> taskCache;         // id -> TaskDef
+    private Map<Long, Props> propsCache;           // id -> Props
+    private Map<Long, Monster> monsterCache;       // id -> Monster
+    private Map<Long, Pet> petCache;               // id -> Pet
+
     public TaskService(PlayerRepository playerRepo, UserBagRepository bagRepo,
                        PropsRepository propsRepo, UserPetRepository userPetRepo,
                        TaskDefRepository taskDefRepo, TaskAcceptRepository taskAcceptRepo,
@@ -49,9 +56,28 @@ public class TaskService {
         this.petRepo = petRepo;
     }
 
+    @PostConstruct
+    private void initCaches() {
+        log.info("Preloading task data into memory...");
+        long start = System.currentTimeMillis();
+        propsCache = propsRepo.findAll().stream()
+            .collect(Collectors.toMap(Props::getId, p -> p, (a, b) -> a));
+        monsterCache = monsterRepo.findAll().stream()
+            .collect(Collectors.toMap(Monster::getId, m -> m, (a, b) -> a));
+        petCache = petRepo.findAll().stream()
+            .collect(Collectors.toMap(Pet::getId, p -> p, (a, b) -> a));
+        taskCache = taskDefRepo.findAll().stream()
+            .filter(t -> t.getHide() != null && t.getHide() == 1)
+            .collect(Collectors.toMap(TaskDef::getId, t -> t, (a, b) -> a));
+        log.info("Caches ready: {} tasks, {} props, {} monsters, {} pets ({}ms)",
+            taskCache.size(), propsCache.size(), monsterCache.size(), petCache.size(),
+            System.currentTimeMillis() - start);
+    }
+
     // ==================== List Available Tasks ====================
 
     public List<Map<String, Object>> listTasks(Integer playerId) {
+        long t0 = System.currentTimeMillis();
         Player player = playerRepo.findById(playerId).orElse(null);
         if (player == null) return List.of();
 
@@ -71,15 +97,15 @@ public class TaskService {
             acceptMap.put(a.getTaskId(), a);
             acceptedIds.add(a.getTaskId());
         }
+        long t1 = System.currentTimeMillis();
 
         String nowTime = LocalDateTime.now().format(YMDHMS);
         int playerVip = player.getVip() != null ? player.getVip() : 0;
         int playerScore = player.getScore() != null ? player.getScore() : 0;
         int playerPaihang = player.getPaiHang() != null ? player.getPaiHang() : 0;
 
-        List<TaskDef> all = taskDefRepo.findAll().stream()
-            .filter(t -> t.getHide() != null && t.getHide() == 1)
-            .collect(Collectors.toList());
+        List<TaskDef> all = new ArrayList<>(taskCache.values());
+        long t2 = System.currentTimeMillis();
 
         // Build xulie/rwl chain progress map
         Map<Integer, Set<Long>> rwlCompleted = buildRwlCompletedMap(all, completedEntries, acceptedIds, accepts);
@@ -113,6 +139,9 @@ public class TaskService {
             Map<String, Object> m = buildTaskMap(t, acceptMap, completedEntries, playerLv);
             result.add(m);
         }
+        long t3 = System.currentTimeMillis();
+        log.info("listTasks uid={}: DB={}ms, findAll={}ms, resolve={}ms, tasks={}",
+            playerId, t1 - t0, t2 - t1, t3 - t2, result.size());
         return result;
     }
 
@@ -127,7 +156,7 @@ public class TaskService {
         String tasklog = player.getTaskLog() != null ? player.getTaskLog() : "";
 
         for (TaskAccept a : accepts) {
-            TaskDef t = taskDefRepo.findById(a.getTaskId()).orElse(null);
+            TaskDef t = taskCache.get(a.getTaskId());
             if (t == null) continue;
 
             Map<String, Object> m = new LinkedHashMap<>();
@@ -436,7 +465,7 @@ public class TaskService {
                     String[] petIds = kv[1].split("\\|");
                     boolean match = false;
                     for (String pid : petIds) {
-                        Pet pet = petRepo.findById(Long.parseLong(pid)).orElse(null);
+                        Pet pet = petCache.get(Long.parseLong(pid));
                         if (pet != null && pet.getName() != null && pet.getName().equals(mainPet.getName())) {
                             match = true; break;
                         }
@@ -518,7 +547,7 @@ public class TaskService {
                     String[] petIds = kv[1].split("\\|");
                     boolean match = false;
                     for (String pid : petIds) {
-                        Pet pet = petRepo.findById(Long.parseLong(pid)).orElse(null);
+                        Pet pet = petCache.get(Long.parseLong(pid));
                         if (pet != null && pet.getName() != null && pet.getName().equals(mainPet.getName())) {
                             match = true; break;
                         }
@@ -621,7 +650,7 @@ public class TaskService {
                             .sum();
                     }
                     if (totalHave < needCount) {
-                        Props p = propsRepo.findById((long) Integer.parseInt(propIds[0])).orElse(null);
+                        Props p = propsCache.get((long) Integer.parseInt(propIds[0]));
                         return "需要" + (p != null ? p.getName() : "道具#" + propIds[0]) + " x" + needCount;
                     }
                 }
@@ -670,7 +699,7 @@ public class TaskService {
                     String[] petIds = parts[1].split("\\|");
                     boolean match = false;
                     for (String pid : petIds) {
-                        Pet pet = petRepo.findById(Long.parseLong(pid)).orElse(null);
+                        Pet pet = petCache.get(Long.parseLong(pid));
                         if (pet != null && pet.getName() != null && pet.getName().equals(mainPet.getName())) {
                             match = true; break;
                         }
@@ -811,7 +840,7 @@ public class TaskService {
                     for (String pidStr : parts[1].split("\\|")) {
                         int pid = Integer.parseInt(pidStr);
                         giveItem(player, (long) pid, count);
-                        Props p = propsRepo.findById((long) pid).orElse(null);
+                        Props p = propsCache.get((long) pid);
                         if (rewardMsg.length() > 0) rewardMsg.append("，");
                         rewardMsg.append(p != null ? p.getName() : "道具").append(" x").append(count);
                     }
@@ -822,7 +851,7 @@ public class TaskService {
                     for (String pidStr : parts[1].split("\\|")) {
                         int pid = Integer.parseInt(pidStr);
                         giveItem(player, (long) pid, count);
-                        Props p = propsRepo.findById((long) pid).orElse(null);
+                        Props p = propsCache.get((long) pid);
                         if (rewardMsg.length() > 0) rewardMsg.append("，");
                         rewardMsg.append(p != null ? p.getName() : "道具(绑)").append(" x").append(count);
                     }
@@ -885,7 +914,7 @@ public class TaskService {
                                 int propId = Integer.parseInt(optParts[0]);
                                 int cnt = Integer.parseInt(optParts[2]);
                                 giveItem(player, (long) propId, cnt);
-                                Props p = propsRepo.findById((long) propId).orElse(null);
+                                Props p = propsCache.get((long) propId);
                                 if (rewardMsg.length() > 0) rewardMsg.append("，");
                                 rewardMsg.append("获得 ").append(p != null ? p.getName() : "道具").append(" x").append(cnt);
                                 break;
@@ -905,7 +934,7 @@ public class TaskService {
                             int propId = Integer.parseInt(parts[1]);
                             int cnt = Integer.parseInt(parts[2]);
                             giveItem(player, (long) propId, cnt);
-                            Props p = propsRepo.findById((long) propId).orElse(null);
+                            Props p = propsCache.get((long) propId);
                             if (rewardMsg.length() > 0) rewardMsg.append("，");
                             rewardMsg.append(p != null ? p.getName() : "道具").append(" x").append(cnt);
                         }
@@ -1303,7 +1332,7 @@ public class TaskService {
     }
 
     private void giveItem(Player player, Long propId, int count) {
-        Props props = propsRepo.findById(propId).orElse(null);
+        Props props = propsCache.get(propId);
         UserBag existing = bagRepo.findByPlayerId(player.getId().longValue()).stream()
             .filter(b -> b.getPropId() != null && b.getPropId().equals(propId)
                 && (props == null || props.getVary() == null || props.getVary() == 1))
@@ -1421,7 +1450,7 @@ public class TaskService {
                         String[] ids = kv[1].split("\\|");
                         List<String> names = new ArrayList<>();
                         for (String id : ids) {
-                            Pet pet = petRepo.findById(Long.parseLong(id)).orElse(null);
+                            Pet pet = petCache.get(Long.parseLong(id));
                             names.add(pet != null ? pet.getName() : ("宠物#" + id));
                         }
                         sb.append("主宠:").append(String.join("/", names));
@@ -1499,7 +1528,7 @@ public class TaskService {
                         List<String> names = new ArrayList<>();
                         for (int i = 0; i < Math.min(mids.length, 3); i++) {
                             try {
-                                Monster mon = monsterRepo.findById(Long.parseLong(mids[i])).orElse(null);
+                                Monster mon = monsterCache.get(Long.parseLong(mids[i]));
                                 names.add(mon != null ? mon.getName() : ("#" + mids[i]));
                             } catch (NumberFormatException e) { names.add(mids[i]); }
                         }
@@ -1519,7 +1548,7 @@ public class TaskService {
                         String[] pids = kv[1].split("\\|");
                         List<String> pnames = new ArrayList<>();
                         for (String pid : pids) {
-                            Pet pet = petRepo.findById(Long.parseLong(pid)).orElse(null);
+                            Pet pet = petCache.get(Long.parseLong(pid));
                             pnames.add(pet != null ? pet.getName() : ("#" + pid));
                         }
                         sb.append("主宠为").append(String.join("/", pnames));
@@ -1557,7 +1586,7 @@ public class TaskService {
         String[] ids = idsStr.split("\\|");
         List<String> names = new ArrayList<>();
         for (String id : ids) {
-            Props p = propsRepo.findById(Long.parseLong(id)).orElse(null);
+            Props p = propsCache.get(Long.parseLong(id));
             names.add(p != null ? p.getName() : ("道具#" + id));
         }
         return String.join("/", names);
