@@ -53,6 +53,9 @@ public class AuthService {
         data.put("uid", player.getId());
         data.put("username", player.getUsername());
         data.put("nickname", player.getNickname());
+        data.put("money", player.getMoney() != null ? player.getMoney() : 0);
+        data.put("yb", player.getYb() != null ? player.getYb() : 0);
+        data.put("vip", player.getVip() != null ? player.getVip() : 0);
         return ApiResponse.success(data);
     }
 

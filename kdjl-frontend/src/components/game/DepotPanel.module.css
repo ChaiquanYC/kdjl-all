@@ -46,7 +46,7 @@
 .empty{text-align:center;color:#999;padding:20px}
 
 /* Column footer — PHP .box04 */
-.colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px}
+.colFoot{display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px 0;font-size:12px}
 .numInput{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
 .btn{width:39px;height:15px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:15px}
 .btn:disabled{filter:grayscale(100%);cursor:default}

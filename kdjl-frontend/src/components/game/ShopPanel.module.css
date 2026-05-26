@@ -13,7 +13,7 @@
 .t1{background-position:0 0}.tabOn .t1{background-position:0 -29px}
 .t2{background-position:-90px 0}.tabOn .t2{background-position:-90px -29px}
 
-.resBar{position:absolute;top:4px;right:10px;display:flex;align-items:center;gap:4px;font-size:12px;color:#333}
+.resBar{position:absolute;top:4px;left:360px;display:flex;align-items:center;gap:4px;font-size:12px;color:#333}
 .resBar img{width:20px;height:18px}
 
 .columns{display:flex;height:290px}
@@ -39,7 +39,7 @@
 .row{cursor:pointer}.row:hover{background:#DFD496}
 .rowSel{background:#DFD496!important}
 
-.colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px}
+.colFoot{display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px 0;font-size:12px}
 .numInp{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
 .btn{width:39px;height:17px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px}
 .btn:hover{filter:brightness(1.1)}

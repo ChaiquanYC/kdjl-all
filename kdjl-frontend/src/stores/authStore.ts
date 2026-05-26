@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     set({ loading: true, error: null });
     try {
-      const res = await apiPost<{ token: string; uid: number; username: string; nickname: string }>(
+      const res = await apiPost<{ token: string; uid: number; username: string; nickname: string; money: number; yb: number; vip: number }>(
         '/auth/login',
         { username, password },
       );
@@ -35,7 +35,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             id: res.data.uid,
             username: res.data.username,
             nickname: res.data.nickname,
-            money: 0, yb: 0, vip: 0, score: 0, prestige: 0,
+            money: res.data.money ?? 0,
+            yb: res.data.yb ?? 0,
+            vip: res.data.vip ?? 0,
+            score: 0, prestige: 0,
             inMap: 0, openMap: '', fightTop: 0, maxBag: 30, sex: '',
             onlineTime: 0, newGuideStep: 0,
           } as Player,

@@ -15,6 +15,7 @@ interface PetData {
   wx?: number; kx?: string;
   subyl?: number; subsl?: number; subxl?: number;
   subdl?: number; subfl?: number; subhl?: number; subkl?: number;
+  remaketimes?: number; remakelevel?: string;
 }
 
 interface BagItem {
@@ -32,7 +33,7 @@ interface LearnableSkill {
 }
 
 const ELE_RESIST = ['金抗','木抗','水抗','火抗','土抗'];
-const SLOT_LABELS = ['武器','衣服','头盔','鞋子','项链','戒指左','戒指右','护腕','腰带','特殊','翅膀'];
+const SLOT_LABELS = ['翅膀','头部','身体','脚部','武器','项链','戒指','翅膀','手镯','宝石','道具','特殊'];
 
 export default function PetList() {
   const [pets, setPets] = useState<PetData[]>([]);
@@ -177,7 +178,7 @@ export default function PetList() {
       {/* Left panel */}
       <div className={styles.left}>
         <div className={styles.userInfo}>
-          <div>昵称：{player?.nickname ?? '冒险者'}</div>
+          <div>{player?.nickname ?? '冒险者'}<br />宝贝：<span style={{color:'green'}}>{selectedPet?.name}</span></div>
           <div>宝贝：{pets.length + (ranchCount ?? 0)}只</div>
           <div>VIP：{player?.vip ?? 0}</div>
           <div>性别：{player?.sex === '1' ? '男' : '女'}</div>
@@ -190,7 +191,8 @@ export default function PetList() {
         <div className={styles.petCards}>
           {petCards.map((p) => (
             <div key={p.id} className={`${styles.petCard} ${p.id === selectedId ? styles.petCardActive : ''}`}
-              onClick={() => setSelectedId(p.id)}>
+              onClick={() => setSelectedId(p.id)}
+              onDoubleClick={() => { if (p.id !== mainPetId) handleSetMain(p.id); }}>
               {p.cardImg ? <img src={`/images/bb/${p.cardImg}`} alt="" /> : <div className={styles.noCard}>{p.name}</div>}
               <span>{p.name}<br />Lv.{p.level}</span>
             </div>
@@ -242,11 +244,6 @@ export default function PetList() {
               <div>闪避：{selectedPet.miss}</div>
               <div>速度：{selectedPet.speed}</div>
               <div>成长：{selectedPet.czl ?? '-'}</div>
-              <div className={styles.btns}>
-                {mainPetId !== selectedPet.id ? (
-                  <button onClick={() => handleSetMain(selectedPet.id)}>设为主战</button>
-                ) : <span className={styles.isMain}>★ 主战宠物</span>}
-              </div>
             </div>
           </div>
         )}
@@ -258,20 +255,11 @@ export default function PetList() {
               <div className={styles.petBig2}>
                 {selectedPet.img ? <img src={`/images/bb/${selectedPet.img}`} alt="" /> : <div className={styles.noImg}>{selectedPet.element}</div>}
               </div>
-              <div>
-                <div>等级：{selectedPet.level}</div>
-                <div>当前经验：{selectedPet.nowexp ?? 0}</div>
-                <div>升级经验：{selectedPet.lexp ?? 0}</div>
-                <div>五行：{selectedPet.element}</div>
-                <div>生命：{selectedPet.hp}/{selectedPet.srchp ?? '?'}</div>
-                <div>魔法：{selectedPet.mp}/{selectedPet.srcmp ?? '?'}</div>
-                <div>攻击：{selectedPet.ac}</div>
-                <div>防御：{selectedPet.mc}</div>
-                <div>命中：{selectedPet.hits}</div>
-                <div>闪避：{selectedPet.miss}</div>
-                <div>速度：{selectedPet.speed}</div>
-                <div>成长：{selectedPet.czl ?? '-'}</div>
-              </div>
+              <ul className={styles.attrList}>
+                <li>等级：{selectedPet.level}<br />当前经验：{selectedPet.nowexp ?? 0}<br />升级经验：{selectedPet.lexp ?? 0}<br />五行：{selectedPet.element}</li>
+                <li>生命：{selectedPet.hp}/{selectedPet.srchp ?? '?'}<br />魔法：{selectedPet.mp}/{selectedPet.srcmp ?? '?'}<br />攻击：{selectedPet.ac}<br />防御：{selectedPet.mc}</li>
+                <li>命中：{selectedPet.hits}<br />闪避：{selectedPet.miss}<br />速度：{selectedPet.speed}<br />成长：{selectedPet.czl ?? '-'}</li>
+              </ul>
             </div>
             <div className={styles.attrCol}>
               {ELE_RESIST.map((label, i) => (
@@ -284,6 +272,7 @@ export default function PetList() {
               <div>减缓率：{selectedPet.subhl ?? 0}%</div>
               <div>减防率：{selectedPet.subfl ?? 0}%</div>
               <div>减抗率：{selectedPet.subkl ?? 0}%</div>
+              <div>进化次数：{selectedPet.remaketimes ?? 0}</div>
             </div>
           </div>
         )}

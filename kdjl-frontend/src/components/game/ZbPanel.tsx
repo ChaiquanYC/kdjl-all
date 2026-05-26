@@ -15,11 +15,17 @@ interface BagItem {
 
 const POS_FILTERS = [
   { label: '全部', pos: [] },
-  { label: '武器', pos: [0] },
-  { label: '衣服', pos: [1] },
-  { label: '头盔', pos: [2] },
-  { label: '鞋子', pos: [3] },
-  { label: '其他', pos: [4,5,6,7,8,9,10,11] },
+  { label: '头部', pos: [1] },
+  { label: '身体', pos: [2] },
+  { label: '脚部', pos: [3] },
+  { label: '武器', pos: [4] },
+  { label: '项链', pos: [5] },
+  { label: '戒指', pos: [6] },
+  { label: '翅膀', pos: [0,7] },
+  { label: '手镯', pos: [8] },
+  { label: '宝石', pos: [9] },
+  { label: '道具', pos: [10] },
+  { label: '其他', pos: [11] },
 ];
 
 export default function ZbPanel() {

@@ -306,7 +306,7 @@ export default function GameLayout() {
             </div>
 
             {/* Overlay panels — float on top, not clipped by main_t overflow:visible */}
-            {activePanel==='bag' && <OverlayPanel title="背包" width={370} height={410} defaultLeft={250} defaultTop={0} onClose={()=>setActivePanel(null)}><BagPanel/></OverlayPanel>}
+            {activePanel==='bag' && <OverlayPanel title="背包" width={370} height={410} defaultLeft={400} defaultTop={0} onClose={()=>setActivePanel(null)}><BagPanel/></OverlayPanel>}
             {activePanel==='equip' && <OverlayPanel title="装备" width={420} height={380} defaultLeft={180} defaultTop={20} onClose={()=>setActivePanel(null)}><EquipPanel/></OverlayPanel>}
             {activePanel==='tasks' && <OverlayPanel title="任务" width={550} height={400} defaultLeft={130} defaultTop={15} onClose={()=>setActivePanel(null)}><TaskPanel/></OverlayPanel>}
             {activePanel==='guild' && <OverlayPanel title="公会" width={450} height={380} defaultLeft={180} defaultTop={20} onClose={()=>setActivePanel(null)}><GuildPanel/></OverlayPanel>}

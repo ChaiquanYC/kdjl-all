@@ -460,6 +460,7 @@ public class PetService {
         pet.setNowexp(0L);
         pet.setLexp(55L);
         pet.setStime(System.currentTimeMillis() / 1000);
+        pet.setMuchang(0);
 
         // Try to match Pet template by name for extra fields
         Pet template = petRepo.findByName(monster.getName()).orElse(null);
@@ -469,7 +470,7 @@ public class PetService {
             pet.setImgdie(template.getImgdie());
             pet.setHeadimg(template.getHeadimg());
             pet.setCardimg(template.getCardimg());
-            pet.setEffectimg(template.getHeadimg());
+            pet.setEffectimg(template.getEffectimg());
             pet.setSkillList(template.getSkillList());
             pet.setCzl("1");
             pet.setSubyl(template.getSubyl());

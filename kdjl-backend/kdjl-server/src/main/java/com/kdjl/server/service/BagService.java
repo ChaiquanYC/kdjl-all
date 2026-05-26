@@ -592,9 +592,10 @@ public class BagService {
                     break;
                 }
                 if (playerId == null) break;
-                // PHP: check pet carry limit (max 3)
-                List<UserPet> currentPets = userPetRepo.findByPlayerIdAndMuchang(playerId, 0);
-                if (currentPets.size() >= 3) {
+                // PHP: check pet carry limit (max 3, muchang=0 or null)
+                List<UserPet> allPets = userPetRepo.findByPlayerId(playerId);
+                long partyCount = allPets.stream().filter(p -> p.getMuchang() == null || p.getMuchang() == 0).count();
+                if (partyCount >= 3) {
                     result.put("error", "宠物已满！目前最多携带3只宠物");
                     result.put("skipConsume", true);
                     break;
@@ -613,6 +614,8 @@ public class BagService {
                 newPet.setImgstand(template.getImgstand()); newPet.setImgack(template.getImgack());
                 newPet.setImgdie(template.getImgdie()); newPet.setHeadimg(template.getHeadimg());
                 newPet.setCardimg(template.getCardimg());
+                newPet.setEffectimg(template.getEffectimg());
+                newPet.setMuchang(0);
                 newPet.setKx(template.getKx()); newPet.setSkillList(template.getSkillList());
                 newPet.setRemakelevel(template.getRemakeLevel());
                 newPet.setRemakeid(template.getRemakeId());
@@ -1025,8 +1028,8 @@ public class BagService {
         }
     }
 
-    /** 10 equipment slot names matching PHP position 0-10 */
-    private static final String[] SLOT_NAMES = {"武器","衣服","头盔","鞋子","项链","戒指左","戒指右","护腕","腰带","特殊","翅膀"};
+    /** 12 equipment slot names matching PHP position 0-11 (props.postion) */
+    private static final String[] SLOT_NAMES = {"翅膀","头部","身体","脚部","武器","项链","戒指","翅膀","手镯","宝石","道具","特殊"};
     /** Item category names by varyname */
     public static final Map<Integer, String> CATEGORIES = Map.ofEntries(
         Map.entry(0, "普通"), Map.entry(1, "辅助"), Map.entry(2, "增益"), Map.entry(3, "捕捉"),
@@ -1080,7 +1083,7 @@ public class BagService {
         }
 
         int position = props.getPostion() != null ? props.getPostion() : 0;
-        if (position < 0 || position > 10) position = 0;
+        if (position < 0 || position >= SLOT_NAMES.length) position = 0;
 
         // Get current zb map
         Map<Integer, Long> zbMap = parseZb(pet.getZb());
