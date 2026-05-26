@@ -18,6 +18,7 @@ import GuildPanel from '@/components/game/GuildPanel';
 import RankPanel from '@/components/game/RankPanel';
 import GmPanel from '@/components/game/GmPanel';
 import TeamPanel from '@/components/game/TeamPanel';
+import Systips from '@/components/game/Systips';
 import AuctionPanel from '@/components/game/AuctionPanel';
 import InheritPanel from '@/components/game/InheritPanel';
 import MarryPanel from '@/components/game/MarryPanel';
@@ -354,6 +355,7 @@ export default function GameLayout() {
         </div>
       </div>
 
+      <Systips />
       {/* Footer — decorative background only, matching PHP */}
       <div className={styles.footer}></div>
     </div>

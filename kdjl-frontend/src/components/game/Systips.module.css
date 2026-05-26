@@ -1,0 +1,2 @@
+.toast{position:fixed;left:calc(50% - 100px);top:410px;width:266px;height:162px;padding:14px 18px;color:#fff;font-size:12px;text-align:center;z-index:30001;background:url('/images/ui/boxk.gif');opacity:0.8;animation:fadeIn .3s ease;line-height:1.6;overflow-y:auto;word-break:break-all}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
