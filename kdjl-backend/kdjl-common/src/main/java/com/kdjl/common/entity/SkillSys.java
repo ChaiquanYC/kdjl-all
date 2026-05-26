@@ -15,6 +15,7 @@ public class SkillSys {
     @Column(length = 255) private String requires;
     @Column(length = 255) private String uhp;
     @Column(length = 255) private String ump;
+    @Column(length = 255) private String imgeft;
     @Column private Integer ackstyle;
     public Long getId() { return id; }
     public Long getPid() { return pid; }
@@ -27,5 +28,6 @@ public class SkillSys {
     public String getRequires() { return requires; }
     public String getUhp() { return uhp; }
     public String getUmp() { return ump; }
+    public String getImgeft() { return imgeft; }
     public Integer getAckstyle() { return ackstyle; }
 }

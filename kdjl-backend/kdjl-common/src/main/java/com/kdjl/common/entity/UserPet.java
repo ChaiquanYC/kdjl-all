@@ -127,6 +127,21 @@ public class UserPet {
     @Column(name = "chchengcolor", length = 10) private String chchengcolor;
     @Column(name = "chchengcz", length = 50) private String chchengcz;
 
+    @Column(name = "remakelevel", length = 30)
+    private String remakelevel;
+
+    @Column(name = "remakeid", length = 30)
+    private String remakeid;
+
+    @Column(name = "remakepid", length = 30)
+    private String remakepid;
+
+    @Column(name = "remaketimes")
+    private Integer remaketimes;
+
+    @Column(name = "old_bid")
+    private Integer oldBid;
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public Long getPlayerId() { return playerId; }
@@ -216,4 +231,15 @@ public class UserPet {
     public void setSubfl(Integer subfl) { this.subfl = subfl; }
     public void setSubhl(Integer subhl) { this.subhl = subhl; }
     public void setSubkl(Integer subkl) { this.subkl = subkl; }
+
+    public String getRemakelevel() { return remakelevel; }
+    public void setRemakelevel(String remakelevel) { this.remakelevel = remakelevel; }
+    public String getRemakeid() { return remakeid; }
+    public void setRemakeid(String remakeid) { this.remakeid = remakeid; }
+    public String getRemakepid() { return remakepid; }
+    public void setRemakepid(String remakepid) { this.remakepid = remakepid; }
+    public Integer getRemaketimes() { return remaketimes; }
+    public void setRemaketimes(Integer remaketimes) { this.remaketimes = remaketimes; }
+    public Integer getOldBid() { return oldBid; }
+    public void setOldBid(Integer oldBid) { this.oldBid = oldBid; }
 }

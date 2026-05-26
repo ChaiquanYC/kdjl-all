@@ -52,14 +52,14 @@
 
 .ssBg2 { width: 650px; height: 290px; float: left; background: url('/images/sdbg02.jpg') no-repeat; }
 .ssBg2 .ssL .petRow { margin-top: 55px; }
-.ssImgBox { width: 330px; margin-top: 55px; float: left; }
-.ssItemBox { width: 330px; height: 110px; float: left; margin-top: 25px; color: #653E17; line-height: 20px; font-size: 12px; }
-.ssItemBox table { width: 330px; }
+.ssItemBox { width: 330px; height: 110px; float: left; margin-top: 55px; color: #653E17; line-height: 20px; font-size: 12px; }
+.ssItemBox table { width: 330px; margin-top: 113px; }
 
 .btn { background: url('/images/bnt.gif') no-repeat; width: 79px; height: 24px; cursor: pointer; border: 0 none; margin: 0 5px; font-size: 12px; color: #B06A01; }
 .btn:disabled { opacity: 0.6; cursor: default; }
-.btnLg { width: 106px; height: 70px; cursor: pointer; border: 0 none; background: #cdb13b; color: #653E17; font-size: 12px; }
+.btnLg { width: 106px; height: 70px; cursor: pointer; border: 0 none; backgro帮我都und: #cdb13b; color: #653E17; font-size: 12px; }
 .btnLg:disabled { opacity: 0.6; cursor: default; }
+
 .btnSm { width: 79px; height: 24px; cursor: pointer; border: 0 none; background: #cdb13b; color: #653E17; font-size: 12px; }
 .btnSm:disabled { opacity: 0.6; cursor: default; }
 

@@ -97,9 +97,13 @@ public class PlayerExt {
     @Column(name = "last_online_day")
     private Integer lastOnlineDay;
 
+    @Column(name = "chouqu_chongwu", columnDefinition = "TEXT")
+    private String chouquChongwu;
+
     public Integer getPlayerId() { return playerId; }
     public Integer getPetShow() { return petShow; }
     public Integer getMergeCount() { return mergeCount; }
+    public void setMergeCount(Integer mergeCount) { this.mergeCount = mergeCount; }
     public Integer getOnlineTime() { return onlineTime; }
     public Integer getLoginTime() { return loginTime; }
     public Integer getSj() { return sj; }
@@ -145,4 +149,7 @@ public class PlayerExt {
     public void setLastOnlineTime(Integer lastOnlineTime) { this.lastOnlineTime = lastOnlineTime; }
     public void setOnlineTime(Integer onlineTime) { this.onlineTime = onlineTime; }
     public void setTeamAutoTimes(Integer teamAutoTimes) { this.teamAutoTimes = teamAutoTimes; }
+
+    public String getChouquChongwu() { return chouquChongwu; }
+    public void setChouquChongwu(String chouquChongwu) { this.chouquChongwu = chouquChongwu; }
 }
