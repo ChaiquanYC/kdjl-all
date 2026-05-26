@@ -400,6 +400,30 @@ export default function MapPanel({ onChallenge }: Props) {
       </div>
 
       <div className={styles.teamCenter}>
+        {/* Monster list — PHP .zdzd_gpc */}
+        <div className={styles.monsterList}>
+          {monsters.length === 0 ? (
+            <span className={styles.teamListEmpty}>此地图暂无怪物</span>
+          ) : (
+            monsters.map(m => (
+              <div key={m.id} className={styles.monsterRow}>
+                {m.img && <img src={`/images/gpc/${m.img}`} alt="" className={styles.monsterIcon} />}
+                <span className={styles.monsterName}>{m.name}</span>
+                <span className={styles.monsterLv}>Lv.{m.level}</span>
+                <span className={styles.monsterHp}>HP:{m.hp}</span>
+                <button className={styles.challengeBtn}
+                  onClick={() => {
+                    const selPet = selectedPetId ? pets.find(p => p.id === selectedPetId) : pets[0];
+                    if (!selPet) { alert('请先选择一只宠物！'); return; }
+                    const mapMinLevel = parseInt(selectedMap?.level?.split(',')[0] || '1');
+                    if (selPet.level < mapMinLevel) { alert('宠物等级不足，无法挑战此地图！'); return; }
+                    onChallenge(m.id, m.name, selectedMap?.id, selectedMap?.img);
+                  }}>挑战</button>
+                <button className={styles.captureBtn} onClick={() => handleCapture(m.id)}>捕捉</button>
+              </div>
+            ))
+          )}
+        </div>
         {/* PHP: Team panel — full for maps >=100 or ==16, simple otherwise */}
         {!(selectedMap && (selectedMap.id >= 100 || selectedMap.id === 16)) ? (
           <div className={styles.teamList}><span className={styles.teamListEmpty}>暂未组队</span></div>

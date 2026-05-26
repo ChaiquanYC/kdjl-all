@@ -20,6 +20,9 @@ export interface Player {
   activeScore?: number;
   vipLast?: number;
   sj: number;
+  paimoney?: number;
+  paisj?: number;
+  paiyb?: number;
   inMap: number;
   openMap: string;
   fightTop: number;

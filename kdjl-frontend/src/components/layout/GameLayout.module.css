@@ -5,7 +5,7 @@
 .main_t{display:flex;height:369px;overflow:visible;width:1000px;position:relative;z-index:1}
 .side{width:197px;height:369px;flex-shrink:0;background:url('/images/ui/side.jpg') no-repeat}
 .sideBtns{display:flex;flex-direction:column;position:relative;top:105px;left:16px;gap:6px}
-.sideBtn{display:block;background:transparent;border:none;cursor:pointer;padding:2px;text-decoration:none}
+.sideBtn{display:inline-block;background:transparent;border:none;cursor:pointer;padding:2px;text-decoration:none;width:134px}
 .sideBtn img{width:130px;height:50px;object-fit:contain}
 .sideBtnActive img{filter:brightness(1.3)}
 
