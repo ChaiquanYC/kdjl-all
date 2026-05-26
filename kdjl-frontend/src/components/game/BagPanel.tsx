@@ -13,7 +13,7 @@ interface BagItemRaw {
   usages?: string; cantrade?: number; propslock?: number; expire?: string;
   series?: string; serieseffect?: string; pluseffect?: string; prestige?: number;
   plusflag?: number; pluspid?: number; plusget?: string; plusnum?: number;
-  postion?: number;
+  postion?: number; holeInfo?: string; holeInfoDesc?: string;
   effectDesc?: string; requiresDesc?: string; usagesDesc?: string;
   serieseffectDesc?: string; pluseffectDesc?: string;
 }
@@ -74,16 +74,35 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
   if (vn === 9) {
     // 装备类 — PHP zhuangbei()
     const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
+    const requiresLines = requiresText ? requiresText.split('，') : [];
+    const holeLines = item.holeInfoDesc ? item.holeInfoDesc.split('\n') : [];
     body = (
       <>
-        {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}</div>}
+        {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}装备{item.plusflag === 1 ? '(可强化)' : '(不可强化)'}</div>}
         {renderRows([
           { label: '效果', value: effectText, color: '#FEFDFA' },
-          { label: '需求', value: requiresText },
+        ])}
+        {requiresLines.length > 0 && (
+          <>
+            <div className={styles.tipRow}><span className={styles.tipLabel}>需求：</span></div>
+            {requiresLines.map((line, i) => (
+              <div key={i} className={styles.tipRow} style={{ paddingLeft: 12 }}>{line}</div>
+            ))}
+          </>
+        )}
+        {renderRows([
           { label: '强化', value: item.plusget },
         ])}
         {item.plusnum != null && item.plusnum > 0 && (
           <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>
+        )}
+        {holeLines.length > 0 && (
+          <>
+            <div className={styles.tipRow}><span className={styles.tipLabel}>已镶嵌：</span></div>
+            {holeLines.map((line, i) => (
+              <div key={i} className={styles.tipRow} style={{ paddingLeft: 12, color: '#14FD10' }}>{line}</div>
+            ))}
+          </>
         )}
         {renderRows([
           { label: '附加', value: plusText, color: '#9833DC' },

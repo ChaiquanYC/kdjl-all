@@ -279,10 +279,12 @@ public class PetShrineService {
                 newCzl = currentCzl + rng().nextInt(1, 4) / 10.0;
         }
 
-        // PHP: cap at 150 + keepCzl
+        // PHP: cap at 150 + keepCzl protection item
         if (newCzl >= 150.0) {
-            if (keepCzl > 0 && newCzl > keepCzl) {
-                newCzl = keepCzl;
+            if (keepCzl >= 150) {
+                if (newCzl > keepCzl) {
+                    newCzl = keepCzl;
+                }
                 consumeBagItemById(playerId, keepCzlItemId);
             } else {
                 newCzl = 150.0;

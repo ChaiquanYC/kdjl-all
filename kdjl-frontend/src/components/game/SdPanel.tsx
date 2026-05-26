@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
 import styles from './SdPanel.module.css';
 
 interface PetInfo {
@@ -14,7 +15,7 @@ interface PetInfo {
 
 interface BagItem {
   id: number; propId: number; name?: string; sums: number;
-  effect?: string; vary?: number;
+  effect?: string; vary?: number; varyname?: number; usages?: string;
 }
 
 interface RebirthTarget {
@@ -25,6 +26,7 @@ const NYI = () => { alert('开发中'); };
 
 export default function SdPanel() {
   const setGameView = useGameStore((s) => s.setGameView);
+  const player = useAuthStore((s) => s.player);
   const [tab, setTab] = useState(1);
   const [pets, setPets] = useState<PetInfo[]>([]);
   const [selPet, setSelPet] = useState<PetInfo | null>(null);
@@ -112,7 +114,7 @@ export default function SdPanel() {
   // ──────── Tab 1: Evolve ────────
   const handleEvolve = (style: number) => {
     if (!selPet || working) return;
-    doApi(() => apiPost(`/pet/${selPet.id}/evolve`, { style, keepCzlItemId }));
+    doApi(() => apiPost(`/pet/${selPet.id}/evolve`, { style }));
   };
 
   // ──────── Tab 2: Compose ────────
@@ -136,7 +138,7 @@ export default function SdPanel() {
   // ──────── Tab 4: Sacred Evolve ────────
   const handleSacredEvolve = () => {
     if (!selPet || working) return;
-    doApi(() => apiPost(`/pet/${selPet.id}/sacred-evolve`, { itemId: null }));
+    doApi(() => apiPost(`/pet/${selPet.id}/sacred-evolve`, { keepCzlItemId }));
   };
 
   const handleExtractGrowth = () => {
@@ -183,7 +185,7 @@ export default function SdPanel() {
 
   const compPets = pets.filter(p => p.level >= 40);
   const nirvPets = pets.filter(p => isSpirit(p) && p.level >= 60);
-  const beastPets = pets.filter(p => p.name?.includes('涅磐兽') || p.name?.includes('涅槃兽'));
+  const beastPets = pets.filter(p => p.level >= 60 && (p.name?.includes('涅磐兽') || p.name?.includes('涅槃兽')));
   return (
     <div className={styles.container}>
       <div className={styles.left}></div>
@@ -223,15 +225,6 @@ export default function SdPanel() {
                 ))}
                 {pets.length === 0 && <span>暂无宠物</span>}
               </div>
-              {selPet && (
-                <div style={{marginLeft: 35, marginTop: 8}}>
-                  选择保护成长道具：
-                  <select value={keepCzlItemId ?? ''} onChange={(e) => setKeepCzlItemId(e.target.value ? parseInt(e.target.value) : null)} style={{width: 150}}>
-                    <option value="">选择保护成长道具</option>
-                    {bagItems.filter(b => b.effect?.includes('keepczl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
-                  </select>
-                </div>
-              )}
             </div>
             <div className={styles.sdR}>
               {selPet && (() => {
@@ -276,25 +269,33 @@ export default function SdPanel() {
             <div className={styles.composeL}>
               <div className={styles.composePets}>
                 <div className={styles.composeSlot}>
-                  {compMainId ? (pets.find(p => p.id === compMainId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === compMainId)!.cardImg}`} alt="" />) : (pets[0]?.cardImg && <img src={`/images/bb/${pets[0].cardImg}`} alt="" />)}
+                  {compMainId ? (pets.find(p => p.id === compMainId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === compMainId)!.cardImg}`} alt="" />) : null}
                 </div>
                 <div className={styles.composeSlot}>
-                  {compSubId ? (pets.find(p => p.id === compSubId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === compSubId)!.cardImg}`} alt="" />) : (pets[1]?.cardImg && <img src={`/images/bb/${pets[1].cardImg}`} alt="" />)}
+                  {compSubId ? (pets.find(p => p.id === compSubId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === compSubId)!.cardImg}`} alt="" />) : null}
                 </div>
               </div>
               <div className={styles.composeSelects}>
                 <table width="280"><tbody>
                   <tr>
                     <td align="center" style={{paddingRight:20}}>
-                      <select value={compMainId ?? ''} onChange={(e) => setCompMainId(e.target.value ? parseInt(e.target.value) : null)}>
+                      <select value={compMainId ?? ''} onChange={(e) => {
+                        const v = e.target.value ? parseInt(e.target.value) : null;
+                        setCompMainId(v);
+                        if (v === compSubId) setCompSubId(null);
+                      }}>
                         <option value="">请选择主宠物</option>
-                        {compPets.map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
+                        {compPets.filter(p => p.id !== compSubId).map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
                       </select>
                     </td>
                     <td align="center">
-                      <select value={compSubId ?? ''} onChange={(e) => setCompSubId(e.target.value ? parseInt(e.target.value) : null)}>
+                      <select value={compSubId ?? ''} onChange={(e) => {
+                        const v = e.target.value ? parseInt(e.target.value) : null;
+                        setCompSubId(v);
+                        if (v === compMainId) setCompMainId(null);
+                      }}>
                         <option value="">请选择副宠物</option>
-                        {compPets.map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
+                        {compPets.filter(p => p.id !== compMainId).map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
                       </select>
                     </td>
                   </tr>
@@ -314,12 +315,12 @@ export default function SdPanel() {
               添加<span style={{color:'red'}}>守护</span>材料：
               <select value={compItem1 ?? ''} onChange={(e) => setCompItem1(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料一</option>
-                {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
               </select><br />
               添加<span style={{color:'red'}}>加成</span>材料：
               <select value={compItem2 ?? ''} onChange={(e) => setCompItem2(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料二</option>
-                {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
               </select><br />
               <table width="300" style={{marginTop:10}}><tbody>
                 <tr>
@@ -328,7 +329,7 @@ export default function SdPanel() {
                       <img src="/images/sdbtn.gif" alt="开始合成" style={{opacity: working ? 0.5 : 1}} />
                     </a>
                   </td>
-                  <td style={{paddingLeft:20}}>合成幸运星：0</td>
+                  <td style={{paddingLeft:20}}>合成幸运星：{player?.mergeCount ?? 0}</td>
                 </tr>
                 <tr><td style={{paddingLeft:20}}><a href="#" onClick={(e) => { e.preventDefault(); NYI(); }}><img src="/images/gm15.gif" alt="合成幸运星说明" /></a></td></tr>
               </tbody></table>
@@ -342,25 +343,33 @@ export default function SdPanel() {
             <div className={styles.composeL}>
               <div className={styles.composePets}>
                 <div className={styles.composeSlot}>
-                  {nirvMainId ? (pets.find(p => p.id === nirvMainId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === nirvMainId)!.cardImg}`} alt="" />) : (pets[0]?.cardImg && <img src={`/images/bb/${pets[0].cardImg}`} alt="" />)}
+                  {nirvMainId ? (pets.find(p => p.id === nirvMainId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === nirvMainId)!.cardImg}`} alt="" />) : null}
                 </div>
                 <div className={styles.composeSlot}>
-                  {nirvSubId ? (pets.find(p => p.id === nirvSubId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === nirvSubId)!.cardImg}`} alt="" />) : (pets[1]?.cardImg && <img src={`/images/bb/${pets[1].cardImg}`} alt="" />)}
+                  {nirvSubId ? (pets.find(p => p.id === nirvSubId)?.cardImg && <img src={`/images/bb/${pets.find(p => p.id === nirvSubId)!.cardImg}`} alt="" />) : null}
                 </div>
               </div>
               <div className={styles.composeSelects}>
                 <table><tbody>
                   <tr>
                     <td align="center">
-                      <select value={nirvMainId ?? ''} onChange={(e) => setNirvMainId(e.target.value ? parseInt(e.target.value) : null)}>
+                      <select value={nirvMainId ?? ''} onChange={(e) => {
+                        const v = e.target.value ? parseInt(e.target.value) : null;
+                        setNirvMainId(v);
+                        if (v === nirvSubId) setNirvSubId(null);
+                      }}>
                         <option value="">请选择主宠物</option>
-                        {nirvPets.map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
+                        {nirvPets.filter(p => p.id !== nirvSubId).map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
                       </select>
                     </td>
                     <td align="center">
-                      <select value={nirvSubId ?? ''} onChange={(e) => setNirvSubId(e.target.value ? parseInt(e.target.value) : null)}>
+                      <select value={nirvSubId ?? ''} onChange={(e) => {
+                        const v = e.target.value ? parseInt(e.target.value) : null;
+                        setNirvSubId(v);
+                        if (v === nirvMainId) setNirvMainId(null);
+                      }}>
                         <option value="">请选择副宠物</option>
-                        {nirvPets.map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
+                        {nirvPets.filter(p => p.id !== nirvMainId).map(p => <option key={p.id} value={p.id}>{p.name}-Lv.{p.level}</option>)}
                       </select>
                     </td>
                   </tr>
@@ -386,12 +395,12 @@ export default function SdPanel() {
               添加材料一：
               <select value={nirvItem1 ?? ''} onChange={(e) => setNirvItem1(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料一</option>
-                {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && b.usages?.startsWith('涅盘')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
               </select><br />
               添加材料二：
               <select value={nirvItem2 ?? ''} onChange={(e) => setNirvItem2(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">涅槃加成材料</option>
-                {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 19 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
               </select><br />
               <table><tbody>
                 <tr>
@@ -436,6 +445,13 @@ export default function SdPanel() {
                         </td>
                       </tr>
                     </tbody></table>
+                    <div style={{marginTop: 8}}>
+                      选择保护成长道具：
+                      <select value={keepCzlItemId ?? ''} onChange={(e) => setKeepCzlItemId(e.target.value ? parseInt(e.target.value) : null)} style={{width: 160}}>
+                        <option value="">选择保护成长道具</option>
+                        {bagItems.filter(b => b.effect?.includes('keepczl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                      </select>
+                    </div>
                   </div>
                 )}
               </div>
@@ -446,7 +462,7 @@ export default function SdPanel() {
                       <td>选择道具一：
                         <select value={extractItem1 ?? ''} onChange={(e) => setExtractItem1(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加抽取比例道具</option>
-                          {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
                         </select>
                       </td>
                       <td rowSpan={3} align="right">
@@ -458,7 +474,7 @@ export default function SdPanel() {
                     <tr><td>选择道具二：
                       <select value={extractItem2 ?? ''} onChange={(e) => setExtractItem2(e.target.value ? parseInt(e.target.value) : null)}>
                         <option value="">增加抽取比例道具</option>
-                        {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                        {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
                       </select>
                     </td></tr>
                     <tr><td>本次抽取需要金币：<span>czl x 10000</span></td></tr>
@@ -551,7 +567,7 @@ export default function SdPanel() {
                       <td height="30" align="left">
                         <select value={rebirthItem1 ?? ''} onChange={(e) => setRebirthItem1(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加道具</option>
-                          {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.varyname === 23 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
                         </select>
                       </td>
                     </tr>
@@ -560,7 +576,7 @@ export default function SdPanel() {
                       <td height="20" align="left">
                         <select value={rebirthItem2 ?? ''} onChange={(e) => setRebirthItem2(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加道具</option>
-                          {bagItems.filter(b => b.vary === 1).map(b => <option key={b.id} value={b.id}>#{b.propId} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.varyname === 23 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
                         </select>
                       </td>
                     </tr>

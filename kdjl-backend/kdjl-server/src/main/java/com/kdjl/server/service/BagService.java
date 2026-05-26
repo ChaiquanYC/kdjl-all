@@ -81,6 +81,8 @@ public class BagService {
                 m.put("pluspid", p.getPlusPropId());
                 m.put("plusget", p.getPlusget());
                 m.put("plusnum", p.getPlusnum());
+                m.put("holeInfo", i.getHoleInfo());
+                m.put("holeInfoDesc", resolveHoleInfo(i.getHoleInfo()));
                 m.put("prestige", p.getPrestige());
                 m.put("postion", p.getPostion());
                 String expire;
@@ -1518,6 +1520,28 @@ public class BagService {
 
     private String resolvePlusEffect(String pluseffect) {
         return resolveAttribList(pluseffect);
+    }
+
+    private static final Map<String, String> HOLE_STAT_NAMES = Map.ofEntries(
+        Map.entry("ac", "攻击"), Map.entry("mc", "魔攻"), Map.entry("hp", "生命"),
+        Map.entry("mp", "魔法"), Map.entry("speed", "速度"), Map.entry("hits", "命中"),
+        Map.entry("miss", "闪避"), Map.entry("hitshp", "吸血"), Map.entry("hitsmp", "吸蓝"),
+        Map.entry("dxsh", "掉血"), Map.entry("shjs", "伤害减少"), Map.entry("sdmp", "损敌魔法"),
+        Map.entry("szmp", "损自魔法"), Map.entry("crit", "暴击")
+    );
+
+    /** Parse holeInfo like "ac:50,hp:100" into readable gem descriptions */
+    private String resolveHoleInfo(String holeInfo) {
+        if (holeInfo == null || holeInfo.isEmpty()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String pair : holeInfo.split(",")) {
+            String[] kv = pair.split(":");
+            if (kv.length < 2) continue;
+            String name = HOLE_STAT_NAMES.getOrDefault(kv[0], kv[0]);
+            if (!sb.isEmpty()) sb.append("\n");
+            sb.append(name).append("+").append(kv[1].replace("%", ""));
+        }
+        return sb.toString();
     }
 
     /**

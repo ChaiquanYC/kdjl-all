@@ -71,6 +71,7 @@ public class PlayerService {
         m.put("fightbb", p.getFightBb());
         m.put("sj", ext != null && ext.getSj() != null ? ext.getSj() : 0);
         m.put("merge", ext != null && ext.getMerge() != null ? ext.getMerge() : 0);
+        m.put("mergeCount", ext != null && ext.getMergeCount() != null ? ext.getMergeCount() : 0);
         m.put("maxMc", p.getMaxMc() != null ? p.getMaxMc() : 10);
         m.put("headImg", p.getHeadImg() != null ? p.getHeadImg() : 0);
         m.put("dblExpFlag", p.getDblExpFlag() != null ? p.getDblExpFlag() : 0);

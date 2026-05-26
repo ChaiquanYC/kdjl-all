@@ -28,7 +28,7 @@ export interface Player {
   mbid: number;
   fightbb: number;
   merge: number;
-  onlineTime: number;
+  mergeCount?: number;
   maxMc: number;
   headImg: number;
   dblExpFlag?: number;
