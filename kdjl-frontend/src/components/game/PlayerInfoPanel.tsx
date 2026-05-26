@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useGameStore } from '@/stores/gameStore';
 import { apiGet } from '@/api/client';
 import styles from './PlayerInfoPanel.module.css';
 
 export default function PlayerInfoPanel() {
   const player = useAuthStore(s => s.player);
   const fetchPlayer = useAuthStore(s => s.fetchPlayer);
+  const refreshTrigger = useGameStore((s) => s.refreshTrigger);
   const [tab, setTab] = useState(1);
   const [petCount, setPetCount] = useState(0);
 
@@ -14,7 +16,7 @@ export default function PlayerInfoPanel() {
     apiGet<{ id: number }[]>('/pets').then(r => {
       if (r.code === 0 && r.data) setPetCount(r.data.length);
     });
-  }, []);
+  }, [refreshTrigger]);
 
   if (!player) return <div className={styles.container}>加载中...</div>;
 

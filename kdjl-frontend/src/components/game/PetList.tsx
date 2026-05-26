@@ -47,6 +47,7 @@ export default function PetList() {
   const player = useAuthStore((s) => s.player);
   const mainPetId = player?.mbid;
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const refreshTrigger = useGameStore((s) => s.refreshTrigger);
 
   const [selectedId, setSelectedId] = useState<number>(mainPetId ?? 0);
   const selectedPet = pets.find(p => p.id === selectedId) ?? pets[0];
@@ -68,7 +69,7 @@ export default function PetList() {
       if (bagRes.code === 0 && bagRes.data) setBagItems(bagRes.data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, [mainPetId]);
+  }, [mainPetId, refreshTrigger]);
 
   useEffect(() => {
     if (selectedPet?.id) {

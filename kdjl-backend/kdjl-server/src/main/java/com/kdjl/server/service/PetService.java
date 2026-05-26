@@ -41,6 +41,31 @@ public class PetService {
         List<UserPet> userPets = userPetRepo.findByPlayerId(playerId).stream()
             .filter(p -> p.getMuchang() == null || p.getMuchang() == 0)
             .collect(Collectors.toList());
+
+        // Resolve remake IDs → names from bb and props tables
+        Set<Long> remakeIds = new HashSet<>();
+        Set<Long> remakePids = new HashSet<>();
+        for (UserPet up : userPets) {
+            if (up.getRemakeid() != null) {
+                for (String s : up.getRemakeid().split("[,|]")) {
+                    try { remakeIds.add(Long.parseLong(s.trim())); } catch (NumberFormatException ignored) {}
+                }
+            }
+            if (up.getRemakepid() != null) {
+                for (String s : up.getRemakepid().split("[,|]")) {
+                    try { remakePids.add(Long.parseLong(s.trim())); } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+        Map<Long, String> bbNameMap = new HashMap<>();
+        if (!remakeIds.isEmpty()) {
+            petRepo.findAllById(remakeIds).forEach(p -> bbNameMap.put(p.getId(), p.getName()));
+        }
+        Map<Long, String> propsNameMap = new HashMap<>();
+        if (!remakePids.isEmpty()) {
+            propsRepo.findAllById(remakePids).forEach(p -> propsNameMap.put(p.getId(), p.getName()));
+        }
+
         return userPets.stream().map(up -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", up.getId());
@@ -68,6 +93,9 @@ public class PetService {
             m.put("remakeid", up.getRemakeid());
             m.put("remakepid", up.getRemakepid());
             m.put("remaketimes", up.getRemaketimes());
+            // Resolved names
+            m.put("remakeName", resolveIds(up.getRemakeid(), bbNameMap));
+            m.put("remakePName", resolveIds(up.getRemakepid(), propsNameMap));
             m.put("skillList", up.getSkillList());
             m.put("czl", up.getCzl());
             m.put("img", up.getImgstand());
@@ -287,6 +315,26 @@ public class PetService {
             case 1 -> "金"; case 2 -> "木"; case 3 -> "水";
             case 4 -> "火"; case 5 -> "土"; default -> "无";
         };
+    }
+
+    /**
+     * Resolve comma/pipe-separated IDs to names. Pipe (|) means "or" alternative.
+     * e.g. "94,95|1406" → "进化之书,高级进化之书 或 高级进化书"
+     */
+    private static String resolveIds(String ids, Map<Long, String> nameMap) {
+        if (ids == null || ids.isBlank()) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String part : ids.split("\\|")) {
+            for (String s : part.split(",")) {
+                try {
+                    Long id = Long.parseLong(s.trim());
+                    String name = nameMap.getOrDefault(id, id.toString());
+                    if (sb.length() > 0) sb.append(",");
+                    sb.append(name);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return sb.toString();
     }
 
     /**

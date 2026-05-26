@@ -103,6 +103,7 @@ export default function MapPanel({ onChallenge }: Props) {
   const setCurrentMap = useGameStore((s) => s.setCurrentMap);
   const setPets = useGameStore((s) => s.setPets);
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const refreshTrigger = useGameStore((s) => s.refreshTrigger);
   const setBattleDifficulty = useGameStore((s) => s.setBattleDifficulty);
   const [difficulty, setDifficulty] = useState(1);
   const leaveMap = () => { apiPost('/player/leave-map', {}).then(() => { setSelectedMap(null); setMonsters([]); triggerRefresh(); }); };
@@ -123,7 +124,7 @@ export default function MapPanel({ onChallenge }: Props) {
       if (petRes.code === 0 && petRes.data) setLocalPets(petRes.data);
     }).catch(() => {});
     fetchMyTeam();
-  }, []);
+  }, [refreshTrigger]);
 
   const handleCreateTeam = () => {
     const name = prompt('请输入队伍名称：');

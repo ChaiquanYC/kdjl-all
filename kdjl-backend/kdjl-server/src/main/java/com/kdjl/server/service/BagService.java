@@ -290,8 +290,8 @@ public class BagService {
             String firstPart = valClean.split(":")[0].split(",")[0].trim();
             try {
                 dblValue = Double.parseDouble(firstPart);
-                // For exp multiplier, scale by 10 (1.5→15). For addexp/addexp, keep raw value.
-                if ("exp".equals(key)) value = (int)(dblValue * 10);
+                // For exp multiplier/addczl, scale by 10 (0.1→1). For others keep raw int.
+                if ("exp".equals(key) || "addczl".equals(key)) value = (int)(dblValue * 10);
                 else value = (int) dblValue;
             } catch (NumberFormatException e) {
                 continue;

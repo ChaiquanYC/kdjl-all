@@ -9,6 +9,7 @@ interface PetInfo {
   atk: number; def: number; speed: number; czl: number;
   wx: number; img?: string; cardImg?: string;
   remakelevel?: string; remakeid?: string; remakepid?: string; remaketimes?: number;
+  remakeName?: string; remakePName?: string;
 }
 
 interface BagItem {
@@ -235,16 +236,16 @@ export default function SdPanel() {
             <div className={styles.sdR}>
               {selPet && (() => {
                 const levels = selPet.remakelevel ? selPet.remakelevel.split(',') : [];
-                const rids = selPet.remakeid ? selPet.remakeid.split(',') : [];
-                const pids = selPet.remakepid ? selPet.remakepid.split(',') : [];
+                const rnames = selPet.remakeName ? selPet.remakeName.split(',') : [];
+                const pnames = selPet.remakePName ? selPet.remakePName.split(',') : [];
                 return <>
                   <div className={styles.step}>
                     <p>
                       进化需求等级：{levels[0] || '不可进化'}<br />
                       当前等级：{selPet.level}<br />
                       进化所需金币：1000<br />
-                      进化所需材料：{pids[0] || '查看具体宠物'}<br />
-                      进化后宠物：{rids[0] || '查看具体宠物'}<br />
+                      进化所需材料：{pnames[0] || '查看具体宠物'}<br />
+                      进化后宠物：{rnames[0] || '查看具体宠物'}<br />
                       <a href="#" onClick={(e) => { e.preventDefault(); handleEvolve(1); }}>
                         <img src="/new_images/ui/sd04.jpg" alt="A进化" style={{opacity: working ? 0.5 : 1}} />
                       </a>
@@ -255,8 +256,8 @@ export default function SdPanel() {
                       进化需求等级：{levels[1] || '不可进化'}<br />
                       当前等级：{selPet.level}<br />
                       进化所需金币：1000<br />
-                      进化所需材料：{pids[1] || '查看具体宠物'}<br />
-                      进化后宠物：{rids[1] || '查看具体宠物'}<br />
+                      进化所需材料：{pnames[1] || '查看具体宠物'}<br />
+                      进化后宠物：{rnames[1] || '查看具体宠物'}<br />
                       <a href="#" onClick={(e) => { e.preventDefault(); handleEvolve(2); }}>
                         <img src="/new_images/ui/sd05.jpg" alt="B进化" style={{opacity: working ? 0.5 : 1}} />
                       </a>

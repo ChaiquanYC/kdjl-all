@@ -49,6 +49,16 @@ export default function GameLayout() {
   const startBattle = useGameStore((s) => s.startBattle);
   const endBattle = useGameStore((s) => s.endBattle);
   const refreshTrigger = useGameStore((s) => s.refreshTrigger);
+  const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+
+  // Brief flash on refresh
+  const [refreshing, setRefreshing] = useState(false);
+  useEffect(() => {
+    if (refreshTrigger === 0) return;
+    setRefreshing(true);
+    const t = setTimeout(() => setRefreshing(false), 300);
+    return () => clearTimeout(t);
+  }, [refreshTrigger]);
 
   // Pet selection before battle
   const [pendingMonster, setPendingMonster] = useState<{ id: number; name: string } | null>(null);
@@ -203,16 +213,16 @@ export default function GameLayout() {
         <div className={styles.main_t}>
           <div className={styles.side}>
             <div className={styles.sideBtns}>
-              <a className={`${styles.sideBtn} ${gameView==='map'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('map')}}>
+              <a className={`${styles.sideBtn} ${gameView==='map'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();if(gameView==='map')triggerRefresh();else setGameView('map')}}>
                 <img src="/images/ui/menu/m_fight.png" alt="野外探险" />
               </a>
-              <a className={`${styles.sideBtn} ${gameView==='city'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('city')}}>
+              <a className={`${styles.sideBtn} ${gameView==='city'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();if(gameView==='city')triggerRefresh();else setGameView('city')}}>
                 <img src="/images/ui/menu/m_city.png" alt="城镇" />
               </a>
-              <a className={`${styles.sideBtn} ${gameView==='pets'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('pets')}}>
+              <a className={`${styles.sideBtn} ${gameView==='pets'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();if(gameView==='pets')triggerRefresh();else setGameView('pets')}}>
                 <img src="/images/ui/menu/m_pet.png" alt="宠物" />
               </a>
-              <a className={`${styles.sideBtn} ${gameView==='profile'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();setGameView('profile')}}>
+              <a className={`${styles.sideBtn} ${gameView==='profile'?styles.sideBtnActive:''}`} onClick={()=>{if(inBattle)endBattle();if(gameView==='profile')triggerRefresh();else setGameView('profile')}}>
                 <img src="/images/ui/menu/m_info.png" alt="个人信息" />
               </a>
             </div>
@@ -231,7 +241,7 @@ export default function GameLayout() {
                 </a>
               ))}
             </div>
-            <div className={styles.gameBox}>
+            <div className={`${styles.gameBox} ${refreshing ? styles.refreshing : ''}`}>
               {inBattle && battlePet && battleMonster ? (
                 <BattlePanel key={`${battlePet.id}-${battleMonster.id}`} petId={battlePet.id} monsterId={battleMonster.id} mapId={battleMapId ?? undefined} mapImg={challengeMapImg ?? undefined} onClose={handleReturnFromBattle} onContinue={handleContinueBattle} />
               ) : pendingMonster ? (

@@ -17,6 +17,8 @@
 .toolsBar a:hover{opacity:1}
 .toolsActive{opacity:1!important}
 .gameBox{width:788px;height:319px;overflow:visible;margin:0 auto;position:relative}
+.refreshing::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.6);animation:flash .25s ease-out forwards;pointer-events:none;z-index:99}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
 
 .main_b{display:flex;width:1000px;height:239px;flex-shrink:0;position:relative;z-index:0}
 .chatL{width:710px;height:239px;flex-shrink:0;background:url('/images/ui/chat_bg.jpg') no-repeat;display:flex;flex-direction:column}
