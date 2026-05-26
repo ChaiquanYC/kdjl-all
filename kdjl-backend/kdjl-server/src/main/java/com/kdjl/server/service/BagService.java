@@ -628,18 +628,23 @@ public class BagService {
                 }
                 newPet.setStime(System.currentTimeMillis() / 1000);
                 newPet = userPetRepo.save(newPet);
-                // Auto-add 普通攻击 skill (PHP behavior)
-                SkillSys basicAtk = skillSysRepo.findById(1L).orElse(null);
-                if (basicAtk != null) {
-                    Skill s = new Skill();
-                    s.setPetId(newPet.getId()); s.setSkillDefId(1L); s.setName("普通攻击");
-                    s.setLevel(1); s.setWx(0); s.setVary("1"); s.setValue("0"); s.setPlus("");
-                    s.setUhp(0); s.setUmp(0); s.setImg("0");
-                    skillRepo.save(s);
-                    String currentSkills = newPet.getSkillList();
-                    newPet.setSkillList((currentSkills != null && !currentSkills.isEmpty())
-                        ? currentSkills + ",1:1" : "1:1");
-                    userPetRepo.save(newPet);
+                // Auto-add 普通攻击 skill if template doesn't already have it
+                String currentSkills = newPet.getSkillList();
+                boolean hasBasicAtk = currentSkills != null &&
+                    java.util.Arrays.stream(currentSkills.split(","))
+                        .anyMatch(s -> s.trim().startsWith("1:"));
+                if (!hasBasicAtk) {
+                    SkillSys basicAtk = skillSysRepo.findById(1L).orElse(null);
+                    if (basicAtk != null) {
+                        Skill s = new Skill();
+                        s.setPetId(newPet.getId()); s.setSkillDefId(1L); s.setName("普通攻击");
+                        s.setLevel(1); s.setWx(0); s.setVary("1"); s.setValue("0"); s.setPlus("");
+                        s.setUhp(0); s.setUmp(0); s.setImg("0");
+                        skillRepo.save(s);
+                        newPet.setSkillList((currentSkills != null && !currentSkills.isEmpty())
+                            ? currentSkills + ",1:1" : "1:1");
+                        userPetRepo.save(newPet);
+                    }
                 }
                 result.put("type", "openPet");
                 result.put("petId", newPet.getId());
