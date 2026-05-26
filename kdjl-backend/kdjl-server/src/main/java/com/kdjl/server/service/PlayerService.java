@@ -70,6 +70,9 @@ public class PlayerService {
         m.put("mbid", p.getMbid());
         m.put("fightbb", p.getFightBb());
         m.put("sj", ext != null && ext.getSj() != null ? ext.getSj() : 0);
+        m.put("paimoney", p.getPaiMoney() != null ? p.getPaiMoney() : 0);
+        m.put("paisj", ext != null && ext.getPaisj() != null ? ext.getPaisj() : 0);
+        m.put("paiyb", ext != null && ext.getPaiyb() != null ? ext.getPaiyb() : 0);
         m.put("merge", ext != null && ext.getMerge() != null ? ext.getMerge() : 0);
         m.put("mergeCount", ext != null && ext.getMergeCount() != null ? ext.getMergeCount() : 0);
         m.put("maxMc", p.getMaxMc() != null ? p.getMaxMc() : 10);

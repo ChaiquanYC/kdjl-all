@@ -217,6 +217,7 @@ public class Player {
     public void setOpenMap(String openMap) { this.openMap = openMap; }
     public void setMoney(Integer money) { this.money = money; }
     public void setYb(Integer yb) { this.yb = yb; }
+    public void setPaiMoney(Integer paiMoney) { this.paiMoney = paiMoney; }
     public void setInMap(Integer inMap) { this.inMap = inMap; }
     public void setSex(String sex) { this.sex = sex; }
     public void setRegtime(Integer regtime) { this.regtime = regtime; }

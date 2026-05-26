@@ -1,13 +1,15 @@
 .loading,.empty,.placeholder{display:flex;align-items:center;justify-content:center;height:200px;color:#888;font-size:15px}
 
 /* World Map — matches PHP Expore_Mod */
-.worldMap{width:786px;height:321px;position:relative;overflow:hidden;margin:0 auto}
-.worldBg{width:786px;height:321px;object-fit:cover;display:block}
+.worldMap{width:787px;height:317px;position:relative;overflow:hidden;margin:0 auto}
+.worldBg{width:787px;height:317px;display:block}
 .mapPoint{position:absolute;cursor:pointer;z-index:5;transition:filter .2s}
 .mapPoint:hover{filter:brightness(1.3)}
 .mapPointClosed{cursor:not-allowed;opacity:0.5}
 .mapPointClosed:hover{filter:none}
-.mapLabel{display:block}
+.locked{opacity:0.6;filter:grayscale(0.5)}
+.unlocked{opacity:1}
+.mapLabel{width:100%;height:100%;display:block}
 .worldArrow{position:absolute;cursor:pointer;z-index:10;animation:mapArrow .2s infinite alternate}
 .worldArrow img{width:24px;height:auto}
 .arrowLeft{left:5px;top:140px}
@@ -16,54 +18,30 @@
 @keyframes mapArrow{0%{transform:translateX(0)}100%{transform:translateX(8px)}}
 
 .title{color:#513a11;font-size:15px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid #d7c060}
-.mapList{width:260px;flex-shrink:0;overflow-y:auto}
-.mapItem{background:#fff;border:1px solid #d7c060;border-radius:6px;padding:10px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
-.mapItem:hover{border-color:#f9e061}
-.mapItem.selected{border-color:#e08040;background:#fff8f0}
-.mapName{color:#513a11;font-size:14px;font-weight:600}
-.mapLevel{color:#9a3803;font-size:12px;margin:2px 0}
-.mapDesc{color:#888;font-size:11px}
-.mapHeader{display:flex;align-items:center;justify-content:space-between}
-.leaveBtn{padding:4px 12px;background:#888;color:#fff;border:none;border-radius:4px;font-size:12px;cursor:pointer}
-.leaveBtn{padding:4px 8px;background:#80b860;border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:11px}
-.leaveBtn:hover{background:#609040}
-.monsterNames{font-size:11px;color:#9a3803;line-height:1.5;word-break:break-all}
-.playerList{overflow-y:auto;max-height:220px;padding:4px 0}
-.noPlayers{color:#888;font-size:12px;text-align:center;padding:10px 0}
-.playerItem{display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:12px;color:#335e00;cursor:pointer}
-.playerItem:hover{background:rgba(0,0,0,0.05)}
-.renIcon{width:14px;height:14px}
-.petSelected{opacity:1 !important;box-shadow:0 0 6px #ffd700;transform:scale(1.05)}
-.petSelected img{opacity:1 !important}
-.petLevel{font-size:10px;color:#335e00;display:block;text-align:center}
-.challengeBtn,.captureBtn{color:#fff;border:none;padding:2px 8px;border-radius:3px;cursor:pointer;font-size:10px;white-space:nowrap}
-.challengeBtn{background:#e08040}.challengeBtn:hover{background:#c06020}
-.captureBtn{background:#4393c6}.captureBtn:hover{background:#3070a0}
 
 /* Team area — PHP Team_Mod 3-column backgrounds */
 .teamContainer{width:788px;height:319px;display:flex;font-size:12px;overflow:hidden}
 .teamLeft{width:301px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj1.jpg') no-repeat;overflow-y:auto}
-.teamCenter{width:283px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj2.jpg') no-repeat;display:flex;flex-direction:column}
-.teamRight{width:204px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj3.jpg') no-repeat}
+.teamCenter{width:283px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj2.jpg') no-repeat;display:flex;flex-direction:column;padding:40px 8px 0}
+.teamRight{width:204px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj3.jpg') no-repeat;padding:44px 10px 0}
+
 /* PHP: .zdzd_jiesao — margin:70px 0 0 40px, 230x90 */
 .teamDesc{margin:70px 0 0 40px;width:230px;height:90px;color:#335e00;line-height:22px;overflow:hidden}
 .teamDesc strong{font-size:14px;display:block;margin-bottom:4px}
 .teamDesc p{margin:2px 0;color:#506030;font-size:11px}
+
 /* PHP: .zdzd_cong — margin:50px 0 0 10px, 247x84 */
 .teamPet{margin:50px 0 0 10px;width:247px;height:84px}
 .teamCards{display:flex;gap:8px}
 .teamCard{width:67px;height:84px;background:url('/images/ui/nopet.jpg') no-repeat center/cover;display:flex;align-items:flex-end;justify-content:center;position:relative;cursor:pointer}
 .teamCard img{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}
 .teamCard span{position:relative;color:#fff;font-size:10px;padding:4px;text-align:center;line-height:14px}
-.teamCenter{width:283px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj2.jpg') no-repeat;display:flex;flex-direction:column;padding:40px 8px 0}
-.monsterList{display:flex;flex-direction:column;gap:2px}
-.monsterRow{display:flex;align-items:center;gap:4px;padding:3px 6px;background:rgba(255,255,255,0.5);border-radius:3px}
-.monsterRow:hover{background:rgba(161,216,124,0.3)}
-.monsterRow .monsterName{flex:1;font-size:12px;color:#335e00;font-weight:600}
-.monsterRow .monsterLv{font-size:11px;color:#609040;width:40px}
-.monsterRow .monsterHp{font-size:11px;color:#c04040;width:40px}
-.teamList{flex:1;overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:2px}
-.teamListEmpty{font-size:11px;color:#609040;text-align:center;padding:20px 0}
+.petSelected{opacity:1 !important;box-shadow:0 0 6px #ffd700;transform:scale(1.05)}
+.petSelected img{opacity:1 !important}
+.petLevel{font-size:10px;color:#335e00;display:block;text-align:center}
+
+/* Monster list — PHP .zdzd_gpc */
+.monsterList{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
 .monsterRow{display:flex;align-items:center;gap:3px;padding:2px 4px;background:rgba(255,255,255,0.4);border-radius:3px}
 .monsterRow:hover{background:rgba(161,216,124,0.3)}
 .monsterRow .monsterIcon{width:24px;height:24px;object-fit:contain}
@@ -73,27 +51,10 @@
 .monsterRow .challengeBtn,.monsterRow .captureBtn{padding:1px 6px;font-size:10px;border-radius:2px;color:#fff;border:none;cursor:pointer}
 .monsterRow .challengeBtn{background:#e08040}.monsterRow .challengeBtn:hover{background:#c06020}
 .monsterRow .captureBtn{background:#4393c6}.monsterRow .captureBtn:hover{background:#3070a0}
-.teamActions{display:flex;justify-content:center;gap:8px;padding:6px 0;margin-top:auto}
-.anniuBtn{width:78px;height:29px;cursor:pointer;opacity:.9}
-.anniuBtn:hover{opacity:1}
-.leaveBtn{padding:3px 16px;background:#80b860;border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:11px}
-.leaveBtn:hover{background:#609040}
-.monsterNames{font-size:11px;color:#9a3803;line-height:1.5;word-break:break-all}
-.playerList{overflow-y:auto;max-height:220px;padding:4px 0}
-.noPlayers{color:#888;font-size:12px;text-align:center;padding:10px 0}
-.playerItem{display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:12px;color:#335e00;cursor:pointer}
-.playerItem:hover{background:rgba(0,0,0,0.05)}
-.renIcon{width:14px;height:14px}
-.petSelected{opacity:1 !important;box-shadow:0 0 6px #ffd700;transform:scale(1.05)}
-.petSelected img{opacity:1 !important}
-.petLevel{font-size:10px;color:#335e00;display:block;text-align:center}
-.teamRight{width:204px;flex-shrink:0;background:url('/images/ui/team/zdzd_bj3.jpg') no-repeat;padding:44px 10px 0}
-.diffBar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0}
-.diffLabel{color:#335e00;font-size:12px;font-weight:600}
-.diffBtns{display:flex;gap:4px}
-.diffBtn{width:64px;height:28px;cursor:pointer;opacity:0.7;transition:opacity .2s,filter .2s}
-.diffBtn:hover{opacity:0.9}
-.diffActive{opacity:1!important;filter:brightness(1.25);outline:2px solid #f9e061;border-radius:2px}
+
+/* Team panel */
+.teamList{flex:1;overflow-y:auto;padding:5px;display:flex;flex-direction:column;gap:2px}
+.teamListEmpty{font-size:11px;color:#609040;text-align:center;padding:20px 0}
 .teamNameRow{display:flex;align-items:center;justify-content:space-between;padding:4px 6px;border-bottom:1px solid rgba(0,0,0,0.08)}
 .teamName{color:#335e00;font-size:13px;font-weight:600}
 .teamMemberRow{display:flex;align-items:center;gap:4px;padding:2px 6px;font-size:11px;color:#335e00}
@@ -102,5 +63,26 @@
 .teamMemberState{font-size:10px}
 .teamActionBtn{background:#80b860;color:#fff;border:none;border-radius:3px;cursor:pointer;font-size:11px;padding:3px 10px}
 .teamActionBtn:hover{background:#609040}
+.teamActions{display:flex;justify-content:center;gap:8px;padding:6px 0;margin-top:auto}
+.anniuBtn{width:78px;height:29px;cursor:pointer;opacity:.9}
+.anniuBtn:hover{opacity:1}
+.leaveBtn{padding:3px 16px;background:#80b860;border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:11px}
+.leaveBtn:hover{background:#609040}
+
+/* Difficulty bar */
+.diffBar{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0}
+.diffLabel{color:#335e00;font-size:12px;font-weight:600}
+.diffBtns{display:flex;gap:4px}
+.diffBtn{width:64px;height:28px;cursor:pointer;opacity:0.7;transition:opacity .2s,filter .2s}
+.diffBtn:hover{opacity:0.9}
+.diffActive{opacity:1!important;filter:brightness(1.25);outline:2px solid #f9e061;border-radius:2px}
+
+/* Right column — online players */
 .teamOnline{color:#335e00;font-size:12px;line-height:26px}
 .teamOnline span{display:block;font-weight:bold;margin-bottom:8px}
+.monsterNames{font-size:11px;color:#9a3803;line-height:1.5;word-break:break-all}
+.playerList{overflow-y:auto;max-height:220px;padding:4px 0}
+.noPlayers{color:#888;font-size:12px;text-align:center;padding:10px 0}
+.playerItem{display:flex;align-items:center;gap:4px;padding:3px 6px;font-size:12px;color:#335e00;cursor:pointer}
+.playerItem:hover{background:rgba(0,0,0,0.05)}
+.renIcon{width:14px;height:14px}
