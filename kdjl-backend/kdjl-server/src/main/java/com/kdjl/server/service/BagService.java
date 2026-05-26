@@ -63,15 +63,20 @@ public class BagService {
                 m.put("propsColor", p.getPropscolor());
                 m.put("varyname", p.getVaryname());
                 m.put("effect", p.getEffect());
+                m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
                 m.put("requires", p.getRequires());
+                m.put("requiresDesc", resolveRequires(p.getRequires(), p.getVaryname()));
                 m.put("buy", p.getBuy());
                 m.put("yb", p.getYb());
                 m.put("usages", p.getUsages());
+                m.put("usagesDesc", resolveUsages(p.getUsages()));
                 m.put("cantrade", i.getCantrade());
                 m.put("propslock", p.getPropslock() != null ? p.getPropslock() : 0);
                 m.put("series", p.getSeries());
                 m.put("serieseffect", p.getSerieseffect());
+                m.put("serieseffectDesc", resolveEffect(p.getSerieseffect(), null));
                 m.put("pluseffect", p.getPluseffect());
+                m.put("pluseffectDesc", resolvePlusEffect(p.getPluseffect()));
                 m.put("plusflag", p.getPlusflag());
                 m.put("pluspid", p.getPlusPropId());
                 m.put("plusget", p.getPlusget());
@@ -208,7 +213,43 @@ public class BagService {
         }
 
         // Handle giveitems/randitem chests (complex format with | and , delimiters)
-        if (effect.startsWith("giveitems:") || effect.startsWith("randitem:")) {
+        // PHP usedProps.php:764-781 — check for needkey prefix first
+        String chestEffect = effect;
+        if (chestEffect.startsWith("needkey:")) {
+            int commaIdx = chestEffect.indexOf(',');
+            if (commaIdx > 0) {
+                String needKeyPart = chestEffect.substring(0, commaIdx);
+                long keyPropId = Long.parseLong(needKeyPart.substring(needKeyPart.indexOf(':') + 1).trim());
+                var keyItem = bagRepo.findByPlayerId(playerId).stream()
+                    .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)keyPropId
+                        && b.getSums() != null && b.getSums() > 0)
+                    .findFirst().orElse(null);
+                if (keyItem == null) {
+                    result.put("error", "您没有开启宝箱的钥匙!");
+                    result.put("skipConsume", true);
+                    return result;
+                }
+                decrementOrRemove(keyItem);
+                chestEffect = chestEffect.substring(commaIdx + 1);
+            }
+        }
+        if (chestEffect.startsWith("giveitems:") || chestEffect.startsWith("randitem:")) {
+            // PHP usedProps.php:750-758 — check pet level requirement
+            String requires = props.getRequires();
+            if (requires != null && requires.startsWith("lv:")) {
+                try {
+                    int requiredLv = Integer.parseInt(requires.substring(3).trim());
+                    Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+                    if (player != null && player.getMbid() != null) {
+                        UserPet mainPet = userPetRepo.findById(player.getMbid().longValue()).orElse(null);
+                        if (mainPet == null || (mainPet.getLevel() != null && mainPet.getLevel() < requiredLv)) {
+                            result.put("error", "您没有达到相应的等级，不能开启该宝箱！");
+                            result.put("skipConsume", true);
+                            return result;
+                        }
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
             // PHP usedProps.php:730 — check bag has >= 3 free slots
             Player player = playerRepo.findById(playerId.intValue()).orElse(null);
             int maxBag = player != null && player.getMaxBag() != null ? player.getMaxBag() : 30;
@@ -221,8 +262,9 @@ public class BagService {
                 return result;
             }
 
-            String chestBody = effect.substring(effect.indexOf(':') + 1);
-            boolean isRandom = effect.startsWith("randitem:");
+            String prefix = chestEffect.startsWith("randitem:") ? "randitem:" : "giveitems:";
+            String chestBody = chestEffect.replace(prefix, "");
+            boolean isRandom = prefix.equals("randitem:");
             String[] items = isRandom ? chestBody.split("\\|") : chestBody.split(",");
             List<Map<String, Object>> givenItems = new ArrayList<>();
             boolean shouldAnnounce = false;
@@ -237,9 +279,9 @@ public class BagService {
                         // Random chest: probability is 1-in-N. parts: propId,count,prob,announceFlag
                         int prob = parts.length >= 3 ? Integer.parseInt(parts[2].trim()) : 100;
                         if ((int)(Math.random() * prob) >= 1) continue;
-                        // PHP usedProps.php:770 — announce flag: 1=announce, 2=no announce
+                        // PHP usedProps.php:770,846 — announce when flag == 2
                         int announceFlag = parts.length >= 4 ? Integer.parseInt(parts[3].trim()) : 2;
-                        if (announceFlag == 1) shouldAnnounce = true;
+                        if (announceFlag == 2) shouldAnnounce = true;
                         addItemToBag(playerId, givePropId, giveCount);
                         givenItems.add(Map.of("propId", givePropId, "count", giveCount));
                         // PHP usedProps.php: recursion — check if given item is also a chest
@@ -549,7 +591,7 @@ public class BagService {
                 }
                 if (playerId == null) break;
                 // PHP: check pet carry limit (max 3)
-                List<UserPet> currentPets = userPetRepo.findByPlayerId(playerId);
+                List<UserPet> currentPets = userPetRepo.findByPlayerIdAndMuchang(playerId, 0);
                 if (currentPets.size() >= 3) {
                     result.put("error", "宠物已满！目前最多携带3只宠物");
                     result.put("skipConsume", true);
@@ -570,6 +612,9 @@ public class BagService {
                 newPet.setImgdie(template.getImgdie()); newPet.setHeadimg(template.getHeadimg());
                 newPet.setCardimg(template.getCardimg());
                 newPet.setKx(template.getKx()); newPet.setSkillList(template.getSkillList());
+                newPet.setRemakelevel(template.getRemakeLevel());
+                newPet.setRemakeid(template.getRemakeId());
+                newPet.setRemakepid(template.getRemakePid());
                 if (template.getCzl() != null && template.getCzl().contains(",")) {
                     String[] czlRange = template.getCzl().replace(".","").split(",");
                     int minCzl = Integer.parseInt(czlRange[0]);
@@ -893,8 +938,9 @@ public class BagService {
         if (!eff.startsWith("giveitems:") && !eff.startsWith("randitem:")) return;
 
         // Recursive chest found — open it (max 3 levels deep to prevent infinite loops)
-        String chestBody = eff.substring(eff.indexOf(':') + 1);
-        boolean isRandom = eff.startsWith("randitem:");
+        String recPrefix = eff.startsWith("randitem:") ? "randitem:" : "giveitems:";
+        String chestBody = eff.replace(recPrefix, "");
+        boolean isRandom = recPrefix.equals("randitem:");
         String[] items = isRandom ? chestBody.split("\\|") : chestBody.split(",");
         int depth = 0;
         for (String itemStr : items) {
@@ -1237,5 +1283,359 @@ public class BagService {
             }
         }
         userPetRepo.save(pet);
+    }
+
+    // ==================== Effect/Requires/Usage Description Resolvers ====================
+
+    // PHP $_props['zb'] — base attribute keys for equipment/skill books
+    private static final Map<String, String> ZB = Map.ofEntries(
+        Map.entry("ac", "攻击"), Map.entry("mc", "防御"),
+        Map.entry("hp", "生命"), Map.entry("mp", "魔法"),
+        Map.entry("hits", "命中"), Map.entry("miss", "闪避"),
+        Map.entry("speed", "速度"), Map.entry("kx", "抗性")
+    );
+
+    // PHP $_props['fjzb1'] — percentage attributes
+    private static final Map<String, String> FJZB1 = Map.ofEntries(
+        Map.entry("hprate", "生命"), Map.entry("mprate", "魔法"),
+        Map.entry("acrate", "攻击"), Map.entry("mcrate", "防御"),
+        Map.entry("hitsrate", "命中"), Map.entry("missrate", "闪避"),
+        Map.entry("speedrate", "速度")
+    );
+
+    // PHP $_props['fjzb2'] — special effect labels
+    private static final Map<String, String> FJZB2 = Map.ofEntries(
+        Map.entry("dxsh", "伤害抵消"), Map.entry("shjs", "伤害加深"),
+        Map.entry("shft", "伤害反射")
+    );
+
+    // PHP $_props['wxd'] — element names
+    private static final String[] WXD = {"", "金", "木", "水", "火", "土", "神", "神圣"};
+
+    // PHP $_props['postion'] — equipment slot names
+    private static final String[] POS_NAMES = {"", "头部", "身体", "脚部", "武器", "项链", "戒指", "翅膀", "手镯", "宝石", "道具"};
+
+    private static final Map<Integer, String> GEM_COLOR = Map.of(
+        2, "蓝色装备", 3, "紫色装备", 4, "绿色装备", 5, "黄色装备", 6, "橙色装备"
+    );
+
+    /**
+     * Parse kx:val1,val2,val3,val4,val5,val6 into "+X 全抗" or "+X 金抗".
+     * PHP getZbBaseAttrib / getZbPlusAttrib kx handling.
+     */
+    private String resolveKx(String val) {
+        String[] nums = val.split(",");
+        StringBuilder sb = new StringBuilder();
+        // Check if first 5 elements are all equal → "全抗"
+        boolean allSame = nums.length >= 5;
+        for (int i = 1; i < 5 && allSame; i++) {
+            if (!nums[i].equals(nums[0])) allSame = false;
+        }
+        if (allSame && !"0".equals(nums[0])) {
+            return "+" + nums[0] + " 全抗";
+        }
+        for (int i = 0; i < nums.length && i < 6; i++) {
+            try {
+                int v = Integer.parseInt(nums[i].trim());
+                if (v != 0) {
+                    if (sb.length() > 0) sb.append("，");
+                    sb.append("+").append(v).append(" ").append(i < WXD.length ? WXD[i] : "?").append("抗");
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Parse single pluseffect/serieseffect key:value pair — matches PHP getZbPlusAttrib.
+     */
+    private String resolveAttribKey(String key, String value) {
+        // 1) Base attribute (ac, mc, hp, mp, hits, miss, speed)
+        if (ZB.containsKey(key) && !"kx".equals(key)) {
+            return "+" + value + " " + ZB.get(key);
+        }
+        // 2) kx resistance
+        if ("kx".equals(key)) {
+            return resolveKx(value);
+        }
+        // 3) Percentage attribute (hprate, mprate, acrate, mcrate, hitsrate, missrate, speedrate)
+        if (FJZB1.containsKey(key)) {
+            return "+" + value + "% " + FJZB1.get(key);
+        }
+        // 4) Special effect (dxsh, shjs, shft)
+        if (FJZB2.containsKey(key)) {
+            return FJZB2.get(key) + " " + value;
+        }
+        // 5) szmp: 伤害的X%转化为MP
+        if ("szmp".equals(key)) {
+            return "伤害的" + value + "%转化为MP";
+        }
+        // 6) sdmp: 伤害的X%以MP抵消
+        if ("sdmp".equals(key)) {
+            return "伤害的" + value + "%以MP抵消";
+        }
+        // 7) addmoney: 战斗胜利获得金币增加X点
+        if ("addmoney".equals(key)) {
+            return "战斗胜利获得金币增加" + value + "点";
+        }
+        // 8) crit: 暴击率
+        if ("crit".equals(key)) {
+            return "暴击率+" + value + "%";
+        }
+        // 9) hitshp: 偷取伤害的X%转化为生命
+        if ("hitshp".equals(key)) {
+            return "偷取伤害的" + value + "%转化为生命";
+        }
+        // 10) hitsmp: 偷取伤害的X%转化为魔法
+        if ("hitsmp".equals(key)) {
+            return "偷取伤害的" + value + "%转化为魔法";
+        }
+        // 11) time: 战斗等待时间减少X秒
+        if ("time".equals(key)) {
+            return "战斗等待时间减少" + value + "秒";
+        }
+        // 12) skill: 学会技能 X LV.Y (value format: "skillId:lv")
+        if ("skill".equals(key)) {
+            String[] parts = value.split(":");
+            if (parts.length >= 2) return "学会技能" + parts[0] + " LV." + parts[1];
+            return "学会技能 " + value;
+        }
+        // 13) killitem: 杀死怪物有X%几率获得物品:Y (value format: "itemId:chance")
+        if ("killitem".equals(key)) {
+            String[] parts = value.split(":");
+            if (parts.length >= 2) return "杀死怪物有" + parts[1] + "%几率获得物品:" + parts[0];
+            return "杀死怪物几率获得物品:" + value;
+        }
+        // Unknown — keep raw
+        return key + ":" + value;
+    }
+
+    /**
+     * Parse comma-separated key:value pairs — matches PHP getZbPlusAttrib loop.
+     */
+    private String resolveAttribList(String raw) {
+        if (raw == null || raw.isEmpty() || "0".equals(raw)) return "";
+        StringBuilder sb = new StringBuilder();
+        for (String part : raw.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            int ci = trimmed.indexOf(':');
+            if (ci < 0) continue;
+            String key = trimmed.substring(0, ci).trim();
+            String val = trimmed.substring(ci + 1).trim();
+            if (key.isEmpty() || val.isEmpty()) continue;
+            String resolved = resolveAttribKey(key, val);
+            if (!resolved.isEmpty()) {
+                if (sb.length() > 0) sb.append("，");
+                sb.append(resolved);
+            }
+        }
+        return sb.toString();
+    }
+
+    // ==================== Effect / PlusEffect / Requires resolvers ====================
+
+    private String resolveEffect(String effect, Integer varyname) {
+        if (effect == null || effect.isEmpty() || "0".equals(effect)) return "";
+        // Equipment (varyname=9) and skill books (varyname=5) use ZB-style attribute display
+        if (varyname != null && (varyname == 9 || varyname == 5)) {
+            return resolveAttribList(effect);
+        }
+        // Consumables: PHP only shows usages, not effect. But if usages is empty, fallback to resolveAttribList.
+        // For consumable effect codes like "hp:200" we show them as consumable descriptions.
+        return resolveConsumableEffect(effect);
+    }
+
+    private String resolveConsumableEffect(String effect) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : effect.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            int ci = trimmed.indexOf(':');
+            if (ci < 0) continue;
+            String key = trimmed.substring(0, ci).trim();
+            String val = trimmed.substring(ci + 1).trim();
+            if (key.isEmpty() || val.isEmpty()) continue;
+
+            // Handle "exp:1.5:3600" format
+            if ("exp".equals(key)) {
+                String[] sub = val.split(":");
+                double mult = safeDouble(sub[0]);
+                if (mult > 1 && mult < 10) {
+                    if (sb.length() > 0) sb.append("，");
+                    sb.append(String.format("%.1f", mult)).append("倍经验");
+                    if (sub.length >= 2) sb.append("持续").append(sub[1]).append("秒");
+                } else {
+                    if (sb.length() > 0) sb.append("，");
+                    sb.append("获得经验+").append((int) mult);
+                }
+                continue;
+            }
+            // Handle addczl with 0.1-0.9 values
+            if ("addczl".equals(key)) {
+                double v = safeDouble(val);
+                if (sb.length() > 0) sb.append("，");
+                sb.append("永久增加成长率").append(String.format("%.1f", v < 1 ? v : v / 10.0));
+                continue;
+            }
+            // Simple key:value consumable resolution
+            String lbl = switch (key) {
+                case "hp" -> "恢复生命";
+                case "mp" -> "恢复魔法";
+                case "addexp" -> "获得经验";
+                case "addac", "addmc", "addhp", "addmp", "addspeed", "addhits", "addmiss" ->
+                    "永久增加" + ZB.getOrDefault(key.substring(3), key.substring(3));
+                case "addyb" -> "获得元宝";
+                case "addsj" -> "获得水晶";
+                case "addmoney" -> "获得金币";
+                case "addbag", "addbag1" -> "背包扩容";
+                case "addck", "addck1" -> "仓库扩容";
+                case "openmap" -> "打开地图";
+                case "openpet" -> "获得宠物";
+                case "autofree" -> "增加金币版自动战斗次数";
+                case "auto" -> "增加元宝版自动战斗次数";
+                case "autoteam" -> "增加组队自动战斗次数";
+                case "weiwang" -> "增加威望";
+                case "add_cq_czl" -> "增加抽取成长值";
+                case "zhanshi" -> "增加展示机会";
+                case "addsdcs" -> "增加圣地次数";
+                case "add_mctimes" -> "增加牧场次数";
+                case "addmcnl" -> "增加牧场容量";
+                case "add_zc_jifen" -> "增加战场积分";
+                case "add_jf" -> "增加积分";
+                case "add_vip" -> "增加VIP";
+                default -> null;
+            };
+            if (lbl != null) {
+                if (sb.length() > 0) sb.append("，");
+                sb.append(lbl);
+                if (isNumeric(val)) sb.append("+").append(val);
+                else sb.append("(").append(val).append(")");
+            }
+        }
+        return sb.toString();
+    }
+
+    private String resolvePlusEffect(String pluseffect) {
+        return resolveAttribList(pluseffect);
+    }
+
+    /**
+     * Resolve requires field. Format varies by varyname:
+     * - Equipment (varyname=9): "lv:X,wx:Y" → "五行需求：X系，需求等级：Y级"
+     * - Gem (varyname=25): "postion:X|Y,color:Z" → "镶嵌部位：头部/身体，只能镶嵌蓝色装备"
+     * - Others: generic "key:value" pairs
+     */
+    private String resolveRequires(String requires, Integer varyname) {
+        if (requires == null || requires.isEmpty() || "0".equals(requires)) return "";
+        if (varyname != null && varyname == 9) {
+            return resolveEquipRequires(requires);
+        }
+        if (varyname != null && varyname == 25) {
+            return resolveGemRequires(requires);
+        }
+        // Generic
+        StringBuilder sb = new StringBuilder();
+        for (String part : requires.split(",")) {
+            String trimmed = part.trim();
+            if (trimmed.isEmpty()) continue;
+            int ci = trimmed.indexOf(':');
+            if (ci < 0) continue;
+            String key = trimmed.substring(0, ci).trim();
+            String val = trimmed.substring(ci + 1).trim();
+            if ("wx".equals(key)) {
+                try {
+                    int wxId = Integer.parseInt(val);
+                    if (sb.length() > 0) sb.append("，");
+                    sb.append("五行:").append(wxId < WXD.length ? WXD[wxId] : "未知");
+                } catch (NumberFormatException e) {
+                    if (sb.length() > 0) sb.append("，");
+                    sb.append("五行:").append(val);
+                }
+                continue;
+            }
+            String label = switch (key) {
+                case "lv", "level" -> "等级";
+                case "czl", "cz" -> "成长率";
+                case "vip" -> "VIP";
+                case "jifen", "score" -> "积分";
+                case "money" -> "金币";
+                case "prestige", "ww" -> "威望";
+                case "ml" -> "魅力";
+                case "dianjuan" -> "点卷";
+                default -> key;
+            };
+            if (sb.length() > 0) sb.append("，");
+            sb.append(label).append("≥").append(val);
+        }
+        return sb.toString();
+    }
+
+    private String resolveEquipRequires(String requires) {
+        String wxName = "";
+        String lvValue = "";
+        for (String part : requires.split(",")) {
+            String[] kv = part.trim().split(":");
+            if (kv.length < 2) continue;
+            if ("wx".equals(kv[0])) {
+                try {
+                    int wxId = Integer.parseInt(kv[1]);
+                    wxName = wxId == 0 ? "所有" : wxId < WXD.length ? WXD[wxId] : kv[1];
+                } catch (NumberFormatException e) { wxName = kv[1]; }
+            } else if ("lv".equals(kv[0]) || "level".equals(kv[0])) {
+                lvValue = kv[1];
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        if (!wxName.isEmpty()) sb.append("五行需求：").append(wxName).append("系");
+        if (!lvValue.isEmpty()) {
+            if (sb.length() > 0) sb.append("，");
+            sb.append("需求等级：").append(lvValue).append("级");
+        }
+        return sb.toString();
+    }
+
+    private String resolveGemRequires(String requires) {
+        StringBuilder sb = new StringBuilder();
+        for (String part : requires.split(",")) {
+            String[] kv = part.trim().split(":");
+            if (kv.length < 2) continue;
+            if ("postion".equals(kv[0])) {
+                sb.append("镶嵌部位：");
+                String[] slotIds = kv[1].split("\\|");
+                List<String> slotNames = new ArrayList<>();
+                for (String sid : slotIds) {
+                    try {
+                        int si = Integer.parseInt(sid.trim());
+                        if (si > 0 && si < POS_NAMES.length) slotNames.add(POS_NAMES[si]);
+                    } catch (NumberFormatException ignored) {}
+                }
+                sb.append(String.join("/", slotNames));
+            } else if ("color".equals(kv[0])) {
+                try {
+                    int cid = Integer.parseInt(kv[1].trim());
+                    String colorName = GEM_COLOR.get(cid);
+                    if (colorName != null) {
+                        if (sb.length() > 0) sb.append("，");
+                        sb.append("只能镶嵌").append(colorName);
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return sb.toString();
+    }
+
+    private String resolveUsages(String usages) {
+        if (usages == null || usages.isEmpty() || "0".equals(usages)) return "";
+        return usages;
+    }
+
+    private static double safeDouble(String s) {
+        try { return Double.parseDouble(s.replaceAll("[^0-9.]", "")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    private static boolean isNumeric(String s) {
+        return s.matches("-?\\d+(\\.\\d+)?");
     }
 }

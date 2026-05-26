@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -14,6 +14,8 @@ interface BagItemRaw {
   series?: string; serieseffect?: string; pluseffect?: string; prestige?: number;
   plusflag?: number; pluspid?: number; plusget?: string; plusnum?: number;
   postion?: number;
+  effectDesc?: string; requiresDesc?: string; usagesDesc?: string;
+  serieseffectDesc?: string; pluseffectDesc?: string;
 }
 
 const PROPS_COLORS: Record<number, string> = {
@@ -48,6 +50,113 @@ const CATEGORIES: { label: string; vary: number[] }[] = [
   { label: '宠物卵',   vary: [14] },
   { label: '合成道具', vary: [15] },
 ];
+
+// PHP equipment.v1.php — per-varyname tooltip templates
+function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number }) {
+  const vn = item.varyname;
+  const nameColor = PROPS_COLORS[item.propsColor ?? 1] ?? '#FEFDFA';
+  const usageText = item.usagesDesc || item.usages;
+  const effectText = item.effectDesc || item.effect;
+  const requiresText = item.requiresDesc || item.requires;
+  const plusText = item.pluseffectDesc || item.pluseffect;
+  const seriesText = item.serieseffectDesc || item.serieseffect;
+
+  const renderRows = (rows: { label?: string; value: string | number | undefined; color?: string }[]) =>
+    rows.filter(r => r.value != null && r.value !== '').map((r, i) => (
+      <div key={i} className={styles.tipRow}>
+        {r.label && <span className={styles.tipLabel}>{r.label}：</span>}
+        <span style={r.color ? { color: r.color } : undefined}>{r.value}</span>
+      </div>
+    ));
+
+  let body: ReactNode;
+
+  if (vn === 9) {
+    // 装备类 — PHP zhuangbei()
+    const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
+    body = (
+      <>
+        {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}</div>}
+        {renderRows([
+          { label: '效果', value: effectText, color: '#FEFDFA' },
+          { label: '需求', value: requiresText },
+          { label: '强化', value: item.plusget },
+        ])}
+        {item.plusnum != null && item.plusnum > 0 && (
+          <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>
+        )}
+        {renderRows([
+          { label: '附加', value: plusText, color: '#9833DC' },
+        ])}
+        {item.series && (
+          <div className={styles.tipRow}>
+            <span className={styles.tipLabel}>套装：</span>
+            <span style={{ color: '#FED625' }}>{item.series}{seriesText ? '（' + seriesText + '）' : ''}</span>
+          </div>
+        )}
+        {usageText && <div className={styles.tipUsage}>{usageText}</div>}
+        {item.prestige != null && item.prestige > 0 && (
+          <div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{item.prestige}</div>
+        )}
+      </>
+    );
+  } else if (vn === 5) {
+    // 技能书类 — PHP jineng()
+    body = (
+      <>
+        {renderRows([
+          { label: '效果', value: effectText, color: '#FEFDFA' },
+          { label: '附加', value: plusText, color: '#9833DC' },
+        ])}
+        {usageText && <div className={styles.tipUsage}>{usageText}</div>}
+      </>
+    );
+  } else if (vn === 25) {
+    // 宝石类 — PHP gam()
+    body = (
+      <>
+        {renderRows([
+          { label: '镶嵌条件', value: requiresText },
+        ])}
+        {usageText && <div className={styles.tipUsage}>{usageText}</div>}
+      </>
+    );
+  } else if (vn === 22) {
+    // 魔法石 — PHP inline text
+    body = (
+      <div className={styles.tipUsage}>
+        神秘的魔法石，<span style={{ cursor: 'pointer', color: '#14FD10' }}>魔法屋的芙蕾娅</span>可以帮你使用它哦。
+      </div>
+    );
+  } else {
+    // 通用道具 — PHP daoju() (varyname 1-4,6-8,10-19,23-24,26-32)
+    body = (
+      <>
+        {usageText ? (
+          <div className={styles.tipUsage}>{usageText}</div>
+        ) : effectText ? (
+          <div className={styles.tipRow}><span className={styles.tipLabel}>效果：</span>{effectText}</div>
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <div className={styles.tooltip} style={{ left: x + 12, top: Math.max(0, y - 120) }}>
+      <div className={styles.tipFrame}>
+        <div className={styles.tipName} style={{ color: nameColor }}>
+          <b>{item.name}</b>
+        </div>
+        <div className={styles.tipTrade}>{getTradeStatus(item)}</div>
+        <div className={styles.tipExpire}>{item.expire ?? '永久'}</div>
+        {body}
+        <div className={styles.tipSell}>
+          售价：{item.sell ?? 0}金{item.buy ? ' / 买价：' + item.buy + '金' : ''}{item.yb ? ' / ' + item.yb + '元宝' : ''}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function BagPanel() {
   const [items, setItems] = useState<BagItemRaw[]>([]);
@@ -152,7 +261,15 @@ export default function BagPanel() {
     apiPost<Record<string, unknown>>(`/bag/use/${item.id}`, { petId }).then((res: ApiResponse<Record<string, unknown>>) => {
       if (res.code === 0 && res.data) {
         const d = res.data;
+        const err = d.error as string;
         const msg = d.message as string;
+        if (err) {
+          setUseResult(err);
+          setTimeout(() => setUseResult(null), 2000);
+          fetchItems();
+          setUseTarget(null);
+          return;
+        }
         if (d.equipped) {
           setUseResult(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
         } else if (d.unequipped) {
@@ -166,6 +283,7 @@ export default function BagPanel() {
         } else if (d.type === 'yuanbao') setUseResult(msg ?? `获得${d.ybGained}元宝`);
         else if (d.type === 'crystal') setUseResult(msg ?? `获得水晶`);
         else if (d.type === 'openMap') setUseResult(msg ?? '地图已解锁');
+        else if (d.type === 'openPet') setUseResult(msg ?? `恭喜获得宠物：${d.petName}！`);
         else if (msg) setUseResult(msg);
         else setUseResult(`使用了 ${item.name}`);
         setTimeout(() => setUseResult(null), 2500);
@@ -279,30 +397,8 @@ export default function BagPanel() {
           onClick={() => selectedItem && alert('放入仓库功能开发中')}>放入仓库</button>
       </div>
 
-      {/* Tooltip — PHP equipment.div() full format */}
-      {tooltip && (
-        <div className={styles.tooltip} style={{ left: tooltip.x + 12, top: Math.max(0, tooltip.y - 120) }}>
-          <div className={styles.tipFrame}>
-            <div className={styles.tipName} style={{ color: PROPS_COLORS[tooltip.item.propsColor ?? 1] ?? '#FEFDFA' }}>
-              <b>{tooltip.item.name}</b>
-            </div>
-            <div className={styles.tipTrade}>{getTradeStatus(tooltip.item)}</div>
-            <div className={styles.tipExpire}>{tooltip.item.expire ?? '永久'}</div>
-            {tooltip.item.varyname === 9 && tooltip.item.postion != null && (
-              <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{SLOT_NAMES[tooltip.item.postion] ?? '未知'}</div>
-            )}
-            {tooltip.item.effect && <div className={styles.tipRow}><span className={styles.tipLabel}>效果：</span>{tooltip.item.effect}</div>}
-            {tooltip.item.requires && <div className={styles.tipRow}><span className={styles.tipLabel}>需要：</span>{tooltip.item.requires}</div>}
-            {tooltip.item.usages && <div className={styles.tipUsage}>{tooltip.item.usages}</div>}
-            {tooltip.item.series && <div className={styles.tipRow}><span className={styles.tipLabel}>套装：</span>{tooltip.item.series}{tooltip.item.serieseffect ? '（' + tooltip.item.serieseffect + '）' : ''}</div>}
-            {tooltip.item.pluseffect && <div className={styles.tipRow}><span className={styles.tipLabel}>附加：</span>{tooltip.item.pluseffect}</div>}
-            {tooltip.item.plusget && <div className={styles.tipRow}><span className={styles.tipLabel}>强化：</span>{tooltip.item.plusget}</div>}
-            {tooltip.item.plusnum != null && tooltip.item.plusnum > 0 && <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{tooltip.item.plusnum}</div>}
-            {tooltip.item.prestige != null && tooltip.item.prestige > 0 && <div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{tooltip.item.prestige}</div>}
-            <div className={styles.tipSell}>售价：{tooltip.item.sell ?? 0}金{tooltip.item.buy ? ' / 买价：' + tooltip.item.buy + '金' : ''}{tooltip.item.yb ? ' / ' + tooltip.item.yb + '元宝' : ''}</div>
-          </div>
-        </div>
-      )}
+      {/* Tooltip — matches PHP equipment.div() templates per varyname */}
+      {tooltip && <TooltipContent item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
     </div>
   );
 }

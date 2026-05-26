@@ -479,6 +479,9 @@ public class PetService {
             pet.setSubfl(template.getSubfl());
             pet.setSubhl(template.getSubhl());
             pet.setSubkl(template.getSubkl());
+            pet.setRemakelevel(template.getRemakeLevel());
+            pet.setRemakeid(template.getRemakeId());
+            pet.setRemakepid(template.getRemakePid());
         } else {
             pet.setImgstand("");
             pet.setImgack("");
