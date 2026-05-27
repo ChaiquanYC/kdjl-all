@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import ShopLayout from './ShopLayout';
+import layoutStyles from './ShopLayout.module.css';
 import styles from './SmShopPanel.module.css';
 
 interface ShopItem {
@@ -168,14 +170,9 @@ export default function SmShopPanel() {
     }).catch(() => setLoading(false));
   }, []);
 
-  // Filter by shop type
   const allItems = shopItems.filter(i => `${i.stime ?? 1}`.startsWith(`${subCat}`));
-
-  // Tab 1: 元宝商店 (yb>0)
   const ybItems = allItems.filter(i => (i.yb ?? 0) > 0);
-  // Tab 2: 水晶商店 (sj>0)
   const sjItems = allItems.filter(i => (i.sj ?? 0) > 0);
-  // Tab 3: VIP商店 - placeholder
   const vipItems = allItems.filter(i => (i.yb ?? 0) > 0).slice(0, 5);
 
   const displayItems = tab === 1 ? ybItems : tab === 2 ? sjItems : vipItems;
@@ -200,7 +197,7 @@ export default function SmShopPanel() {
     if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
     if (!confirm(`确定卖出 ${count}个物品？`)) return;
     apiPost('/bag/sell/' + selBag, { count }).then((res: any) => {
-      if (res.code === 0) { setMsg(`卖出成功`); apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); }); triggerRefresh(); }
+      if (res.code === 0) { setMsg('卖出成功'); apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); }); triggerRefresh(); }
       else setMsg(res.message ?? '卖出失败');
       setTimeout(() => setMsg(null), 2000);
     });
@@ -212,100 +209,101 @@ export default function SmShopPanel() {
     onMouseLeave: () => setTooltip(null),
   });
 
-  if (loading) return <div className={styles.loading}>加载中...</div>;
+  if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
   return (
-    <div className={styles.container}>
-      {msg && <div className={styles.toast}>{msg}</div>}
-      {tooltip && <ShopTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
-
-      <div className={styles.leftBg}>
-        <div className={styles.returnBtn} onClick={() => setGameView('city')} />
-      </div>
-
-      <div className={styles.rightBg}>
-        <ul className={styles.tabs}>
-          <li className={tab===1?styles.tabOn:''} onClick={()=>setTab(1)}><span className={styles.t1}/></li>
-          <li className={tab===2?styles.tabOn:''} onClick={()=>setTab(2)}><span className={styles.t2}/></li>
-          <li className={tab===3?styles.tabOn:''} onClick={()=>setTab(3)}><span className={styles.t3}/></li>
-        </ul>
-
-        <div className={styles.resBar}>
-          {tab === 1 && <><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</>}
-          {tab === 2 && <><img src="/images/ui/icon06.jpg" alt="" /> 水晶：{player?.sj ?? 0}</>}
-          {tab === 3 && <><img src="/images/ui/icon05.jpg" alt="" /> VIP：{player?.vip ?? 0}</>}
+    <ShopLayout
+      leftBg="/images/ui/smshop01.jpg"
+      onReturn={() => setGameView('city')}
+      toast={msg}
+      className={styles.containerBg}
+      topArea={
+        <>
+          <ul className={styles.tabs}>
+            <li className={tab===1?styles.tabOn:''} onClick={()=>setTab(1)}><span className={styles.t1}/></li>
+            <li className={tab===2?styles.tabOn:''} onClick={()=>setTab(2)}><span className={styles.t2}/></li>
+            <li className={tab===3?styles.tabOn:''} onClick={()=>setTab(3)}><span className={styles.t3}/></li>
+          </ul>
+          <div className={styles.resBar}>
+            <div className={styles.resRow}><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</div>
+            <div className={styles.resRow}><img src="/images/ui/icon06.jpg" alt="" /> 水晶：{player?.sj ?? 0}</div>
+            {tab === 1 && <div className={styles.resRow}><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</div>}
+            {tab === 2 && <div className={styles.resRow}><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</div>}
+            {tab === 3 && <div className={styles.resRow}><img src="/images/ui/icon05.jpg" alt="" /> VIP：{player?.vip ?? 0}</div>}
+          </div>
+          {tooltip && <ShopTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
+        </>
+      }
+    >
+      {/* Left column — shop items */}
+      <div className={layoutStyles.column}>
+        <div className={styles.subCats}>
+          {SUB_CATS.map(c => (
+            <img key={c.style} src={`/images/ui/smshop_0${c.style}.jpg`} alt={c.label}
+              style={subCat===c.style?{filter:'brightness(1.2)',borderBottom:'2px solid #FED625'}:{}}
+              onClick={() => setSubCat(c.style)} />
+          ))}
         </div>
-
-        <div className={styles.columns}>
-          <div className={styles.column}>
-            <div className={styles.subCats}>
-              {SUB_CATS.map(c => (
-                <img key={c.style} src={`/images/ui/smshop_0${c.style}.jpg`} alt={c.label}
-                  style={subCat===c.style?{filter:'brightness(1.2)',borderBottom:'2px solid #FED625'}:{}}
-                  onClick={() => setSubCat(c.style)} />
+        <div className={`${layoutStyles.itemListFixed} ${styles.itemListSize}`}>
+          <table className={layoutStyles.table}>
+            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>{curLabel}</th><th className={styles.tdType}>属性</th></tr></thead>
+          </table>
+          <div className={layoutStyles.itemBody}>
+            <table className={layoutStyles.table}>
+              <tbody>
+              {displayItems.length === 0 ? (
+                <tr><td colSpan={4} className={layoutStyles.empty}>暂无商品</td></tr>
+              ) : displayItems.map(item => (
+                <tr key={item.id} className={`${layoutStyles.row} ${selShop===item.id?layoutStyles.rowSel:''}`}
+                  onClick={() => { setSelShop(item.id); setSelBag(null); }}
+                  {...hoverProps(item)}>
+                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
+                  <td className={styles.tdName}>{item.name}</td>
+                  <td className={styles.tdPrice}>{tab===1?item.yb:tab===2?item.sj:item.yb}</td>
+                  <td className={styles.tdType}>{item.category || ''}</td>
+                </tr>
               ))}
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>{curLabel}</th><th className={styles.thType}>属性</th></tr></thead>
-              </table>
-              <div className={styles.itemBody}>
-                <table className={styles.table}>
-                  <tbody>
-                  {displayItems.length === 0 ? (
-                    <tr><td colSpan={4} className={styles.empty}>暂无商品</td></tr>
-                  ) : displayItems.map(item => (
-                    <tr key={item.id} className={`${styles.row} ${selShop===item.id?styles.rowSel:''}`}
-                      onClick={() => { setSelShop(item.id); setSelBag(null); }}
-                      {...hoverProps(item)}>
-                      <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                      <td className={styles.tdName}>{item.name}</td>
-                      <td className={styles.tdPrice}>{tab===1?item.yb:tab===2?item.sj:item.yb}</td>
-                      <td className={styles.tdType}>{item.category || ''}</td>
-                    </tr>
-                  ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className={styles.colFoot}>
-              数量：<input className={styles.numInp} type="text" value={count} onChange={e => setCount(Number(e.target.value)||1)} />
-              <button className={styles.btn} onClick={handleBuy}>购买</button>
-              <button className={styles.btn} onClick={handleSell}>卖出</button>
-            </div>
-          </div>
-
-          <div className={styles.column}>
-            <div className={styles.colTitle}>
-              <img src="/images/ui/icon04.jpg" alt="背包物品" />
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.thType}>数量</th></tr></thead>
-              </table>
-              <div className={styles.itemBody}>
-                <table className={styles.table}>
-                  <tbody>
-                  {bagItems.filter(i => i.count > 0).length === 0 ? (
-                    <tr><td colSpan={4} className={styles.empty}>背包空空</td></tr>
-                  ) : bagItems.filter(i => i.count > 0).map(item => (
-                    <tr key={item.id} className={`${styles.row} ${selBag===item.id?styles.rowSel:''}`}
-                      onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
-                      {...hoverProps(item)}>
-                      <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                      <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                      <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                      <td className={styles.tdType}>{item.count}</td>
-                    </tr>
-                  ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className={styles.colFoot}>背包空间：{bagTotal}/{maxBag}</div>
+              </tbody>
+            </table>
           </div>
         </div>
+        <div className={styles.colFoot}>
+          数量：<input className={styles.numInp} type="text" value={count} onChange={e => setCount(Number(e.target.value)||1)} />
+          <button className={styles.btn} onClick={handleBuy}>购买</button>
+          <button className={styles.btn} onClick={handleSell}>卖出</button>
+        </div>
       </div>
-    </div>
+
+      {/* Right column — bag */}
+      <div className={`${layoutStyles.column} ${styles.column2}`}>
+        <div className={styles.colTitle}>
+          <img src="/images/ui/icon04.jpg" alt="背包物品" />
+        </div>
+        <div className={`${layoutStyles.itemListFixed} ${styles.itemListSize}`}>
+          <table className={layoutStyles.table}>
+            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.tdType}>数量</th></tr></thead>
+          </table>
+          <div className={layoutStyles.itemBody}>
+            <table className={layoutStyles.table}>
+              <tbody>
+              {bagItems.filter(i => i.count > 0).length === 0 ? (
+                <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
+              ) : bagItems.filter(i => i.count > 0).map(item => (
+                <tr key={item.id} className={`${layoutStyles.row} ${selBag===item.id?layoutStyles.rowSel:''}`}
+                  onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+                  {...hoverProps(item)}>
+                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
+                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
+                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
+                  <td className={styles.tdType}>{item.count}</td>
+                </tr>
+              ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div className={styles.bagFoot}>背包空间：{bagTotal}/{maxBag}</div>
+      </div>
+    </ShopLayout>
   );
 }

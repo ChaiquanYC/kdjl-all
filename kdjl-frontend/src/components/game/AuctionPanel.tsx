@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import ShopLayout from './ShopLayout';
+import layoutStyles from './ShopLayout.module.css';
 import styles from './AuctionPanel.module.css';
 
 interface AucItem {
@@ -131,156 +133,150 @@ export default function AuctionPanel() {
   };
 
   return (
-    <div className={styles.container}>
-      {msg && <div className={styles.toast}>{msg}</div>}
-
-      <div className={styles.leftBg}>
-        <div className={styles.returnBtn} onClick={() => setGameView('city')} />
-      </div>
-
-      <div className={styles.rightBg}>
-        {/* Tabs */}
-        <ul className={styles.tabs}>
-          {[1,2,3,4].map(t => {
-            const tabClass = t === 1 ? styles.tab1 : t === 2 ? styles.tab2 : t === 3 ? styles.tab3 : styles.tab4;
-            return (
-              <li key={t} className={`${tabClass} ${tab === t ? styles.tabOn : ''}`}
-                onClick={() => { setTab(t); setSelAuc(null); setSelMyAuc(null); }}>
-                <a className={styles.tabLink} href="javascript:void(0)" />
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Resource bar */}
-        <div className={styles.resBar}>
-          {tab !== 4 && (
-            <>
-              金币: {player?.money ?? 0}
-              <span className={styles.resSep}>|</span>
-              水晶: {player?.sj ?? 0}
-              <span className={styles.resSep}>|</span>
-              元宝: {player?.yb ?? 0}
-            </>
-          )}
-          {tab === 4 && (
-            <>
-              待取金币: {(player as any)?.paimoney || 0}
-              <span className={styles.resSep}>|</span>
-              待取水晶: {(player as any)?.paisj || 0}
-              <span className={styles.resSep}>|</span>
-              待取元宝: {(player as any)?.paiyb || 0}
-            </>
-          )}
-          <select className={styles.filter} value={filterVary || 0} onChange={e => setFilterVary(Number(e.target.value) || null)}>
-            {CATEGORIES.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
-          </select>
+    <ShopLayout
+      leftBg="/images/ui/pms01.jpg"
+      onReturn={() => setGameView('city')}
+      toast={msg}
+      topArea={
+        <>
+          <ul className={styles.tabs}>
+            {[1,2,3,4].map(t => {
+              const tabClass = t === 1 ? styles.tab1 : t === 2 ? styles.tab2 : t === 3 ? styles.tab3 : styles.tab4;
+              return (
+                <li key={t} className={`${tabClass} ${tab === t ? styles.tabOn : ''}`}
+                  onClick={() => { setTab(t); setSelAuc(null); setSelMyAuc(null); }}>
+                  <a className={styles.tabLink} href="javascript:void(0)" />
+                </li>
+              );
+            })}
+          </ul>
+          <div className={styles.resBar}>
+            {tab !== 4 && (
+              <>
+                金币: {player?.money ?? 0}
+                <span className={styles.resSep}>|</span>
+                水晶: {player?.sj ?? 0}
+                <span className={styles.resSep}>|</span>
+                元宝: {player?.yb ?? 0}
+              </>
+            )}
+            {tab === 4 && (
+              <>
+                待取金币: {(player as any)?.paimoney || 0}
+                <span className={styles.resSep}>|</span>
+                待取水晶: {(player as any)?.paisj || 0}
+                <span className={styles.resSep}>|</span>
+                待取元宝: {(player as any)?.paiyb || 0}
+              </>
+            )}
+            <select className={styles.filter} value={filterVary || 0} onChange={e => setFilterVary(Number(e.target.value) || null)}>
+              {CATEGORIES.map(([v, n]) => <option key={v} value={v}>{n}</option>)}
+            </select>
+          </div>
+        </>
+      }
+    >
+      {/* Left column — Auction list or My auctions */}
+      <div className={layoutStyles.column}>
+        <div className={styles.colHead}>
+          <span className={styles.colTitle}>
+            {tab === 4 ? '我的拍卖' : tab === 1 ? '金币拍卖' : tab === 2 ? '水晶拍卖' : '元宝拍卖'}
+          </span>
         </div>
-
-        <div className={styles.columns}>
-          {/* Left column — Auction list or My auctions */}
-          <div className={styles.column}>
-            <div className={styles.colHead}>
-              <span className={styles.colTitle}>
-                {tab === 4 ? '我的拍卖' : tab === 1 ? '金币拍卖' : tab === 2 ? '水晶拍卖' : '元宝拍卖'}
-              </span>
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thIcon}></th>
-                    <th>名称</th>
-                    <th>价格</th>
-                    <th>剩余</th>
-                    {tab !== 4 && <th>卖家</th>}
-                    {tab === 4 && <th>状态</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tab !== 4 && items.length === 0 && (
-                    <tr><td colSpan={5} className={styles.empty}>暂无拍卖</td></tr>
-                  )}
-                  {tab === 4 && myItems.length === 0 && (
-                    <tr><td colSpan={5} className={styles.empty}>暂无拍卖物品</td></tr>
-                  )}
-                  {(tab !== 4 ? items : myItems).map(i => {
-                    const isSel = tab === 4 ? selMyAuc === i.id : selAuc === i.id;
-                    const onSel = tab === 4 ? () => setSelMyAuc(isSel ? null : i.id) : () => setSelAuc(isSel ? null : i.id);
-                    return (
-                      <tr key={i.id} className={`${styles.row} ${isSel ? styles.rowSel : ''}`} onClick={onSel}>
-                        <td className={styles.tdIcon}>
-                          {i.varyname ? <img src={`/images/ui/bag/${i.varyname}.gif`} alt="" /> : null}
-                        </td>
-                        <td>{i.name}{i.count > 1 ? ` x${i.count}` : ''}</td>
-                        <td>{i.price}</td>
-                        <td className={tab === 4 && i.expired ? styles.expired : ''}>
-                          {tab === 4 && i.expired ? '已过期' : formatTime(i.timeRemaining)}
-                        </td>
-                        {tab !== 4 && <td>{i.sellerName ?? '?'}</td>}
-                        {tab === 4 && <td>{i.expired ? <span className={styles.expired}>已过期</span> : '拍卖中'}</td>}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className={styles.colFoot}>
-              {tab !== 4 ? (
-                <>
-                  数量: <input className={styles.inp} value={buyQty} onChange={e => setBuyQty(e.target.value.replace(/\D/g, '') || '1')} />
-                  <button className={styles.btn} onClick={handleBuy}>购买</button>
-                </>
-              ) : (
-                <>
-                  <button className={styles.btn} onClick={handleCancel}>取回</button>
-                  <button className={styles.btn} onClick={handleRenew}>续拍</button>
-                  <button className={styles.btnWide} onClick={handleWithdraw}>提取资金</button>
-                </>
+        <div className={layoutStyles.itemList}>
+          <table className={layoutStyles.table}>
+            <thead>
+              <tr>
+                <th className={layoutStyles.thIcon}></th>
+                <th>名称</th>
+                <th>价格</th>
+                <th>剩余</th>
+                {tab !== 4 && <th>卖家</th>}
+                {tab === 4 && <th>状态</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {tab !== 4 && items.length === 0 && (
+                <tr><td colSpan={5} className={layoutStyles.empty}>暂无拍卖</td></tr>
               )}
-            </div>
-          </div>
-
-          {/* Right column — My bag */}
-          <div className={styles.column}>
-            <div className={styles.colHead}>
-              <span className={styles.colTitle}>我的背包</span>
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th className={styles.thIcon}></th>
-                    <th>名称</th>
-                    <th>ID</th>
-                    <th>数量</th>
+              {tab === 4 && myItems.length === 0 && (
+                <tr><td colSpan={5} className={layoutStyles.empty}>暂无拍卖物品</td></tr>
+              )}
+              {(tab !== 4 ? items : myItems).map(i => {
+                const isSel = tab === 4 ? selMyAuc === i.id : selAuc === i.id;
+                const onSel = tab === 4 ? () => setSelMyAuc(isSel ? null : i.id) : () => setSelAuc(isSel ? null : i.id);
+                return (
+                  <tr key={i.id} className={`${layoutStyles.row} ${isSel ? layoutStyles.rowSel : ''}`} onClick={onSel}>
+                    <td className={layoutStyles.tdIcon}>
+                      {i.varyname ? <img src={`/images/ui/bag/${i.varyname}.gif`} alt="" /> : null}
+                    </td>
+                    <td>{i.name}{i.count > 1 ? ` x${i.count}` : ''}</td>
+                    <td>{i.price}</td>
+                    <td className={tab === 4 && i.expired ? styles.expired : ''}>
+                      {tab === 4 && i.expired ? '已过期' : formatTime(i.timeRemaining)}
+                    </td>
+                    {tab !== 4 && <td>{i.sellerName ?? '?'}</td>}
+                    {tab === 4 && <td>{i.expired ? <span className={styles.expired}>已过期</span> : '拍卖中'}</td>}
                   </tr>
-                </thead>
-                <tbody>
-                  {bagItems.filter(i => i.count > 0).length === 0 ? (
-                    <tr><td colSpan={4} className={styles.empty}>背包空空</td></tr>
-                  ) : bagItems.filter(i => i.count > 0).map(i => (
-                    <tr key={i.id} className={styles.row} onClick={() => { setSellId(String(i.id)); setSellQty(String(i.count)); }}>
-                      <td className={styles.tdIcon}>
-                        {i.varyname ? <img src={`/images/ui/bag/${i.varyname}.gif`} alt="" /> : null}
-                      </td>
-                      <td>{i.name ?? '道具'}</td>
-                      <td>{i.id}</td>
-                      <td>{i.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className={styles.colFoot}>
-              ID: <input className={styles.inp} value={sellId} onChange={e => setSellId(e.target.value.replace(/\D/g, ''))} placeholder="ID" />
-              价: <input className={styles.inp} value={sellPrice} onChange={e => setSellPrice(e.target.value.replace(/\D/g, ''))} placeholder="价格" />
-              量: <input className={styles.inp} value={sellQty} onChange={e => setSellQty(e.target.value.replace(/\D/g, '') || '1')} />
-              <button className={styles.btn} onClick={handleSell}>上架</button>
-            </div>
-          </div>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className={styles.colFoot}>
+          {tab !== 4 ? (
+            <>
+              数量: <input className={styles.inp} value={buyQty} onChange={e => setBuyQty(e.target.value.replace(/\D/g, '') || '1')} />
+              <button className={styles.btn} onClick={handleBuy}>购买</button>
+            </>
+          ) : (
+            <>
+              <button className={styles.btn} onClick={handleCancel}>取回</button>
+              <button className={styles.btn} onClick={handleRenew}>续拍</button>
+              <button className={styles.btnWide} onClick={handleWithdraw}>提取资金</button>
+            </>
+          )}
         </div>
       </div>
-    </div>
+
+      {/* Right column — My bag */}
+      <div className={layoutStyles.column}>
+        <div className={styles.colHead}>
+          <span className={styles.colTitle}>我的背包</span>
+        </div>
+        <div className={layoutStyles.itemList}>
+          <table className={layoutStyles.table}>
+            <thead>
+              <tr>
+                <th className={layoutStyles.thIcon}></th>
+                <th>名称</th>
+                <th>ID</th>
+                <th>数量</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bagItems.filter(i => i.count > 0).length === 0 ? (
+                <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
+              ) : bagItems.filter(i => i.count > 0).map(i => (
+                <tr key={i.id} className={layoutStyles.row} onClick={() => { setSellId(String(i.id)); setSellQty(String(i.count)); }}>
+                  <td className={layoutStyles.tdIcon}>
+                    {i.varyname ? <img src={`/images/ui/bag/${i.varyname}.gif`} alt="" /> : null}
+                  </td>
+                  <td>{i.name ?? '道具'}</td>
+                  <td>{i.id}</td>
+                  <td>{i.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className={styles.colFoot}>
+          ID: <input className={styles.inp} value={sellId} onChange={e => setSellId(e.target.value.replace(/\D/g, ''))} placeholder="ID" />
+          价: <input className={styles.inp} value={sellPrice} onChange={e => setSellPrice(e.target.value.replace(/\D/g, ''))} placeholder="价格" />
+          量: <input className={styles.inp} value={sellQty} onChange={e => setSellQty(e.target.value.replace(/\D/g, '') || '1')} />
+          <button className={styles.btn} onClick={handleSell}>上架</button>
+        </div>
+      </div>
+    </ShopLayout>
   );
 }

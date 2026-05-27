@@ -1,41 +1,50 @@
-.container{width:788px;height:319px;display:flex;color:#B06A01;font-size:12px;background:#f2ebc5}
-.loading,.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#888;padding:20px}
-.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:12px;white-space:nowrap}
-.leftBg{width:138px;height:319px;flex-shrink:0;background:url('/images/ui/smshop01.jpg') no-repeat;position:relative}
-.returnBtn{position:absolute;left:86px;bottom:21px;width:39px;height:17px;background:url('/images/ui/cangku04.jpg') no-repeat;cursor:pointer}
-.rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
+/* Background override */
+.containerBg{background:#f2ebc5}
+
+/* Tabs — smshop02.jpg sprite, 3 tabs */
 .tabs{display:flex;list-style:none;margin:0;padding:0;height:29px}
 .tabs li{cursor:pointer;width:90px;height:29px}
 .t1,.t2,.t3{display:block;width:90px;height:29px;background:url('/images/ui/smshop02.jpg') no-repeat}
 .t1{background-position:0 0}.tabOn .t1{background-position:0 -29px}
 .t2{background-position:-90px 0}.tabOn .t2{background-position:-90px -29px}
 .t3{background-position:-179px 0}.tabOn .t3{background-position:-179px -29px}
-.resBar{position:absolute;top:5px;right:154px;display:flex;align-items:center;gap:4px;font-size:12px;color:#333}
+
+/* Resource bar */
+.resBar{position:absolute;top:5px;left:358px;display:flex;align-items:center;gap:10px;font-size:12px;color:#333}
+.resRow{display:flex;align-items:center;gap:3px;line-height:16px}
 .resBar img{width:20px;height:18px}
-.columns{display:flex;height:290px;gap:8px}
-.column{flex:1;padding-left:14px;display:flex;flex-direction:column}
+
+/* Extra column gap (PHP box01 + 50px between columns) */
+.column2{padding-left:50px}
+
+/* Sub-category bar */
 .subCats{display:flex;align-items:center;height:28px}
 .subCats img{cursor:pointer;height:25px;width:auto;border:0;vertical-align:middle}
+
+/* Column title */
 .colTitle{height:28px;display:flex;align-items:center}
 .colTitle img{height:25px}
-.itemList{border:1px solid #D9BD7A;background:#fff;width:290px;height:235px;display:flex;flex-direction:column}
-.itemBody{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-face-color:#E1D395;scrollbar-track-color:#F3EDC9;scrollbar-arrow-color:#fff}
-.itemBody::-webkit-scrollbar{width:6px}
-.itemBody::-webkit-scrollbar-track{background:#F3EDC9}
-.itemBody::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
-.table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:12px;color:#BF7D1A}
-.table thead{background:#e1cea1;border-bottom:1px solid #b4a449}
-.table thead th{padding:2px 4px;text-align:left;color:#693600;font-weight:600}
-.thIcon{width:35px}.thName{width:110px}.thPrice{width:60px}
-.table td{padding:1px 4px;line-height:24px}
-.tdIcon{width:35px;text-align:center}.tdIcon img{width:25px;height:25px;object-fit:contain}
-.tdName{width:110px}.tdPrice{width:60px}.tdType{font-size:12px;color:#BF7D1A}
-.row{cursor:pointer}.row:hover{background:#DFD496}
-.rowSel{background:#DFD496!important}
-.colFoot{height:24px;display:flex;align-items:center;justify-content:flex-end;gap:4px;padding-top:4px;font-size:12px}
+
+/* Fixed-size item list for SmShopPanel (290×235) */
+.itemListSize{width:290px;height:235px}
+
+/* Column widths */
+.thName{width:110px}.tdName{width:110px}
+.thPrice{width:60px}.tdPrice{width:60px}
+.tdType{font-size:12px;color:#BF7D1A}
+
+/* Footer variants */
+.colFoot{height:24px;line-height:24px;display:flex;align-items:center;justify-content:flex-end;gap:4px;font-size:12px;color:#BF7D1A}
+.bagFoot{height:24px;line-height:24px;text-align:left;font-size:12px;color:#BF7D1A}
+
+/* Number input */
 .numInp{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
+
+/* Button */
 .btn{width:39px;height:17px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px}
 .btn:hover{filter:brightness(1.1)}
+
+/* Tooltip */
 .tooltip{position:fixed;z-index:999;font-size:12px;line-height:20px;pointer-events:none;border-collapse:collapse}
 .tipBorderTd{background:#1F1F30;opacity:.9;padding:5px 8px;min-width:180px;max-width:240px}
 .tipCorner{width:5px;height:5px}

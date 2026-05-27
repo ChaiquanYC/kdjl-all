@@ -1,0 +1,50 @@
+/* Shared layout for all shop-like panels (Shop, Zb, Depot, SmShop, Auction) */
+.container{width:788px;height:319px;display:flex;color:#B06A01;font-size:12px}
+.loading,.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#888;padding:20px}
+.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:12px;white-space:nowrap}
+
+.leftBg{width:138px;height:319px;flex-shrink:0;background-repeat:no-repeat;position:relative}
+.returnBtn{position:absolute;left:86px;bottom:21px;width:39px;height:17px;background:url('/images/ui/cangku04.jpg') no-repeat;cursor:pointer}
+
+.rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
+
+.columns{display:flex;height:290px}
+.column{width:292px;padding-left:14px;display:flex;flex-direction:column}
+
+/* Standard item list (flex:1, scrollable, thead inside) */
+.itemList{flex:1;border:1px solid #D9BD7A;background:#fff;overflow-y:auto;overflow-x:hidden;
+  scrollbar-face-color:#E1D395;scrollbar-track-color:#F3EDC9;
+  scrollbar-shadow-color:#fff;scrollbar-darkshadow-color:#F3EDC9;
+  scrollbar-highlight-color:#fff;scrollbar-3dlight-color:#E1D395;
+  scrollbar-arrow-color:#fff}
+.itemList::-webkit-scrollbar{width:6px}
+.itemList::-webkit-scrollbar-track{background:#F3EDC9}
+.itemList::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
+
+/* SmShop pattern: fixed container, separate thead + scrollable tbody */
+.itemListFixed{border:1px solid #D9BD7A;background:#fff;display:flex;flex-direction:column}
+.itemBody{flex:1;overflow-y:auto;overflow-x:hidden;
+  scrollbar-face-color:#E1D395;scrollbar-track-color:#F3EDC9}
+.itemBody::-webkit-scrollbar{width:6px}
+.itemBody::-webkit-scrollbar-track{background:#F3EDC9}
+.itemBody::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
+
+/* Table */
+.table{width:100%;border-collapse:collapse;font-size:12px;color:#BF7D1A}
+.table thead{position:sticky;top:0;background:#e1cea1;z-index:1}
+.table th{padding:2px 4px;text-align:left;background:#e1cea1;border-bottom:1px solid #b4a449;color:#693600;font-weight:600}
+.table td{padding:1px 4px;line-height:22px}
+.thIcon{width:35px}.tdIcon{width:35px;text-align:center}
+.tdIcon img{width:25px;height:25px;object-fit:contain}
+
+.row{cursor:pointer}.row:hover{background:#DFD496}
+.rowSel{background:#DFD496!important}
+
+/* Footer */
+.colFoot{display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:4px 0;font-size:12px}
+.numInput{width:40px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
+
+/* Sprite button (standard for Shop/Zb/Depot/SmShop) */
+.btn{width:39px;height:17px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px}
+.btn:hover{filter:brightness(1.1)}
+.btn:disabled{filter:grayscale(100%);cursor:default}

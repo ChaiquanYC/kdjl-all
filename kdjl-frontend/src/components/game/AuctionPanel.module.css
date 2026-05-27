@@ -1,13 +1,4 @@
-.container{width:788px;height:319px;display:flex;color:#B06A01;font-size:12px;position:relative}
-.loading,.empty{display:flex;align-items:center;justify-content:center;height:100%;color:#888;padding:20px}
-.toast{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#00b894;color:#fff;padding:4px 12px;border-radius:4px;z-index:10;font-size:12px;white-space:nowrap}
-
-.leftBg{width:138px;height:319px;flex-shrink:0;background:url('/images/ui/pms01.jpg') no-repeat;position:relative}
-.returnBtn{position:absolute;left:86px;bottom:21px;width:39px;height:17px;background:url('/images/ui/cangku04.jpg') no-repeat;cursor:pointer}
-
-.rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
-
-/* Tabs */
+/* Tabs — mixed sprites (tab1 uses jbjy_tab.jpg, tab2/3/4 use pms02.png) */
 .tabs{display:flex;list-style:none;margin:0;padding:0;height:29px}
 .tabs li{float:left;height:29px;width:90px;cursor:pointer}
 .tabLink{display:block;width:90px;height:29px}
@@ -20,41 +11,23 @@
 .tab4 .tabLink{background:url('/images/ui/pms02.png') no-repeat 0 0}
 .tabOn.tab4 .tabLink{background-position:0 -29px}
 
-/* Resource bar */
+/* Resource bar — right-aligned (unlike other panels) */
 .resBar{position:absolute;top:4px;right:10px;display:flex;align-items:center;gap:2px;font-size:12px;color:#333}
 .resSep{margin:0 2px;color:#ccc}
 .filter{margin-left:6px;font-size:11px;border:1px solid #D9BD7A;background:#fff;color:#693600;padding:1px 2px}
 
-/* Columns */
-.columns{display:flex;height:290px}
-.column{width:292px;padding-left:14px;display:flex;flex-direction:column}
+/* Column header */
 .colHead{display:flex;align-items:center;justify-content:space-between;height:28px}
 .colTitle{font-weight:bold;color:#693600;font-size:13px}
 
-/* Item list */
-.itemList{flex:1;border:1px solid #D9BD7A;background:#fff;overflow-y:auto;scrollbar-face-color:#E1D395;scrollbar-track-color:#F3EDC9}
-.itemList::-webkit-scrollbar{width:6px}
-.itemList::-webkit-scrollbar-track{background:#F3EDC9}
-.itemList::-webkit-scrollbar-thumb{background:#E1D395;border-radius:3px}
-
-.table{width:100%;border-collapse:collapse;font-size:12px;color:#BF7D1A}
-.table thead{position:sticky;top:0;background:#e1cea1;z-index:1}
-.table th{padding:2px 4px;text-align:left;background:#e1cea1;border-bottom:1px solid #b4a449;color:#693600;font-weight:600}
-.thIcon{width:35px}
-.table td{padding:1px 4px;line-height:22px}
-.tdIcon{width:35px;text-align:center}
-.tdIcon img{width:25px;height:25px;object-fit:contain}
-
-.row{cursor:pointer}
-.row:hover{background:#DFD496}
-.rowSel{background:#DFD496!important}
-
+/* Expired text */
 .expired{color:#c04040;font-weight:600}
 
 /* Footer */
 .colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px;white-space:nowrap}
 .inp{width:44px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
 
+/* Gradient buttons (NOT sprite — AuctionPanel uses unique button style) */
 .btn,.btnWide{height:20px;padding:0 8px;border:1px solid #b09040;border-radius:2px;background:linear-gradient(to bottom,#f5e6b8,#e0c870);color:#5a3a0a;cursor:pointer;font-size:11px;line-height:18px;white-space:nowrap}
 .btn:hover,.btnWide:hover{background:linear-gradient(to bottom,#ffeeb0,#e8d070)}
 .btn{min-width:39px}

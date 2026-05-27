@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import ShopLayout from './ShopLayout';
+import layoutStyles from './ShopLayout.module.css';
 import styles from './DepotPanel.module.css';
 
 interface ItemRaw {
@@ -38,7 +40,6 @@ export default function DepotPanel() {
 
   const fetchData = () => {
     setLoading(true);
-    // Fetch both in series to avoid any race conditions
     apiGet<ItemRaw[]>('/bag').then(bagRes => {
       if (bagRes.code === 0 && bagRes.data) setBag(bagRes.data);
       return apiGet<ItemRaw[]>('/depot');
@@ -49,7 +50,6 @@ export default function DepotPanel() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Filter by category name (like BagPanel fix)
   const filterByCat = (items: ItemRaw[], cat: number) => {
     if (cat === 0) return items;
     const filterLabel = CATEGORIES[cat]?.label ?? '';
@@ -61,8 +61,6 @@ export default function DepotPanel() {
 
   const filterBag = filterByCat(bag.filter(i => i.count > 0 && i.zbing !== 1), bagCat);
   const filterDepot = filterByCat(depot.filter(i => i.count > 0), depotCat);
-
-  // PHP: total count, not filtered
   const bagTotal = bag.filter(i => i.count > 0 && i.zbing !== 1).length;
   const depotTotal = depot.filter(i => i.count > 0).length;
 
@@ -84,17 +82,14 @@ export default function DepotPanel() {
     });
   };
 
-  if (loading) return <div className={styles.loading}>加载中...</div>;
+  if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
   return (
-    <div className={styles.container}>
-      {msg && <div className={styles.toast}>{msg}</div>}
-
-      <div className={styles.leftBg}>
-        <div className={styles.returnBtn} onClick={() => setGameView('city')} />
-      </div>
-
-      <div className={styles.rightBg}>
+    <ShopLayout
+      leftBg="/images/ui/cangku01.jpg"
+      onReturn={() => setGameView('city')}
+      toast={msg}
+      topArea={
         <div className={styles.topBar}>
           <div className={styles.topBtn} />
           <div className={styles.topInfo}>
@@ -102,79 +97,75 @@ export default function DepotPanel() {
             <span><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</span>
           </div>
         </div>
-
-        <div className={styles.columns}>
-          {/* Left: Warehouse */}
-          <div className={styles.column}>
-            <div className={styles.colHeader}>
-              <img src="/images/ui/icon03.jpg" alt="仓库物品" className={styles.colIcon} />
-              <span className={styles.catLabel}>分类查看</span>
-              <select className={styles.catSelect} value={depotCat} onChange={e => setDepotCat(Number(e.target.value))}>
-                {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
-              </select>
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
-                <tbody>
-                  {filterDepot.length === 0 ? (
-                    <tr><td colSpan={4} className={styles.empty}>仓库中没有物品</td></tr>
-                  ) : filterDepot.map(item => (
-                    <tr key={item.id} className={`${styles.row} ${selDepot === item.id ? styles.rowSel : ''}`}
-                      onClick={() => { setSelDepot(item.id); setSelBag(null); setCount(item.count); }}>
-                      <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                      <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                      <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                      <td className={styles.tdCount}>{item.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className={styles.colFoot}>
-              <span>仓库空间：{depotTotal}/{maxDepot}</span>
-              <input className={styles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-              <button className={styles.btn} disabled={!selDepot} onClick={handleWithdraw}>取出</button>
-              <button className={styles.btn} disabled>存放</button>
-            </div>
-          </div>
-
-          {/* Right: Bag */}
-          <div className={styles.column}>
-            <div className={styles.colHeader}>
-              <img src="/images/ui/icon04.jpg" alt="背包物品" className={styles.colIcon} />
-              <span className={styles.catLabel}>分类查看</span>
-              <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
-                {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
-              </select>
-            </div>
-            <div className={styles.itemList}>
-              <table className={styles.table}>
-                <thead><tr><th className={styles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
-                <tbody>
-                  {filterBag.length === 0 ? (
-                    <tr><td colSpan={4} className={styles.empty}>背包中没有物品</td></tr>
-                  ) : filterBag.map(item => (
-                    <tr key={item.id} className={`${styles.row} ${selBag === item.id ? styles.rowSel : ''}`}
-                      onClick={() => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}>
-                      <td className={styles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                      <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                      <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                      <td className={styles.tdCount}>{item.count}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className={styles.colFoot}>
-              <span>背包空间：{bagTotal}/{maxBag}</span>
-              <input className={styles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-              <button className={styles.btn} disabled>取出</button>
-              <button className={styles.btn} disabled={!selBag} onClick={handleDeposit}>存放</button>
-            </div>
-          </div>
+      }
+    >
+      <div className={layoutStyles.column}>
+        <div className={styles.colHeader}>
+          <img src="/images/ui/icon03.jpg" alt="仓库物品" className={styles.colIcon} />
+          <span className={styles.catLabel}>分类查看</span>
+          <select className={styles.catSelect} value={depotCat} onChange={e => setDepotCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
+          </select>
+        </div>
+        <div className={layoutStyles.itemList}>
+          <table className={layoutStyles.table}>
+            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
+            <tbody>
+              {filterDepot.length === 0 ? (
+                <tr><td colSpan={4} className={layoutStyles.empty}>仓库中没有物品</td></tr>
+              ) : filterDepot.map(item => (
+                <tr key={item.id} className={`${layoutStyles.row} ${selDepot === item.id ? layoutStyles.rowSel : ''}`}
+                  onClick={() => { setSelDepot(item.id); setSelBag(null); setCount(item.count); }}>
+                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
+                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
+                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
+                  <td className={styles.tdCount}>{item.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className={layoutStyles.colFoot}>
+          <span>仓库空间：{depotTotal}/{maxDepot}</span>
+          <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
+          <button className={styles.btn} disabled={!selDepot} onClick={handleWithdraw}>取出</button>
+          <button className={styles.btn} disabled>存放</button>
         </div>
       </div>
-    </div>
+
+      <div className={layoutStyles.column}>
+        <div className={styles.colHeader}>
+          <img src="/images/ui/icon04.jpg" alt="背包物品" className={styles.colIcon} />
+          <span className={styles.catLabel}>分类查看</span>
+          <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
+          </select>
+        </div>
+        <div className={layoutStyles.itemList}>
+          <table className={layoutStyles.table}>
+            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
+            <tbody>
+              {filterBag.length === 0 ? (
+                <tr><td colSpan={4} className={layoutStyles.empty}>背包中没有物品</td></tr>
+              ) : filterBag.map(item => (
+                <tr key={item.id} className={`${layoutStyles.row} ${selBag === item.id ? layoutStyles.rowSel : ''}`}
+                  onClick={() => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}>
+                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
+                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
+                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
+                  <td className={styles.tdCount}>{item.count}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className={layoutStyles.colFoot}>
+          <span>背包空间：{bagTotal}/{maxBag}</span>
+          <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
+          <button className={styles.btn} disabled>取出</button>
+          <button className={styles.btn} disabled={!selBag} onClick={handleDeposit}>存放</button>
+        </div>
+      </div>
+    </ShopLayout>
   );
 }
