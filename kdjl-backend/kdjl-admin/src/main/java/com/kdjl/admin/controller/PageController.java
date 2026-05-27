@@ -26,4 +26,7 @@ public class PageController {
 
     @GetMapping("/payments")
     public String payments() { return "payments"; }
+
+    @GetMapping("/tasks")
+    public String tasks() { return "tasks/list"; }
 }

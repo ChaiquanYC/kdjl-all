@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
-import { systips } from '@/stores/systipsStore';
 import styles from './PetList.module.css';
 
 interface PetData {
@@ -21,18 +20,8 @@ interface PetData {
 
 interface BagItem {
   id: number; name?: string; img?: string; propId: number;
-  effect?: string; effectDesc?: string; requires?: string; requiresDesc?: string;
-  pluseffect?: string; pluseffectDesc?: string; plusTimesEffect?: string; plusTimesEffectDesc?: string;
-  sell?: number; buy?: number; usages?: string; usagesDesc?: string;
-  expire?: string; propsColor?: number; holeInfo?: string; holeInfoDesc?: string;
-  series?: string; serieseffect?: string; serieseffectDesc?: string;
-  plusflag?: number; plusget?: string; plusnum?: number; postion?: number; varyname?: number;
-  prestige?: number; propslock?: number; cantrade?: number; zbing?: number; plusTimesLevel?: number;
-  seriesDisplay?: {
-    name: string; totalCount: number; equipCount: number;
-    pieces: { name: string; equipped: boolean }[];
-    stages: { stage: number; effect: string; active: boolean }[];
-  };
+  effect?: string; requires?: string; sell?: number; buy?: number;
+  usages?: string; expire?: string; propsColor?: number;
 }
 
 interface SkillInfo {
@@ -45,26 +34,29 @@ interface LearnableSkill {
 
 const ELE_RESIST = ['金抗','木抗','水抗','火抗','土抗'];
 const SLOT_LABELS = ['翅膀','头部','身体','脚部','武器','项链','戒指','翅膀','手镯','宝石','道具','特殊'];
-const PROPS_COLORS: Record<number, string> = {
-  1: '#FEFDFA', 2: '#0067CB', 3: '#9833DC', 4: '#14FD10', 5: '#FED625', 6: '#ED9037',
-};
 
 export default function PetList() {
   const [pets, setPets] = useState<PetData[]>([]);
   const [bagItems, setBagItems] = useState<BagItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(1);
+  const [msg, setMsg] = useState<string | null>(null);
   const [etip, setEtip] = useState<{ itemId: number; x: number; y: number } | null>(null);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [learnable, setLearnable] = useState<LearnableSkill[]>([]);
   const [ranchCount, setRanchCount] = useState<number>(0);
   const player = useAuthStore((s) => s.player);
+  const fetchPlayer = useAuthStore((s) => s.fetchPlayer);
   const mainPetId = player?.mbid;
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
   const refreshTrigger = useGameStore((s) => s.refreshTrigger);
+  const storeSelectedId = useGameStore((s) => s.selectedPetId);
+  const setStoreSelectedId = useGameStore((s) => s.setSelectedPetId);
 
-  const [selectedId, setSelectedId] = useState<number>(mainPetId ?? 0);
+  const [localSelectedId, setLocalSelectedId] = useState<number>(mainPetId ?? 0);
+  const selectedId = storeSelectedId ?? localSelectedId;
   const selectedPet = pets.find(p => p.id === selectedId) ?? pets[0];
+  const setSelectedId = (id: number) => { setLocalSelectedId(id); setStoreSelectedId(id); };
 
   useEffect(() => {
     Promise.all([
@@ -99,20 +91,25 @@ export default function PetList() {
 
   const handleSetMain = (petId: number) => {
     apiPost('/pets/set-main/' + petId, {}).then(() => {
-      systips('已设为主战宠物'); triggerRefresh();
-          });
+      fetchPlayer().then(() => {
+        setMsg('已设为主战宠物'); triggerRefresh();
+        setSelectedId(petId);
+        setTimeout(() => setMsg(null), 2000);
+      });
+    });
   };
 
   const handleLearn = (skillSysId: number) => {
     if (!selectedPet) return;
     apiPost('/pets/' + selectedPet.id + '/skills/learn/' + skillSysId, {}).then((res: any) => {
       if (res.code === 0 && res.data) {
-        systips('学会了 ' + (res.data.learned ?? ''));
+        setMsg('学会了 ' + (res.data.learned ?? ''));
         apiGet<SkillInfo[]>('/pets/' + selectedPet.id + '/skills').then(r => {
           if (r.code === 0 && r.data) setSkills(r.data);
         });
-      } else systips(res.message ?? '学习失败');
-          });
+      } else setMsg(res.message ?? '学习失败');
+      setTimeout(() => setMsg(null), 2500);
+    });
   };
 
   // Parse zb string "pos:bagId,pos:bagId" → Map<pos, bagId>
@@ -141,13 +138,14 @@ export default function PetList() {
     if (!confirm(`确定取下 ${item.name} 吗？`)) return;
     apiPost('/bag/unequip/' + item.id, {}).then((res: any) => {
       if (res.code === 0) {
-        systips('装备取下成功');
+        setMsg('装备取下成功');
         Promise.all([apiGet<PetData[]>('/pets'), apiGet<BagItem[]>('/bag')]).then(([p, b]) => {
           if (p.code === 0 && p.data) setPets(p.data);
           if (b.code === 0 && b.data) setBagItems(b.data);
         });
-      } else systips(res.message ?? '取下失败');
-          });
+      } else setMsg(res.message ?? '取下失败');
+      setTimeout(() => setMsg(null), 2000);
+    });
   };
 
   const parseKx = (kx?: string) => {
@@ -164,41 +162,18 @@ export default function PetList() {
 
   return (
     <div className={styles.container}>
+      {msg && <div className={styles.toast}>{msg}</div>}
       {etip && (
         <div className={styles.equipTip} style={{ left: etip.x + 12, top: etip.y - 40 }}>
           {(() => {
             const item = bagItems.find(b => b.id === etip.itemId);
             if (!item) return <span>装备 #{etip.itemId}</span>;
-            const effText = item.effectDesc || item.effect;
-            const plusText = item.pluseffectDesc || item.pluseffect;
-            const enhanceVal = item.plusTimesEffectDesc || '';
-            const nameColor = PROPS_COLORS[item.propsColor ?? 1] ?? '#FEFDFA';
             return (
               <>
                 {item.img && <img src={`/images/props/${item.img}`} className={styles.tipImg} alt="" />}
-                <div className={styles.tipName} style={{ color: nameColor }}>
-                  <b>{item.name}{item.plusTimesLevel ? ' (+' + item.plusTimesLevel + ')' : ''}</b>
-                </div>
-                {effText && (
-                  <div className={styles.tipRow}>
-                    效果：<span>{effText}</span>
-                    {enhanceVal && <span style={{ color: '#FF4444' }}> {enhanceVal}</span>}
-                  </div>
-                )}
-                {item.requiresDesc && <div className={styles.tipRow}>需求：{item.requiresDesc}</div>}
-                {plusText && <div className={styles.tipRow}>附加：{plusText}</div>}
-                {item.seriesDisplay && item.seriesDisplay.pieces.length > 0 ? (
-                  <>
-                    <div className={styles.tipRow}>
-                      <span style={{ color: '#FED625' }}>{item.seriesDisplay.name}({item.seriesDisplay.equipCount}/{item.seriesDisplay.totalCount})</span>
-                    </div>
-                    {item.seriesDisplay.stages.map((s) => (
-                      <div key={s.stage} className={styles.tipRow} style={{ paddingLeft: 12, color: s.active ? '#14FD10' : '#00AA00' }}>
-                        ({s.stage})套装：{s.effect}
-                      </div>
-                    ))}
-                  </>
-                ) : (item.series && <div className={styles.tipRow}>套装：{item.series}</div>)}
+                <div className={styles.tipName}>{item.name}</div>
+                {item.effect && <div className={styles.tipRow}>效果：{item.effect}</div>}
+                {item.requires && <div className={styles.tipRow}>需要：{item.requires}</div>}
                 {item.usages && <div className={styles.tipRow}>{item.usages}</div>}
                 {item.expire && <div className={styles.tipRow}>{item.expire}</div>}
                 {item.sell != null && <div className={styles.tipRow}>售价：{item.sell}金</div>}
@@ -343,12 +318,13 @@ export default function PetList() {
                           e.stopPropagation();
                           apiPost('/pets/' + selectedPet.id + '/skills/upgrade/' + s.id, {}).then((res: any) => {
                             if (res.code === 0) {
-                              systips(res.data?.upgraded + ' 升级到 Lv.' + res.data?.newLevel);
+                              setMsg(res.data?.upgraded + ' 升级到 Lv.' + res.data?.newLevel);
                               apiGet<SkillInfo[]>('/pets/' + selectedPet.id + '/skills').then(r => {
                                 if (r.code === 0 && r.data) setSkills(r.data);
                               });
-                            } else systips(res.message);
-                                                      });
+                            } else setMsg(res.message);
+                            setTimeout(() => setMsg(null), 2000);
+                          });
                         }}>升级</button>
                       )}
                     </li>

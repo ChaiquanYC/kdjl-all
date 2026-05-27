@@ -43,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers("/ws/**").permitAll()
                 // Static resources
                 .requestMatchers(HttpMethod.GET, "/static/**", "/images/**").permitAll()
+                // Admin cache refresh (called by admin panel on :8081 after task CRUD)
+                .requestMatchers("/api/admin/refresh-task-cache").permitAll()
                 // Everything else requires auth
                 .anyRequest().authenticated()
             )

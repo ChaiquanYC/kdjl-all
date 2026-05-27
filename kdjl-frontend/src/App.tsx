@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import GameLayout from '@/components/layout/GameLayout';
 import LoginPage from '@/pages/LoginPage';
@@ -18,7 +19,19 @@ function decodeJwt(token: string): { exp?: number } | null {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
+  const hydrated = useAuthStore((s) => s.hydrated);
+  const hydrate = useAuthStore((s) => s.hydrate);
   const logout = useAuthStore((s) => s.logout);
+  const [validating, setValidating] = useState(!hydrated);
+
+  useEffect(() => {
+    if (!hydrated) {
+      hydrate().then((ok) => {
+        setValidating(false);
+        if (!ok) logout();
+      });
+    }
+  }, []);
 
   if (!token) return <Navigate to="/login" replace />;
 
@@ -29,10 +42,13 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  // exp is in seconds, compare with current time in seconds
   if (jwt.exp * 1000 < Date.now()) {
     logout();
     return <Navigate to="/login" replace />;
+  }
+
+  if (validating) {
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#888' }}>验证登录...</div>;
   }
 
   return <>{children}</>;

@@ -2,7 +2,6 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
-import { systips } from '@/stores/systipsStore';
 import type { ApiResponse } from '@/types';
 import styles from './BagPanel.module.css';
 
@@ -17,12 +16,6 @@ interface BagItemRaw {
   postion?: number; holeInfo?: string; holeInfoDesc?: string;
   effectDesc?: string; requiresDesc?: string; usagesDesc?: string;
   serieseffectDesc?: string; pluseffectDesc?: string;
-  plusTimesEffect?: string; plusTimesEffectDesc?: string; plusTimesLevel?: number;
-  seriesDisplay?: {
-    name: string; totalCount: number; equipCount: number;
-    pieces: { name: string; equipped: boolean }[];
-    stages: { stage: number; effect: string; active: boolean }[];
-  };
 }
 
 const PROPS_COLORS: Record<number, string> = {
@@ -83,17 +76,12 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
     const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
     const requiresLines = requiresText ? requiresText.split('，') : [];
     const holeLines = item.holeInfoDesc ? item.holeInfoDesc.split('\n') : [];
-    const enhanceVal = item.plusTimesEffectDesc;
     body = (
       <>
         {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}装备{item.plusflag === 1 ? '(可强化)' : '(不可强化)'}</div>}
-        {effectText && (
-          <div className={styles.tipRow}>
-            <span className={styles.tipLabel}>效果：</span>
-            <span style={{ color: '#FEFDFA' }}>{effectText}</span>
-            {enhanceVal && <span style={{ color: '#FF4444' }}> {enhanceVal}</span>}
-          </div>
-        )}
+        {renderRows([
+          { label: '效果', value: effectText, color: '#FEFDFA' },
+        ])}
         {requiresLines.length > 0 && (
           <>
             <div className={styles.tipRow}><span className={styles.tipLabel}>需求：</span></div>
@@ -102,6 +90,9 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
             ))}
           </>
         )}
+        {renderRows([
+          { label: '强化', value: item.plusget },
+        ])}
         {item.plusnum != null && item.plusnum > 0 && (
           <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>
         )}
@@ -116,24 +107,12 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
         {renderRows([
           { label: '附加', value: plusText, color: '#9833DC' },
         ])}
-        {item.seriesDisplay && item.seriesDisplay.pieces.length > 0 ? (
-          <>
-            <div className={styles.tipRow}>
-              <span className={styles.tipLabel}>套装：</span>
-              <span style={{ color: '#FED625' }}>{item.seriesDisplay.name}({item.seriesDisplay.equipCount}/{item.seriesDisplay.totalCount})</span>
-            </div>
-            {item.seriesDisplay.stages.map((s) => (
-              <div key={s.stage} className={styles.tipRow} style={{ paddingLeft: 12, color: s.active ? '#14FD10' : '#00AA00' }}>
-                ({s.stage})套装：{s.effect}
-              </div>
-            ))}
-          </>
-        ) : (item.series && (
+        {item.series && (
           <div className={styles.tipRow}>
             <span className={styles.tipLabel}>套装：</span>
             <span style={{ color: '#FED625' }}>{item.series}{seriesText ? '（' + seriesText + '）' : ''}</span>
           </div>
-        ))}
+        )}
         {usageText && <div className={styles.tipUsage}>{usageText}</div>}
         {item.prestige != null && item.prestige > 0 && (
           <div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{item.prestige}</div>
@@ -185,7 +164,7 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
     <div className={styles.tooltip} style={{ left: x + 12, top: Math.max(0, y - 120) }}>
       <div className={styles.tipFrame}>
         <div className={styles.tipName} style={{ color: nameColor }}>
-          <b>{item.name}{item.plusTimesLevel ? ' (+' + item.plusTimesLevel + ')' : ''}</b>
+          <b>{item.name}</b>
         </div>
         <div className={styles.tipTrade}>{getTradeStatus(item)}</div>
         <div className={styles.tipExpire}>{item.expire ?? '永久'}</div>
@@ -200,11 +179,10 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
 
 export default function BagPanel() {
   const [items, setItems] = useState<BagItemRaw[]>([]);
-  const [pets, setPets] = useState<PetBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [useTarget, setUseTarget] = useState<BagItemRaw | null>(null);
+  const [useResult, setUseResult] = useState<string | null>(null);
   const [maxBag, setMaxBag] = useState(30);
   const [tooltip, setTooltip] = useState<{ item: BagItemRaw; x: number; y: number } | null>(null);
   const setBag = useGameStore((s) => s.setBag);
@@ -227,9 +205,8 @@ export default function BagPanel() {
   useEffect(() => {
     Promise.all([
       apiGet<BagItemRaw[]>('/bag'),
-      apiGet<PetBrief[]>('/pets'),
       apiGet<{ maxBag?: number }>('/player/me'),
-    ]).then(([bagRes, petRes, playerRes]) => {
+    ]).then(([bagRes, playerRes]) => {
       if (bagRes.code === 0 && bagRes.data) {
         setItems(bagRes.data);
         setBag(bagRes.data.map((item) => ({
@@ -237,7 +214,6 @@ export default function BagPanel() {
           count: item.count, type: item.vary === 'equipment' ? 2 : 1, description: '',
         })));
       }
-      if (petRes.code === 0 && petRes.data) setPets(petRes.data);
       if (playerRes.code === 0 && playerRes.data?.maxBag) setMaxBag(playerRes.data.maxBag);
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -273,21 +249,13 @@ export default function BagPanel() {
   };
 
   const mainPetId = useAuthStore((s) => s.player?.mbid);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
+  const activePetId = selectedPetId ?? mainPetId;
 
   const handleUse = (item: BagItemRaw) => {
     if (needsPet(item)) {
-      // Permanent stat boosts and addexp — auto-target main battle pet (PHP behavior)
-      const eff = item.effect || '';
-      const isPermBoost = ['addczl','addac','addmc','addhp','addmp','addspeed','addhits','addmiss'].some(k => eff.includes(k));
-      if (eff.includes('addexp') || isPermBoost) {
-        if (!mainPetId) { alert('请先在牧场设置主战宠物！'); return; }
-        doUse(item, mainPetId);
-        return;
-      }
-      // hp/mp healing — allow choosing any pet
-      if (pets.length === 0) { alert('没有可使用的宠物！'); return; }
-      if (pets.length === 1) { doUse(item, pets[0].id); }
-      else { setUseTarget(item); }
+      if (!activePetId) { alert('请先在牧场设置主战宠物！'); return; }
+      doUse(item, activePetId);
     } else {
       // Player-only: chests, currency, double-exp, auto-fight, openpet, expand, etc.
       doUse(item, 0);
@@ -303,74 +271,79 @@ export default function BagPanel() {
         const err = d.error as string;
         const msg = d.message as string;
         if (err) {
-          systips(err);
+          setUseResult(err);
+          setTimeout(() => setUseResult(null), 2000);
           fetchItems();
-          setUseTarget(null);
           return;
         }
         if (d.equipped) {
-          systips(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
+          setUseResult(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
         } else if (d.unequipped) {
-          systips(`已卸下装备`);
-        } else if (d.type === 'healHP') systips(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
-        else if (d.type === 'healMP') systips(`${item.name} 为宠物恢复了 ${d.healedMP} 点MP`);
-        else if (d.type === 'exp' && d.levelUp) systips(`${item.name} 使宠物升级到 Lv.${d.newLevel}！`);
+          setUseResult(`已卸下装备`);
+        } else if (d.type === 'healHP') setUseResult(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
+        else if (d.type === 'healMP') setUseResult(`${item.name} 为宠物恢复了 ${d.healedMP} 点MP`);
+        else if (d.type === 'exp' && d.levelUp) setUseResult(`${item.name} 使宠物升级到 Lv.${d.newLevel}！`);
         else if (d.type === 'bagExpand' || d.type === 'depotExpand') {
-          systips(msg ?? `扩容成功`);
+          setUseResult(msg ?? `扩容成功`);
           if (d.type === 'bagExpand' && d.newMaxBag) setMaxBag(d.newMaxBag as number);
-        } else if (d.type === 'yuanbao') systips(msg ?? `获得${d.ybGained}元宝`);
-        else if (d.type === 'crystal') systips(msg ?? `获得水晶`);
-        else if (d.type === 'openMap') systips(msg ?? '地图已解锁');
-        else if (d.type === 'openPet') systips(msg ?? `恭喜获得宠物：${d.petName}！`);
-        else if (msg) systips(msg);
-        else systips(`使用了 ${item.name}`);
+        } else if (d.type === 'yuanbao') setUseResult(msg ?? `获得${d.ybGained}元宝`);
+        else if (d.type === 'crystal') setUseResult(msg ?? `获得水晶`);
+        else if (d.type === 'openMap') setUseResult(msg ?? '地图已解锁');
+        else if (d.type === 'openPet') setUseResult(msg ?? `恭喜获得宠物：${d.petName}！`);
+        else if (msg) setUseResult(msg);
+        else setUseResult(`使用了 ${item.name}`);
+        setTimeout(() => setUseResult(null), 2500);
         // Refresh from server to sync
         fetchItems();
         apiGet<PetBrief[]>('/pets').then((r) => {
           if (r.code === 0 && r.data) {
-            setPets(r.data);
             setGamePets(r.data.map((p: PetBrief) => ({ ...p, hp: 0, mp: 0, atk: 0, def: 0, speed: 0, element: '金' as const, quality: 0, exp: 0 })));
           }
         });
         // Clear selection if item gone
         if (item.count <= 1) setSelectedId(null);
       } else {
-        systips(res.message ?? '使用失败');
+        setUseResult(res.message ?? '使用失败');
+        setTimeout(() => setUseResult(null), 2000);
         // Revert optimistic update on failure
         fetchItems();
       }
-      setUseTarget(null);
     });
   };
 
   const handleSell = (item: BagItemRaw) => {
-    apiPost('/bag/sell/' + item.id, { count: 1 }).then(() => { fetchItems(); fetchPlayer(); });
+    apiPost<Record<string, unknown>>('/bag/sell/' + item.id, { count: 1 }).then((res) => {
+      if (res.code === 0 && res.data) {
+        const d = res.data;
+        setUseResult(`出售 ${d.sold} x${d.count}，获得 ${d.goldGained} 金币`);
+      } else {
+        setUseResult(res.message ?? '出售失败');
+      }
+      setTimeout(() => setUseResult(null), 2000);
+      fetchItems();
+      fetchPlayer();
+    });
   };
 
   const handleDrop = (item: BagItemRaw) => {
     if (!confirm(`确定丢弃 ${item.name} 吗？`)) return;
-    apiPost('/bag/drop/' + item.id, {}).then(() => { fetchItems(); setSelectedId(null); });
+    apiPost<Record<string, unknown>>('/bag/drop/' + item.id, {}).then((res) => {
+      if (res.code === 0) {
+        setUseResult(`已丢弃 ${item.name}`);
+      } else {
+        setUseResult(res.message ?? '丢弃失败');
+      }
+      setTimeout(() => setUseResult(null), 2000);
+      fetchItems();
+      setSelectedId(null);
+    });
   };
 
   if (loading) return <div className={styles.loading}>加载中...</div>;
 
   return (
     <div className={styles.container}>
-      {useTarget && (
-        <div className={styles.selectOverlay}>
-          <div className={styles.selectBox}>
-            <h3>选择宠物使用「{useTarget.name}」</h3>
-            <div className={styles.petList}>
-              {pets.map((pet) => (
-                <button key={pet.id} className={styles.petOption} onClick={() => doUse(useTarget, pet.id)}>
-                  {pet.name} <small>Lv.{pet.level}</small>
-                </button>
-              ))}
-            </div>
-            <button className={styles.cancelUse} onClick={() => setUseTarget(null)}>取消</button>
-          </div>
-        </div>
-      )}
+      {useResult && <div className={styles.toast}>{useResult}</div>}
 
       {/* Close button — PHP .close_btn */}
       <button className={styles.closeBtn} onClick={() => closePanel(null)} />

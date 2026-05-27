@@ -100,4 +100,110 @@ public class AdminApiController {
     public Map<String, Object> paymentStats() {
         return adminService.getPaymentStats();
     }
+
+    // ======================== Task Definition CRUD ========================
+
+    /** List/search task definitions */
+    @GetMapping("/tasks")
+    public Map<String, Object> tasks(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(required = false) Integer color,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        List<Map<String, Object>> list = adminService.browseTasks(keyword, color, page, size);
+        long total = adminService.countTasks(keyword, color);
+        return Map.of("list", list, "total", total, "page", page, "size", size);
+    }
+
+    /** Get single task definition */
+    @GetMapping("/tasks/{id}")
+    public Map<String, Object> getTask(@PathVariable Long id) {
+        Map<String, Object> task = adminService.getTask(id);
+        if (task == null) return Map.of("error", "任务不存在");
+        return task;
+    }
+
+    /** Create task */
+    @PostMapping("/tasks")
+    public Map<String, Object> createTask(@RequestBody Map<String, Object> data) {
+        return adminService.createTask(data);
+    }
+
+    /** Update task */
+    @PutMapping("/tasks/{id}")
+    public Map<String, Object> updateTask(@PathVariable Long id, @RequestBody Map<String, Object> data) {
+        return adminService.updateTask(id, data);
+    }
+
+    /** Delete task */
+    @DeleteMapping("/tasks/{id}")
+    public Map<String, Object> deleteTask(@PathVariable Long id) {
+        return adminService.deleteTask(id);
+    }
+
+    /** Get next available cid and max xulie for a cid */
+    @GetMapping("/tasks/next-cid")
+    public Map<String, Object> nextCid() {
+        return adminService.getNextCid();
+    }
+
+    @GetMapping("/tasks/max-xulie")
+    public Map<String, Object> maxXulie(@RequestParam String cid) {
+        return Map.of("maxXulie", adminService.getMaxXulie(cid));
+    }
+
+    // ======================== Item/Monster Quick Search ========================
+
+    /** Quick search items (id+name only, for autocomplete) */
+    @GetMapping("/items/search")
+    public List<Map<String, Object>> searchItems(@RequestParam(defaultValue = "") String keyword) {
+        return adminService.searchItems(keyword);
+    }
+
+    /** Batch lookup items by IDs, returns id→name map */
+    @GetMapping("/items/lookup")
+    public Map<Long, String> lookupItems(@RequestParam String ids) {
+        return adminService.lookupItems(ids);
+    }
+
+    /** Quick search monsters/pet templates (id+name only) */
+    @GetMapping("/monsters/search")
+    public List<Map<String, Object>> searchMonsters(@RequestParam(defaultValue = "") String keyword) {
+        return adminService.searchMonsters(keyword);
+    }
+
+    /** Batch lookup monsters by IDs, returns id→name map */
+    @GetMapping("/monsters/lookup")
+    public Map<Long, String> lookupMonsters(@RequestParam String ids) {
+        return adminService.lookupMonsters(ids);
+    }
+
+    // ======================== Player Task Management ========================
+
+    /** Get player's accepted tasks */
+    @GetMapping("/tasks/player/{playerId}")
+    public List<Map<String, Object>> playerTasks(@PathVariable Integer playerId) {
+        return adminService.getPlayerTasks(playerId);
+    }
+
+    /** Assign task to player */
+    public record AssignTaskRequest(Integer playerId, Long taskId) {}
+    @PostMapping("/tasks/assign")
+    public Map<String, Object> assignTask(@RequestBody AssignTaskRequest req) {
+        return adminService.assignTask(req.playerId(), req.taskId());
+    }
+
+    /** Update player's task state */
+    public record UpdatePlayerTaskRequest(Integer playerId, Long taskId, String state, String comself) {}
+    @PutMapping("/tasks/player")
+    public Map<String, Object> updatePlayerTask(@RequestBody UpdatePlayerTaskRequest req) {
+        return adminService.updatePlayerTask(req.playerId(), req.taskId(), req.state(), req.comself());
+    }
+
+    /** Remove player's task */
+    public record RemovePlayerTaskRequest(Integer playerId, Long taskId) {}
+    @DeleteMapping("/tasks/player")
+    public Map<String, Object> removePlayerTask(@RequestBody RemovePlayerTaskRequest req) {
+        return adminService.removePlayerTask(req.playerId(), req.taskId());
+    }
 }

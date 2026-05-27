@@ -315,12 +315,12 @@ export default function SdPanel() {
               添加<span style={{color:'red'}}>守护</span>材料：
               <select value={compItem1 ?? ''} onChange={(e) => setCompItem1(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料一</option>
-                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.count > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
               </select><br />
               添加<span style={{color:'red'}}>加成</span>材料：
               <select value={compItem2 ?? ''} onChange={(e) => setCompItem2(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料二</option>
-                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.count > 0 && (!b.usages || !b.usages.startsWith('涅盘'))).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
               </select><br />
               <table width="300" style={{marginTop:10}}><tbody>
                 <tr>
@@ -395,12 +395,12 @@ export default function SdPanel() {
               添加材料一：
               <select value={nirvItem1 ?? ''} onChange={(e) => setNirvItem1(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">选择材料一</option>
-                {bagItems.filter(b => b.varyname === 8 && b.effect && b.sums > 0 && b.usages?.startsWith('涅盘')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 8 && b.effect && b.count > 0 && b.usages?.startsWith('涅盘')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
               </select><br />
               添加材料二：
               <select value={nirvItem2 ?? ''} onChange={(e) => setNirvItem2(e.target.value ? parseInt(e.target.value) : null)}>
                 <option value="">涅槃加成材料</option>
-                {bagItems.filter(b => b.varyname === 19 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                {bagItems.filter(b => b.varyname === 19 && b.count > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
               </select><br />
               <table><tbody>
                 <tr>
@@ -449,7 +449,7 @@ export default function SdPanel() {
                       选择保护成长道具：
                       <select value={keepCzlItemId ?? ''} onChange={(e) => setKeepCzlItemId(e.target.value ? parseInt(e.target.value) : null)} style={{width: 160}}>
                         <option value="">选择保护成长道具</option>
-                        {bagItems.filter(b => b.effect?.includes('keepczl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                        {bagItems.filter(b => b.effect?.includes('keepczl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
                       </select>
                     </div>
                   </div>
@@ -462,7 +462,7 @@ export default function SdPanel() {
                       <td>选择道具一：
                         <select value={extractItem1 ?? ''} onChange={(e) => setExtractItem1(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加抽取比例道具</option>
-                          {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
                         </select>
                       </td>
                       <td rowSpan={3} align="right">
@@ -474,7 +474,7 @@ export default function SdPanel() {
                     <tr><td>选择道具二：
                       <select value={extractItem2 ?? ''} onChange={(e) => setExtractItem2(e.target.value ? parseInt(e.target.value) : null)}>
                         <option value="">增加抽取比例道具</option>
-                        {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                        {bagItems.filter(b => b.effect?.includes('inczhl:')).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
                       </select>
                     </td></tr>
                     <tr><td>本次抽取需要金币：<span>czl x 10000</span></td></tr>
@@ -567,7 +567,7 @@ export default function SdPanel() {
                       <td height="30" align="left">
                         <select value={rebirthItem1 ?? ''} onChange={(e) => setRebirthItem1(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加道具</option>
-                          {bagItems.filter(b => b.varyname === 23 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.varyname === 23 && b.count > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
                         </select>
                       </td>
                     </tr>
@@ -576,7 +576,7 @@ export default function SdPanel() {
                       <td height="20" align="left">
                         <select value={rebirthItem2 ?? ''} onChange={(e) => setRebirthItem2(e.target.value ? parseInt(e.target.value) : null)}>
                           <option value="">增加道具</option>
-                          {bagItems.filter(b => b.varyname === 23 && b.sums > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.sums}</option>)}
+                          {bagItems.filter(b => b.varyname === 23 && b.count > 0).map(b => <option key={b.id} value={b.id}>{b.name} x{b.count}</option>)}
                         </select>
                       </td>
                     </tr>

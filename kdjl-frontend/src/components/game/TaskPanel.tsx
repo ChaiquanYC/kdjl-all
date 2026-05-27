@@ -82,36 +82,56 @@ export default function TaskPanel() {
   };
 
   const handleAccept = async (taskId: number) => {
-    const res: any = await apiPost('/tasks/accept/' + taskId, {});
-    if (res.code === 0) {
-      showMsg('已接受任务');
-      await fetchTasks();
-      triggerRefresh();
-    } else {
-      showMsg(res.message || '接受失败');
+    try {
+      const res: any = await apiPost('/tasks/accept/' + taskId, {});
+      if (res.code === 0) {
+        showMsg('已接受任务');
+        await fetchTasks();
+        triggerRefresh();
+        // Update selectedTask so the button switches from "接受任务" to "提交完成"
+        setSelectedTask(prev => {
+          if (prev && prev.id === taskId) return { ...prev, accepted: true };
+          return prev;
+        });
+      } else {
+        showMsg(res.message || '接受失败');
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      showMsg(msg || '请求失败，请重试');
     }
   };
 
   const handleComplete = async (taskId: number) => {
-    const res: any = await apiPost('/tasks/complete/' + taskId, {});
-    if (res.code === 0) {
-      showMsg('任务完成！' + (res.data?.reward || ''));
-      await fetchTasks();
-      triggerRefresh();
-      setSelectedTask(null);
-    } else {
-      showMsg(res.message || '无法完成');
+    try {
+      const res: any = await apiPost('/tasks/complete/' + taskId, {});
+      if (res.code === 0) {
+        showMsg('任务完成！' + (res.data?.reward || ''));
+        await fetchTasks();
+        triggerRefresh();
+        setSelectedTask(null);
+      } else {
+        showMsg(res.message || '无法完成');
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      showMsg(msg || '请求失败，请重试');
     }
   };
 
   const handleAbandon = async (taskId: number) => {
-    const res: any = await apiPost('/tasks/abandon/' + taskId, {});
-    if (res.code === 0) {
-      showMsg('已放弃任务');
-      await fetchTasks();
-      setSelectedTask(null);
-    } else {
-      showMsg(res.message || '放弃失败');
+    try {
+      const res: any = await apiPost('/tasks/abandon/' + taskId, {});
+      if (res.code === 0) {
+        showMsg('已放弃任务');
+        await fetchTasks();
+        setSelectedTask(null);
+      } else {
+        showMsg(res.message || '放弃失败');
+      }
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      showMsg(msg || '请求失败，请重试');
     }
   };
 

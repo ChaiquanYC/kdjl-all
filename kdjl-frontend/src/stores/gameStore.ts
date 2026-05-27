@@ -17,6 +17,7 @@ interface GameState {
   battleMapId: number | null;
   battleDifficulty: number;
   refreshTrigger: number;
+  selectedPetId: number | null;
 
   setPets: (pets: Pet[]) => void;
   setBag: (bag: Item[]) => void;
@@ -29,6 +30,7 @@ interface GameState {
   endBattle: () => void;
   setBattleDifficulty: (difficulty: number) => void;
   triggerRefresh: () => void;
+  setSelectedPetId: (id: number | null) => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
@@ -44,6 +46,7 @@ export const useGameStore = create<GameState>((set) => ({
   battleMapId: null,
   battleDifficulty: 1,
   refreshTrigger: 0,
+  selectedPetId: null,
 
   setPets: (pets) => set({ pets }),
   setBag: (bag) => set({ bag }),
@@ -59,4 +62,5 @@ export const useGameStore = create<GameState>((set) => ({
     set({ inBattle: false, battlePet: null, battleMonster: null, battleMapId: null, battleDifficulty: 1 }),
   setBattleDifficulty: (battleDifficulty) => set({ battleDifficulty }),
   triggerRefresh: () => set((s) => ({ refreshTrigger: s.refreshTrigger + 1 })),
+  setSelectedPetId: (selectedPetId) => set({ selectedPetId }),
 }));

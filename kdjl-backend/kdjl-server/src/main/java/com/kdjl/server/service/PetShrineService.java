@@ -638,6 +638,9 @@ public class PetShrineService {
                 }
             }
         }
+        // PHP: strpos(effect, 'npbb') === false → die('200')
+        if (pp1 != null && pp1.getEffect() != null && !pp1.getEffect().contains("npbb"))
+            return Map.of("code", 200, "message", "请放入正确的涅磐道具（需要含npbb效果）");
 
         // PHP: gold 500000
         Player player = playerRepo.findById(playerId.intValue()).orElse(null);

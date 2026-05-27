@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务管理 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.tabs { display:flex; gap:0; margin-bottom:16px; border-bottom:2px solid #e0e0e0; }
+.tab { padding:10px 24px; cursor:pointer; border:none; background:none; font-size:14px; color:#666; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .2s; }
+.tab.active { color:#4a90d9; border-bottom-color:#4a90d9; font-weight:600; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.modal { display:none; position:fixed; top:0;left:0;width:100%;height:100%; background:rgba(0,0,0,.4); z-index:1000; justify-content:center; align-items:center; }
+.modal.show { display:flex; }
+.modal-box { background:#fff; border-radius:8px; padding:24px; width:820px; max-height:85vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.modal-box h3 { margin-top:0; font-size:15px; }
+.modal-box h4 { font-size:13px; color:#555; margin:12px 0 6px; border-bottom:1px solid #eee; padding-bottom:4px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; font-size:13px; }
+.btn-primary { background:#4a90d9; color:#fff; }
+.btn-danger { background:#e74c3c; color:#fff; }
+.btn-success { background:#27ae60; color:#fff; }
+.btn-default { background:#eee; color:#333; }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.btn-xs { padding:2px 8px; font-size:11px; }
+.tag { display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; color:#fff; }
+.tag-c0 { background:#999; } .tag-c1 { background:#e74c3c; } .tag-c2 { background:#f39c12; }
+.tag-c3 { background:#8e44ad; } .tag-c4 { background:#2ecc71; } .tag-c5 { background:#1abc9c; }
+.tag-c6 { background:#3498db; } .tag-c7 { background:#e67e22; } .tag-c8 { background:#e91e63; }
+.tag-c9 { background:#00bcd4; } .tag-c10{ background:#ff5722; } .tag-c11{ background:#ff6b9d; }
+.flex-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.info-text { font-size:13px; color:#888; margin:8px 0; }
+.pagination { display:flex; align-items:center; gap:6px; margin-top:16px; font-size:13px; }
+.pagination button { padding:6px 12px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; font-size:13px; min-width:32px; }
+.pagination button.current { background:#4a90d9; color:#fff; border-color:#4a90d9; font-weight:600; }
+.pagination button:disabled { color:#ccc; cursor:not-allowed; background:#f5f5f5; }
+.pagination .page-info { color:#888; margin:0 8px; }
+.pagination select { padding:6px 8px; border:1px solid #ddd; border-radius:4px; font-size:13px; }
+.search-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+.search-bar select { padding:8px 10px; border:1px solid #ddd; border-radius:4px; font-size:13px; background:#fff; }
+.form-row { display:grid; grid-template-columns:100px 1fr; gap:6px 12px; align-items:center; margin-bottom:6px; }
+.form-row label { text-align:right; font-weight:500; color:#555; font-size:12px; }
+.form-row input, .form-row textarea, .form-row select { width:100%; padding:7px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; }
+.form-row textarea { min-height:60px; resize:vertical; }
+.cond-table { width:100%; border-collapse:collapse; font-size:12px; margin:4px 0; }
+.cond-table th { background:#f5f5f5; padding:6px 8px; text-align:left; border:1px solid #e0e0e0; font-weight:500; }
+.cond-table td { padding:4px 6px; border:1px solid #e0e0e0; vertical-align:middle; }
+.cond-table select, .cond-table input { padding:6px 8px; border:1px solid #ddd; border-radius:3px; font-size:12px; width:100%; box-sizing:border-box; }
+.item-search-wrap { position:relative; }
+.item-search-wrap input { width:100%; box-sizing:border-box; }
+.item-dropdown { display:none; position:absolute; top:100%; left:0; right:0; max-height:180px; overflow-y:auto; background:#fff; border:1px solid #ddd; border-radius:0 0 4px 4px; z-index:10; box-shadow:0 4px 8px rgba(0,0,0,.1); }
+.item-dropdown.show { display:block; }
+.item-dropdown div { padding:6px 8px; cursor:pointer; font-size:12px; border-bottom:1px solid #f0f0f0; }
+.item-dropdown div:hover { background:#e8f0fe; }
+.item-dropdown div strong { color:#333; }
+.item-dropdown div span { color:#999; margin-left:8px; font-size:11px; }
+.cid-hint { font-size:11px; color:#999; margin-left:4px; }
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('tasks')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('任务管理')"></div>
+    <div class="content">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('defs')">任务定义</button>
+            <button class="tab" onclick="switchTab('players')">玩家任务</button>
+        </div>
+        <div id="tab-defs" class="tab-content active">
+            <div class="card">
+                <div class="search-bar">
+                    <select id="color-filter" onchange="searchTasks(1)">
+                        <option value="">全部分类</option>
+                        <option value="0">普通</option><option value="1">主线</option><option value="2">支线</option>
+                        <option value="3">进化</option><option value="4">活动</option><option value="5">冰滩</option>
+                        <option value="6">副本</option><option value="7">钥匙</option><option value="8">宠物</option>
+                        <option value="9">兑换</option><option value="10">VIP</option><option value="11">结婚</option>
+                    </select>
+                    <input class="input" id="keyword" placeholder="搜索任务名称" onkeydown="if(event.key==='Enter')searchTasks(1)">
+                    <button class="btn btn-primary" onclick="searchTasks(1)">搜索</button>
+                    <button class="btn btn-default" onclick="clearFilter()">清除</button>
+                    <button class="btn btn-success" onclick="openCreateModal()">+ 新建任务</button>
+                </div>
+                <table><thead><tr>
+                    <th>ID</th><th>标题</th><th>分类</th><th>系列</th><th>等级限制</th><th>接取NPC</th><th>交付NPC</th><th>隐藏</th><th>操作</th>
+                </tr></thead><tbody id="task-tbody"></tbody></table>
+                <div class="pagination" id="task-pager"></div>
+            </div>
+        </div>
+        <div id="tab-players" class="tab-content">
+            <div class="card">
+                <div class="flex-row">
+                    <input class="input" id="player-id-input" placeholder="输入玩家ID" style="width:120px">
+                    <button class="btn btn-primary" onclick="loadPlayerTasks()">查询玩家任务</button>
+                </div>
+                <div id="player-task-result"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Task Edit Modal -->
+<div class="modal" id="task-modal">
+    <div class="modal-box">
+        <h3 id="modal-title">编辑任务</h3>
+        <input type="hidden" id="f-id">
+        <div class="form-row"><label>标题</label><input id="f-title" placeholder="任务标题"></div>
+        <div class="form-row">
+            <label>分类颜色</label>
+            <select id="f-color">
+                <option value="0">0-普通</option><option value="1">1-主线</option><option value="2">2-支线</option>
+                <option value="3">3-进化</option><option value="4">4-活动</option><option value="5">5-冰滩</option>
+                <option value="6">6-副本</option><option value="7">7-钥匙</option><option value="8">8-宠物</option>
+                <option value="9">9-兑换</option><option value="10">10-VIP</option><option value="11">11-结婚</option>
+            </select>
+        </div>
+        <div class="form-row">
+            <label>系列ID / 序列</label>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input id="f-cid" placeholder="留空自动生成" style="flex:1">
+                <span style="font-size:12px;color:#888">/</span>
+                <input id="f-xulie" type="number" placeholder="序列" style="width:80px">
+                <span class="cid-hint" id="cid-hint"></span>
+            </div>
+        </div>
+        <div class="form-row"><label>等级限制</label><input id="f-limitlv" placeholder="如: 1-100 或留空"></div>
+        <div class="form-row"><label>隐藏</label><select id="f-hide"><option value="0">显示</option><option value="1">隐藏</option></select></div>
+        <div class="form-row"><label>接取NPC</label><input id="f-fromnpc" placeholder="NPC ID"></div>
+        <div class="form-row"><label>任务描述</label><textarea id="f-frommsg" placeholder="接取任务时的对话文本（支持HTML）"></textarea></div>
+        <div class="form-row"><label>完成提示</label><input id="f-okmsg" placeholder="完成任务时的提示文本"></div>
+        <div class="form-row"><label>交付NPC</label><input id="f-oknpc" type="number" placeholder="NPC ID"></div>
+
+        <!-- Completion Conditions -->
+        <h4>📋 完成条件 <button class="btn btn-success btn-xs" onclick="addCondition()">+ 添加条件</button></h4>
+        <table class="cond-table" id="cond-table">
+            <thead><tr><th style="width:100px">类型</th><th>参数</th><th style="width:60px">数量</th><th style="width:40px"></th></tr></thead>
+            <tbody id="cond-tbody"></tbody>
+        </table>
+
+        <!-- Rewards -->
+        <h4>🎁 奖励 <button class="btn btn-success btn-xs" onclick="addReward()">+ 添加奖励</button></h4>
+        <table class="cond-table" id="reward-table">
+            <thead><tr><th style="width:100px">类型</th><th>参数</th><th style="width:60px">数量</th><th style="width:40px"></th></tr></thead>
+            <tbody id="reward-tbody"></tbody>
+        </table>
+
+        <div class="form-row"><label>标记 (flags)</label><input id="f-flags" type="number" value="0"></div>
+        <div class="modal-actions">
+            <button class="btn btn-default" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" id="modal-save-btn" onclick="saveTask()">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden datalists for item/monster autocomplete -->
+<div id="item-dropdown" class="item-dropdown"></div>
+
+<script>
+// ======================== Tab switching ========================
+function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===['defs','players'].indexOf(name)));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ======================== Task Definitions ========================
+const COLOR_NAMES = {0:'普通',1:'主线',2:'支线',3:'进化',4:'活动',5:'冰滩',6:'副本',7:'钥匙',8:'宠物',9:'兑换',10:'VIP',11:'结婚'};
+let taskPage=1, taskTotal=0, pageSize=20;
+
+function clearFilter() { document.getElementById('keyword').value=''; document.getElementById('color-filter').value=''; searchTasks(1); }
+
+function searchTasks(p) {
+    taskPage=p||1; pageSize=parseInt(document.getElementById('page-size')?.value)||20;
+    var color=document.getElementById('color-filter').value;
+    var params='page='+taskPage+'&size='+pageSize;
+    var kw=document.getElementById('keyword').value.trim();
+    if(kw) params+='&keyword='+encodeURIComponent(kw);
+    if(color!=='') params+='&color='+color;
+    fetch('/api/admin/tasks?'+params).then(r=>r.json()).then(d=>{
+        taskTotal=d.total;
+        document.getElementById('task-tbody').innerHTML=d.list.map(t=>
+            `<tr><td>${t.id}</td><td><strong>${esc(t.title)}</strong></td>
+            <td><span class="tag tag-c${t.color||0}">${COLOR_NAMES[t.color]||t.color||'普通'}</span></td>
+            <td>${t.cid||'-'}/${t.xulie!=null?t.xulie:'-'}</td><td>${t.limitlv||'不限'}</td>
+            <td>${t.fromnpc||'-'}</td><td>${t.oknpc||'-'}</td><td>${t.hide==1?'🔒':'👁'}</td>
+            <td><button class="btn btn-primary btn-sm" onclick="openEditModal(${t.id})">编辑</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteTask(${t.id},'${esc(t.title||'')}')">删除</button></td></tr>`
+        ).join(''); renderTaskPager(); });
+}
+
+function renderTaskPager() {
+    var pages=Math.ceil(taskTotal/pageSize), pager=document.getElementById('task-pager');
+    if(pages<=1){ pager.innerHTML='<span class="page-info">共 '+taskTotal+' 条</span>'; return; }
+    var h=''; h+='<button onclick="searchTasks(1)" '+(taskPage<=1?'disabled':'')+'>&laquo; 首页</button>';
+    h+='<button onclick="searchTasks('+(taskPage-1)+')" '+(taskPage<=1?'disabled':'')+'>‹ 上一页</button>';
+    var s=Math.max(1,taskPage-2), e=Math.min(pages,taskPage+2);
+    if(s>1){ h+='<button onclick="searchTasks(1)">1</button>'; if(s>2) h+='<span>…</span>'; }
+    for(var i=s;i<=e;i++) h+='<button onclick="searchTasks('+i+')" class="'+(i===taskPage?'current':'')+'">'+i+'</button>';
+    if(e<pages){ if(e<pages-1) h+='<span>…</span>'; h+='<button onclick="searchTasks('+pages+')">'+pages+'</button>'; }
+    h+='<button onclick="searchTasks('+(taskPage+1)+')" '+(taskPage>=pages?'disabled':'')+'>下一页 ›</button>';
+    h+='<button onclick="searchTasks('+pages+')" '+(taskPage>=pages?'disabled':'')+'>末页 &raquo;</button>';
+    h+='<span class="page-info">第'+taskPage+'/'+pages+'页，共'+taskTotal+'条</span>';
+    h+='<select id="page-size" onchange="searchTasks(1)" style="margin-left:auto"><option value="10" '+(pageSize==10?'selected':'')+'>10条/页</option><option value="20" '+(pageSize==20?'selected':'')+'>20条/页</option><option value="50" '+(pageSize==50?'selected':'')+'>50条/页</option><option value="100" '+(pageSize==100?'selected':'')+'>100条/页</option></select>';
+    pager.innerHTML=h;
+}
+
+function esc(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+// ======================== Condition / Reward Builders ========================
+let conditions=[], rewards=[];
+
+function addCondition(){ conditions.push({type:'giveitem', param:'', count:1}); renderConditions(); }
+function removeCondition(i){ conditions.splice(i,1); renderConditions(); }
+function addReward(){ rewards.push({type:'props', param:'', count:1}); renderRewards(); }
+function removeReward(i){ rewards.splice(i,1); renderRewards(); }
+
+function renderConditions(){
+    var tbody=document.getElementById('cond-tbody');
+    tbody.innerHTML=conditions.map((c,i)=>`<tr>
+        <td><select onchange="conditions[${i}].type=this.value;renderConditions()">
+            <option value="giveitem" ${c.type=='giveitem'?'selected':''}>给物品</option>
+            <option value="killmon" ${c.type=='killmon'?'selected':''}>杀怪物</option>
+            <option value="see" ${c.type=='see'?'selected':''}>见NPC</option>
+            <option value="lv" ${c.type=='lv'?'selected':''}>等级限制</option>
+            <option value="cishu" ${c.type=='cishu'?'selected':''}>次数限制</option>
+        </select></td>
+        <td>${condParamCell(i,c)}</td>
+        <td>${c.type=='see'||c.type=='lv'?'-':'<input type="number" value="'+c.count+'" onchange="conditions['+i+'].count=parseInt(this.value)||1" style="width:100%">'}</td>
+        <td><button class="btn btn-danger btn-xs" onclick="removeCondition(${i})">×</button></td>
+    </tr>`).join('');
+    bindItemSearches();
+}
+
+function condParamCell(i,c){
+    if(c.type=='giveitem') return '<div class="item-search-wrap"><input value="'+esc(c.param)+'" oninput="conditions['+i+'].param=this.value;searchItems(this)" onfocus="searchItems(this)" placeholder="搜索物品名称" autocomplete="off"><div class="item-dropdown"></div></div>';
+    if(c.type=='killmon') return '<div class="item-search-wrap"><input value="'+esc(c.param)+'" oninput="conditions['+i+'].param=this.value;searchMonsters(this)" onfocus="searchMonsters(this)" placeholder="搜索怪物名称" autocomplete="off"><div class="item-dropdown"></div></div>';
+    if(c.type=='see') return '<input type="number" value="'+esc(c.param)+'" onchange="conditions['+i+'].param=this.value" placeholder="NPC ID">';
+    if(c.type=='lv') return '<input value="'+esc(c.param)+'" onchange="conditions['+i+'].param=this.value" placeholder="如: 10|0 (最小等级|最大等级)">';
+    if(c.type=='cishu') return '<input value="'+esc(c.param)+'" onchange="conditions['+i+'].param=this.value" placeholder="如: 1:1 (每日次数:总次数)">';
+    return '';
+}
+
+function renderRewards(){
+    var tbody=document.getElementById('reward-tbody');
+    tbody.innerHTML=rewards.map((r,i)=>`<tr>
+        <td><select onchange="rewards[${i}].type=this.value;renderRewards()">
+            <option value="props" ${r.type=='props'?'selected':''}>道具</option>
+            <option value="exp" ${r.type=='exp'?'selected':''}>经验</option>
+            <option value="money" ${r.type=='money'?'selected':''}>金币</option>
+        </select></td>
+        <td>${r.type=='props'?'<div class="item-search-wrap"><input value="'+esc(r.param)+'" oninput="rewards['+i+'].param=this.value;searchItems(this)" onfocus="searchItems(this)" placeholder="搜索物品名称" autocomplete="off"><div class="item-dropdown"></div></div>':'<input value="'+esc(r.param)+'" onchange="rewards['+i+'].param=this.value" placeholder="'+(r.type=='exp'?'经验值':'金币数量')+'">'}</td>
+        <td><input type="number" value="${r.count}" onchange="rewards[${i}].count=parseInt(this.value)||1" style="width:100%"></td>
+        <td><button class="btn btn-danger btn-xs" onclick="removeReward(${i})">×</button></td>
+    </tr>`).join('');
+    bindItemSearches();
+}
+
+// ======================== Item/Monster Search with Dropdown ========================
+function searchItems(input){
+    var kw=input.value.trim(), dd=input.parentNode.querySelector('.item-dropdown'), rowIdx=input.closest('tr').rowIndex;
+    if(kw.length<1){ dd.classList.remove('show'); return; }
+    fetch('/api/admin/items/search?keyword='+encodeURIComponent(kw)).then(r=>r.json()).then(items=>{
+        dd.innerHTML=items.slice(0,15).map(it=>'<div onclick="selectItem(this,'+rowIdx+',\''+(input.closest('table').id)+'\')"><strong>'+esc(it.name)+'</strong><span>ID:'+it.id+'</span></div>').join('');
+        dd.classList.add('show');
+    });
+}
+
+function searchMonsters(input){
+    var kw=input.value.trim(), dd=input.parentNode.querySelector('.item-dropdown');
+    if(kw.length<1){ dd.classList.remove('show'); return; }
+    fetch('/api/admin/monsters/search?keyword='+encodeURIComponent(kw)).then(r=>r.json()).then(items=>{
+        dd.innerHTML=items.slice(0,15).map(it=>'<div onclick="selectMonster(this)"><strong>'+esc(it.name)+'</strong><span>ID:'+it.id+'</span></div>').join('');
+        dd.classList.add('show');
+    });
+}
+
+function bindItemSearches(){
+    document.querySelectorAll('.item-search-wrap input').forEach(inp=>{
+        inp.addEventListener('blur',function(){ setTimeout(()=>{ this.parentNode.querySelector('.item-dropdown').classList.remove('show'); },200); });
+    });
+}
+
+function selectItem(el,rowIdx,tableId){
+    var name=el.querySelector('strong').textContent, id=el.querySelector('span').textContent.replace('ID:','');
+    el.closest('.item-search-wrap').querySelector('input').value = name;
+    if(tableId==='cond-table') conditions[rowIdx-1].param=name;
+    else rewards[rowIdx-1].param=name;
+    itemCache[name]=parseInt(id); itemIdCache[parseInt(id)]=name;
+    el.parentNode.classList.remove('show');
+}
+
+function selectMonster(el){
+    var name=el.querySelector('strong').textContent, id=el.querySelector('span').textContent.replace('ID:','');
+    var inp=el.closest('.item-search-wrap').querySelector('input');
+    inp.value=name; inp.setAttribute('data-id',id);
+    monsterCache[name]=parseInt(id); monsterIdCache[parseInt(id)]=name;
+    el.parentNode.classList.remove('show');
+}
+
+// ======================== Parse okneed/result strings ========================
+function parseOkneed(str){
+    if(!str) return [];
+    return str.split(',').map(part=>{
+        var m=part.trim();
+        if(m.startsWith('giveitem:')){ var p=m.split(':'); return {type:'giveitem',param:p[1]||'',count:parseInt(p[2])||1}; }
+        if(m.startsWith('killmon:')){ var p=m.split(':'); return {type:'killmon',param:p[1]||'',count:parseInt(p[2])||1}; }
+        if(m.startsWith('see:')){ return {type:'see',param:m.substring(4),count:0}; }
+        if(m.startsWith('lv:')){ return {type:'lv',param:m.substring(3),count:0}; }
+        if(m.startsWith('cishu:')){ return {type:'cishu',param:m.substring(7),count:0}; }
+        return {type:'giveitem',param:m,count:1};
+    }).filter(c=>c.param);
+}
+
+function serializeOkneed(){
+    return conditions.map(c=>{
+        if(c.type=='giveitem') return 'giveitem:'+(resolveItemId(c.param)||c.param)+':'+c.count;
+        if(c.type=='killmon') return 'killmon:'+(resolveMonsterIds(c.param)||c.param)+':'+c.count;
+        if(c.type=='see') return 'see:'+c.param;
+        if(c.type=='lv') return 'lv:'+c.param;
+        if(c.type=='cishu') return 'cishu:'+c.param;
+        return '';
+    }).filter(s=>s).join(',');
+}
+
+function parseResult(str){
+    if(!str) return [];
+    return str.split(',').map(part=>{
+        var m=part.trim();
+        if(m.startsWith('props:')){ var p=m.split(':'); return {type:'props',param:p[1]||'',count:parseInt(p[2])||1}; }
+        if(m.startsWith('exp:')){ return {type:'exp',param:m.substring(4),count:0}; }
+        if(m.startsWith('money:')){ return {type:'money',param:m.substring(6),count:0}; }
+        return null;
+    }).filter(r=>r);
+}
+
+function serializeResult(){
+    return rewards.map(r=>{
+        if(r.type=='props') return 'props:'+(resolveItemId(r.param)||r.param)+':'+r.count;
+        if(r.type=='exp') return 'exp:'+r.param;
+        if(r.type=='money') return 'money:'+r.param;
+        return '';
+    }).filter(s=>s).join(',');
+}
+
+// Item/monster name cache (name→id and id→name, populated from dropdown selections)
+var itemCache={}, itemIdCache={}, monsterCache={}, monsterIdCache={};
+function resolveItemId(name){
+    if(/^\d+$/.test(name)) return name; // already numeric ID, return as-is
+    return itemCache[name] || name;
+}
+function resolveMonsterIds(name){
+    if(/^\d+$/.test(name)) return name;
+    return monsterCache[name] || name;
+}
+
+// Resolve IDs to names in conditions/rewards after loading a task
+function resolveNames(){
+    var itemIds=[], monsterIds=[];
+    conditions.forEach(c=>{
+        if((c.type=='giveitem')&&/^\d+$/.test(c.param)&&!itemIdCache[parseInt(c.param)]) itemIds.push(parseInt(c.param));
+        if(c.type=='killmon') c.param.split('|').forEach(id=>{ if(id&&/^\d+$/.test(id)&&!monsterIdCache[parseInt(id)]) monsterIds.push(parseInt(id)); });
+    });
+    rewards.forEach(r=>{
+        if(r.type=='props'&&/^\d+$/.test(r.param)&&!itemIdCache[parseInt(r.param)]) itemIds.push(parseInt(r.param));
+    });
+    var p1=itemIds.length?fetch('/api/admin/items/lookup?ids='+itemIds.join(',')).then(r=>r.json()).then(map=>{ Object.entries(map).forEach(([id,name])=>{ itemCache[name]=parseInt(id); itemIdCache[parseInt(id)]=name; }); }) : Promise.resolve();
+    var p2=monsterIds.length?fetch('/api/admin/monsters/lookup?ids='+monsterIds.join(',')).then(r=>r.json()).then(map=>{ Object.entries(map).forEach(([id,name])=>{ monsterCache[name]=parseInt(id); monsterIdCache[parseInt(id)]=name; }); }) : Promise.resolve();
+    Promise.all([p1,p2]).then(()=>{
+        conditions.forEach(c=>{ if(c.type=='giveitem'&&/^\d+$/.test(c.param)&&itemIdCache[parseInt(c.param)]) c.param=itemIdCache[parseInt(c.param)]; });
+        rewards.forEach(r=>{ if(r.type=='props'&&/^\d+$/.test(r.param)&&itemIdCache[parseInt(r.param)]) r.param=itemIdCache[parseInt(r.param)]; });
+        // For killmon, resolve each ID in the pipe-separated list
+        conditions.forEach(c=>{
+            if(c.type=='killmon') c.param=c.param.split('|').map(id=>monsterIdCache[parseInt(id)]||id).join('|');
+        });
+        renderConditions(); renderRewards();
+    });
+}
+
+// ======================== CID auto-generation ========================
+function fetchNextCid(){
+    fetch('/api/admin/tasks/next-cid').then(r=>r.json()).then(d=>{
+        document.getElementById('f-cid').placeholder='自动: '+d.cid;
+        document.getElementById('cid-hint').textContent='新系列, 序列从'+(d.maxXulie+1)+'开始';
+    });
+}
+
+function fetchMaxXulie(cid){
+    if(!cid) return;
+    fetch('/api/admin/tasks/max-xulie?cid='+encodeURIComponent(cid)).then(r=>r.json()).then(d=>{
+        document.getElementById('cid-hint').textContent='当前系列最大序列: '+d.maxXulie+', 新序列: '+(d.maxXulie+1);
+    });
+}
+
+document.getElementById('f-cid').addEventListener('input',function(){
+    var v=this.value.trim();
+    if(v) fetchMaxXulie(v);
+    else { document.getElementById('cid-hint').textContent=''; fetchNextCid(); }
+});
+
+// ======================== Modal ========================
+function openCreateModal(){
+    document.getElementById('modal-title').textContent='新建任务';
+    ['f-id','f-title','f-fromnpc','f-frommsg','f-okmsg','f-oknpc','f-limitlv'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('f-cid').value=''; document.getElementById('f-xulie').value='';
+    document.getElementById('f-color').value='0'; document.getElementById('f-hide').value='0';
+    document.getElementById('f-flags').value='0';
+    conditions=[]; rewards=[]; renderConditions(); renderRewards();
+    fetchNextCid();
+    document.getElementById('task-modal').classList.add('show');
+}
+
+function openEditModal(id){
+    fetch('/api/admin/tasks/'+id).then(r=>r.json()).then(t=>{
+        if(t.error){ alert(t.error); return; }
+        document.getElementById('modal-title').textContent='编辑任务 #'+t.id;
+        document.getElementById('f-id').value=t.id;
+        document.getElementById('f-title').value=t.title||'';
+        document.getElementById('f-cid').value=t.cid||'';
+        document.getElementById('f-xulie').value=t.xulie!=null?t.xulie:'';
+        document.getElementById('f-color').value=t.color!=null?t.color:0;
+        document.getElementById('f-limitlv').value=t.limitlv||'';
+        document.getElementById('f-fromnpc').value=t.fromnpc||'';
+        document.getElementById('f-frommsg').value=t.frommsg||'';
+        document.getElementById('f-okmsg').value=t.okmsg||'';
+        document.getElementById('f-oknpc').value=t.oknpc||'';
+        document.getElementById('f-flags').value=t.flags||0;
+        document.getElementById('f-hide').value=t.hide||0;
+        conditions=parseOkneed(t.okneed||''); rewards=parseResult(t.result||'');
+        renderConditions(); renderRewards();
+        resolveNames();
+        if(t.cid) fetchMaxXulie(t.cid); else fetchNextCid();
+        document.getElementById('task-modal').classList.add('show');
+    });
+}
+
+function closeModal(){ document.getElementById('task-modal').classList.remove('show'); }
+
+function saveTask(){
+    var cid=document.getElementById('f-cid').value.trim();
+    var xulie=document.getElementById('f-xulie').value.trim();
+    var data={
+        title:document.getElementById('f-title').value,
+        color:parseInt(document.getElementById('f-color').value)||0,
+        limitlv:document.getElementById('f-limitlv').value,
+        fromnpc:document.getElementById('f-fromnpc').value,
+        frommsg:document.getElementById('f-frommsg').value,
+        okmsg:document.getElementById('f-okmsg').value,
+        oknpc:parseInt(document.getElementById('f-oknpc').value)||0,
+        okneed:serializeOkneed(),
+        result:serializeResult(),
+        flags:parseInt(document.getElementById('f-flags').value)||0,
+        hide:parseInt(document.getElementById('f-hide').value)||0
+    };
+    if(cid) data.cid=cid;
+    if(xulie!=='') data.xulie=parseInt(xulie);
+    var id=document.getElementById('f-id').value;
+    var method=id?'PUT':'POST';
+    var url=id?'/api/admin/tasks/'+id:'/api/admin/tasks';
+    fetch(url,{method:method,headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+        .then(r=>r.json()).then(d=>{
+            if(d.error){ alert(d.error); return; }
+            closeModal(); searchTasks(taskPage);
+            refreshGameTaskCache();
+        });
+}
+
+function deleteTask(id,title){
+    if(!confirm('确定删除任务 "'+title+'" (ID:'+id+')？此操作不可恢复。')) return;
+    fetch('/api/admin/tasks/'+id,{method:'DELETE'}).then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        searchTasks(taskPage);
+        refreshGameTaskCache();
+    });
+}
+
+function refreshGameTaskCache(){
+    fetch('http://localhost:8080/api/admin/refresh-task-cache',{method:'POST'})
+        .then(r=>r.json()).then(d=>console.log('Task cache refreshed:',d))
+        .catch(e=>console.warn('Failed to refresh game task cache:',e));
+}
+
+// ======================== Player Tasks ========================
+function loadPlayerTasks(){
+    var pid=document.getElementById('player-id-input').value.trim();
+    if(!pid){ alert('请输入玩家ID'); return; }
+    fetch('/api/admin/tasks/player/'+pid).then(r=>r.json()).then(tasks=>{
+        var c=document.getElementById('player-task-result'), h='<h4>玩家 #'+pid+' 的任务列表 ('+tasks.length+'个)</h4>';
+        if(tasks.length===0){ h+='<p class="info-text">该玩家没有接取任何任务</p>'; }
+        else {
+            h+='<table><thead><tr><th>任务ID</th><th>标题</th><th>状态</th><th>进度</th><th>接取时间</th><th>操作</th></tr></thead><tbody>';
+            tasks.forEach(t=>{ h+=`<tr><td>${t.taskId}</td><td>${esc(t.title)}</td><td>${t.state||'0'}</td><td>${t.comself||'-'}</td><td>${t.time?new Date(t.time*1000).toLocaleString():'-'}</td><td><button class="btn btn-primary btn-sm" onclick="editPlayerTask(${pid},${t.taskId},'${t.state||'0'}','${esc(t.comself||'')}')">编辑</button> <button class="btn btn-danger btn-sm" onclick="removePlayerTask(${pid},${t.taskId})">移除</button></td></tr>`; });
+            h+='</tbody></table>';
+        }
+        h+=`<div style="margin-top:12px" class="flex-row"><input class="input" id="assign-task-id" placeholder="任务ID" style="width:100px"><button class="btn btn-success btn-sm" onclick="assignTask(${pid})">分配任务</button><small style="color:#888;margin-left:8px">输入任务定义的ID，分配给该玩家</small></div>`;
+        c.innerHTML=h;
+    });
+}
+
+function assignTask(pid){
+    var tid=document.getElementById('assign-task-id').value.trim();
+    if(!tid){ alert('请输入任务ID'); return; }
+    fetch('/api/admin/tasks/assign',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerId:pid,taskId:parseInt(tid)})}).then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        loadPlayerTasks();
+    });
+}
+
+function editPlayerTask(pid,tid,state,comself){
+    var ns=prompt('修改任务状态 (当前: '+state+'):',state); if(ns===null) return;
+    var nc=prompt('修改任务进度 (当前: '+comself+'):',comself); if(nc===null) return;
+    fetch('/api/admin/tasks/player',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerId:pid,taskId:tid,state:ns,comself:nc})}).then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        loadPlayerTasks();
+    });
+}
+
+function removePlayerTask(pid,tid){
+    if(!confirm('确定移除玩家#'+pid+'的任务#'+tid+'？')) return;
+    fetch('/api/admin/tasks/player',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({playerId:pid,taskId:tid})}).then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        loadPlayerTasks();
+    });
+}
+
+// Init
+searchTasks(1);
+</script>
+</body>
+</html>

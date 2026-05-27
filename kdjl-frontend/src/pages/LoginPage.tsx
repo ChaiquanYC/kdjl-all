@@ -18,7 +18,7 @@ export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false);
   const [regError, setRegError] = useState<string | null>(null);
   const [regLoading, setRegLoading] = useState(false);
-  const { login, loading, error, token } = useAuthStore();
+  const { login, loading, error, token, setAuth } = useAuthStore();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -33,9 +33,16 @@ export default function LoginPage() {
   const handleRegister = async (e: FormEvent) => {
     e.preventDefault();
     setRegLoading(true); setRegError(null);
-    apiPost<{ token: string }>('/auth/register', { username, password, nickname: nickname || username, petChoice }).then((res: any) => {
+    apiPost<{ token: string; uid: number; username: string; nickname: string; petName?: string; petId?: number }>('/auth/register', { username, password, nickname: nickname || username, petChoice }).then((res: any) => {
       if (res.code === 0 && res.data?.token) {
-        localStorage.setItem('token', res.data.token);
+        setAuth(res.data.token, {
+          id: res.data.uid ?? 0,
+          username: res.data.username ?? username,
+          nickname: res.data.nickname ?? (nickname || username),
+          money: 0, yb: 0, vip: 0, score: 0, prestige: 0,
+          inMap: 0, openMap: '', fightTop: 0, maxBag: 30, sex: '',
+          onlineTime: 0, newGuideStep: 0,
+        } as any);
         navigate('/', { replace: true });
       } else {
         setRegError(res.message || '注册失败');

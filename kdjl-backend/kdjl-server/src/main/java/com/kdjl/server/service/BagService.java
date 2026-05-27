@@ -2,6 +2,7 @@ package com.kdjl.server.service;
 
 import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
+import jakarta.persistence.EntityManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,14 +23,21 @@ public class BagService {
     private final WarPlayerRepository warPlayerRepo;
     private final WarFighterRepository warFighterRepo;
     private final WarFighterTalentRepository warTalentRepo;
+    private final BattlefieldUserRepository battlefieldUserRepo;
+    private final WelcomeRepository welcomeRepo;
     private final LevelUpService levelUpService;
+    private final EntityManager entityManager;
 
     public BagService(UserBagRepository bagRepo, PropsRepository propsRepo,
                       UserPetRepository userPetRepo, PlayerRepository playerRepo,
                       PlayerExtRepository playerExtRepo, PetRepository petRepo,
                       SkillSysRepository skillSysRepo, SkillRepository skillRepo,
                       WarPlayerRepository warPlayerRepo, WarFighterRepository warFighterRepo,
-                      WarFighterTalentRepository warTalentRepo, LevelUpService levelUpService) {
+                      WarFighterTalentRepository warTalentRepo,
+                      BattlefieldUserRepository battlefieldUserRepo,
+                      WelcomeRepository welcomeRepo,
+                      LevelUpService levelUpService,
+                      EntityManager entityManager) {
         this.bagRepo = bagRepo;
         this.propsRepo = propsRepo;
         this.userPetRepo = userPetRepo;
@@ -41,7 +49,10 @@ public class BagService {
         this.warPlayerRepo = warPlayerRepo;
         this.warFighterRepo = warFighterRepo;
         this.warTalentRepo = warTalentRepo;
+        this.battlefieldUserRepo = battlefieldUserRepo;
+        this.welcomeRepo = welcomeRepo;
         this.levelUpService = levelUpService;
+        this.entityManager = entityManager;
     }
 
     public List<Map<String, Object>> getPlayerBag(Long playerId) {
@@ -75,16 +86,12 @@ public class BagService {
                 m.put("series", p.getSeries());
                 m.put("serieseffect", p.getSerieseffect());
                 m.put("serieseffectDesc", resolveAttribList(p.getSerieseffect()));
-                m.put("seriesDisplay", resolveSeriesDisplay(p, i, playerId));
                 m.put("pluseffect", p.getPluseffect());
                 m.put("pluseffectDesc", resolvePlusEffect(p.getPluseffect()));
                 m.put("plusflag", p.getPlusflag());
                 m.put("pluspid", p.getPlusPropId());
                 m.put("plusget", p.getPlusget());
                 m.put("plusnum", p.getPlusnum());
-                m.put("plusTimesEffect", i.getPlusTimesEffect());
-                m.put("plusTimesEffectDesc", resolvePlusTimesEffect(i.getPlusTimesEffect()));
-                m.put("plusTimesLevel", (i.getPlusTimesEffect() != null && !i.getPlusTimesEffect().isEmpty()) ? 1 : 0);
                 m.put("holeInfo", i.getHoleInfo());
                 m.put("holeInfoDesc", resolveHoleInfo(i.getHoleInfo()));
                 m.put("prestige", p.getPrestige());
@@ -151,6 +158,11 @@ public class BagService {
             error.put("error", "占卜石，请在占卜屋中占卜时使用！");
             error.put("redirectTo", "zhanbu");
             return error;
+        }
+
+        // PHP usedProps.php:1322 — crafting/blueprint (varyname==16)
+        if (props.getVaryname() != null && props.getVaryname() == 16) {
+            return handleCraft(playerId, bagItem, props);
         }
 
         // Equipment (varyname==9): auto-equip to main battle pet
@@ -285,9 +297,9 @@ public class BagService {
                         // Random chest: probability is 1-in-N. parts: propId,count,prob,announceFlag
                         int prob = parts.length >= 3 ? Integer.parseInt(parts[2].trim()) : 100;
                         if ((int)(Math.random() * prob) >= 1) continue;
-                        // PHP usedProps.php:770,846 — announce when flag == 2
+                        // PHP usedProps.php:770,846 — announce when flag == 1 (2 = silent)
                         int announceFlag = parts.length >= 4 ? Integer.parseInt(parts[3].trim()) : 2;
-                        if (announceFlag == 2) shouldAnnounce = true;
+                        if (announceFlag == 1) shouldAnnounce = true;
                         addItemToBag(playerId, givePropId, giveCount);
                         givenItems.add(Map.of("propId", givePropId, "count", giveCount));
                         // PHP usedProps.php: recursion — check if given item is also a chest
@@ -417,12 +429,13 @@ public class BagService {
             }
             case "exp" -> {
                 // Double EXP multiplier (双倍经验卷轴: exp:1.5:3600)
-                // value is scaled: 15=1.5x, 20=2x, 25=2.5x, 30=3x
+                // PHP usedProps.php:569-581 — maps multiplier to dblexpflag:
+                //   1.5x→2, 2x→3, 2.5x→4, 3x→5
+                // value is scaled by 10: 1.5→15, 2.0→20, 2.5→25, 3.0→30
                 Player p = playerRepo.findById(playerId.intValue()).orElse(null);
                 if (p != null) {
                     double mult = value / 10.0;
-                    // Map to dblexpflag: 1.5→2, 2→3, 2.5→4, 3→5
-                    int dblFlag = (int)(mult * 2);
+                    int dblFlag = (int)(mult * 2) - 1; // 1.5→2, 2.0→3, 2.5→4, 3.0→5
                     if (dblFlag >= 2 && dblFlag <= 5) {
                         p.setDblExpFlag(dblFlag);
                         p.setDblsTime((int)(System.currentTimeMillis() / 1000));
@@ -701,12 +714,11 @@ public class BagService {
                 }
             }
             case "addhp" -> {
+                // PHP usedProps.php:1123 — only updates srchp (base hp), not addhp (equipment bonus)
                 if (petId != null && petId > 0) {
                     UserPet pet = userPetRepo.findById(petId).orElse(null);
                     if (pet != null) {
                         pet.setSrchp((pet.getSrchp() != null ? pet.getSrchp() : 0) + value);
-                        pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + value);
-                        pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
                         userPetRepo.save(pet);
                         result.put("type", "gainHp");
                         result.put("hpAdded", value);
@@ -715,12 +727,11 @@ public class BagService {
                 }
             }
             case "addmp" -> {
+                // PHP usedProps.php:1141 — only updates srcmp (base mp), not addmp (equipment bonus)
                 if (petId != null && petId > 0) {
                     UserPet pet = userPetRepo.findById(petId).orElse(null);
                     if (pet != null) {
                         pet.setSrcmp((pet.getSrcmp() != null ? pet.getSrcmp() : 0) + value);
-                        pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + value);
-                        pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
                         userPetRepo.save(pet);
                         result.put("type", "gainMp");
                         result.put("mpAdded", value);
@@ -915,14 +926,77 @@ public class BagService {
             }
             case "jg" -> {
                 // PHP varyname==14: military merit points → battlefield_user.jgvalue
-                result.put("type", "militaryMerit");
-                result.put("meritAdded", value);
-                result.put("message", "恭喜您增加了" + value + "点军功！");
+                BattlefieldUser bu = battlefieldUserRepo.findByPlayerId(playerId).orElse(null);
+                if (bu == null) {
+                    result.put("type", "militaryMerit");
+                    result.put("error", "您目前没有参加战场活动，不能使用此道具！");
+                } else {
+                    bu.setJgvalue((bu.getJgvalue() != null ? bu.getJgvalue() : 0) + value);
+                    battlefieldUserRepo.save(bu);
+                    result.put("type", "militaryMerit");
+                    result.put("meritAdded", value);
+                    result.put("message", "恭喜您，使用道具成功，您获得了 " + value + " 点军功！");
+                }
             }
             case "ticket" -> {
                 // PHP varyname==4: lottery ticket → ticket_YYYYMMDD table
-                result.put("type", "lottery");
-                result.put("message", "彩票已记录，等待开奖！");
+                Welcome config = welcomeRepo.findByCode("ticket").orElse(null);
+                if (config == null || config.getValue2() == null) {
+                    result.put("type", "lottery");
+                    result.put("error", "彩票系统未开放！");
+                } else {
+                    String[] timeArr = config.getValue2().split(":");
+                    if (timeArr.length >= 3 && "1".equals(timeArr[0])) {
+                        int drawHour = Integer.parseInt(timeArr[1]);
+                        if (java.time.LocalTime.now().getHour() >= drawHour) {
+                            result.put("type", "lottery");
+                            result.put("error", "今天已开奖，明天再买吧！");
+                        } else {
+                            String today = java.time.LocalDate.now().toString().replace("-", "");
+                            String ticketTable = "ticket_" + today;
+                            // Create table if not exists
+                            entityManager.createNativeQuery(
+                                "CREATE TABLE IF NOT EXISTS " + ticketTable + " (" +
+                                "id INT NOT NULL AUTO_INCREMENT, " +
+                                "uid INT UNSIGNED DEFAULT 0, " +
+                                "ticket_num VARCHAR(8) DEFAULT '0' COMMENT '号码', " +
+                                "PRIMARY KEY (id), UNIQUE KEY tn (ticket_num)) ENGINE=InnoDB"
+                            ).executeUpdate();
+                            // Get ticket config prefix
+                            Welcome ticketNumConfig = welcomeRepo.findByCode("ticket_num").orElse(null);
+                            String prefix = (ticketNumConfig != null && ticketNumConfig.getContents() != null)
+                                ? ticketNumConfig.getContents().trim() : "000";
+                            // Generate unique ticket number
+                            String ticketNum = null;
+                            for (int attempt = 0; attempt < 10; attempt++) {
+                                int rand = 10000 + (int)(Math.random() * 90000);
+                                String candidate = prefix + rand;
+                                try {
+                                    entityManager.createNativeQuery(
+                                        "INSERT INTO " + ticketTable + " (uid, ticket_num) VALUES (:uid, :num)"
+                                    ).setParameter("uid", playerId.intValue())
+                                     .setParameter("num", candidate)
+                                     .executeUpdate();
+                                    ticketNum = candidate;
+                                    break;
+                                } catch (Exception e) {
+                                    // Duplicate ticket number, retry
+                                }
+                            }
+                            if (ticketNum != null) {
+                                result.put("type", "lottery");
+                                result.put("ticketNum", ticketNum);
+                                result.put("message", "使用成功，获得号码为 " + ticketNum + " 详情请到公告牌查看");
+                            } else {
+                                result.put("type", "lottery");
+                                result.put("error", "彩票系统繁忙，请稍后再试！");
+                            }
+                        }
+                    } else {
+                        result.put("type", "lottery");
+                        result.put("error", "彩票系统未开放！");
+                    }
+                }
             }
             case "needkey" -> {
                 // Chest requires key — handled at higher level (chest parsing)
@@ -942,6 +1016,303 @@ public class BagService {
                 // unknown effect type, skip
             }
         }
+    }
+
+    /** PHP usedProps.php:1322-1583 — crafting system (varyname==16) */
+    private Map<String, Object> handleCraft(Long playerId, UserBag bagItem, Props props) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("usedItemId", bagItem.getId());
+        result.put("propName", props.getName());
+
+        String effect = props.getEffect();
+        if (effect == null || effect.isEmpty()) {
+            result.put("error", "无效的合成配方");
+            return result;
+        }
+
+        // Check bag space
+        Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        if (player != null) {
+            int maxBag = player.getMaxBag() != null ? player.getMaxBag() : 30;
+            long currentItems = bagRepo.findByPlayerId(playerId).stream()
+                .filter(b -> b.getSums() != null && b.getSums() > 0 && (b.getZbing() == null || b.getZbing() == 0))
+                .count();
+            if (currentItems >= maxBag) {
+                result.put("error", "您的包裹已满，请先清理包裹！");
+                return result;
+            }
+        }
+
+        int colonIdx = effect.indexOf(':');
+        if (colonIdx < 0) {
+            result.put("error", "无效的合成配方格式");
+            return result;
+        }
+        String type = effect.substring(0, colonIdx).trim();
+        String body = effect.substring(colonIdx + 1).trim();
+
+        if ("hecheng".equals(type)) {
+            // Format: hecheng:(pid:count|pid:count):rewardPid:count|rewardPid:count
+            String[] parts = body.split("\\):");
+            if (parts.length < 2) {
+                result.put("error", "合成配方格式错误");
+                return result;
+            }
+            String requireStr = parts[0].replace("(", "");
+            String[] required = requireStr.split("\\|");
+            String rewardStr = parts[1];
+            String[] rewards = rewardStr.split("\\|");
+
+            // Verify player has the blueprint (this item)
+            var blueprintCheck = bagRepo.findById(bagItem.getId()).orElse(null);
+            if (blueprintCheck == null || blueprintCheck.getSums() == null || blueprintCheck.getSums() < 1) {
+                result.put("error", "你的材料不足，无法制作!");
+                return result;
+            }
+
+            // Check required materials
+            for (String req : required) {
+                String[] rp = req.split(":");
+                if (rp.length < 2) continue;
+                try {
+                    long needPid = Long.parseLong(rp[0].trim());
+                    int needCount = Integer.parseInt(rp[1].trim());
+                    int totalHave = bagRepo.findByPlayerId(playerId).stream()
+                        .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)needPid
+                            && b.getSums() != null && b.getSums() > 0)
+                        .mapToInt(b -> b.getSums()).sum();
+                    if (totalHave < needCount) {
+                        result.put("error", "你的材料不足，无法制作！");
+                        return result;
+                    }
+                } catch (NumberFormatException e) {
+                    result.put("error", "合成配方格式错误");
+                    return result;
+                }
+            }
+
+            // Consume required materials
+            for (String req : required) {
+                String[] rp = req.split(":");
+                if (rp.length < 2) continue;
+                long needPid = Long.parseLong(rp[0].trim());
+                int needCount = Integer.parseInt(rp[1].trim());
+                int remaining = needCount;
+                var materialItems = bagRepo.findByPlayerId(playerId).stream()
+                    .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)needPid
+                        && b.getSums() != null && b.getSums() > 0)
+                    .sorted((a, b) -> Integer.compare(a.getSums(), b.getSums()))
+                    .toList();
+                for (UserBag mat : materialItems) {
+                    if (remaining <= 0) break;
+                    int take = Math.min(remaining, mat.getSums());
+                    mat.setSums(mat.getSums() - take);
+                    bagRepo.save(mat);
+                    remaining -= take;
+                }
+            }
+
+            // Consume the blueprint
+            decrementOrRemove(bagItem);
+
+            // Give rewards
+            List<Map<String, Object>> givenItems = new ArrayList<>();
+            for (String rew : rewards) {
+                String[] rp = rew.split(":");
+                if (rp.length < 2) continue;
+                try {
+                    long rewardPid = Long.parseLong(rp[0].trim());
+                    int rewardCount = Integer.parseInt(rp[1].trim());
+                    for (int i = 0; i < rewardCount; i++) {
+                        addItemToBag(playerId, rewardPid, 1);
+                    }
+                    Props rewardProp = propsRepo.findById(rewardPid).orElse(null);
+                    givenItems.add(Map.of("propId", rewardPid, "count", rewardCount,
+                        "name", rewardProp != null ? rewardProp.getName() : "道具#" + rewardPid));
+                } catch (NumberFormatException ignored) {}
+            }
+
+            result.put("type", "craft");
+            result.put("items", givenItems);
+            result.put("message", "恭喜您,制作成功!获得了" + givenItems.size() + "种物品!");
+            return result;
+
+        } else if ("chongzhu".equals(type)) {
+            // Format: chongzhu:(pid|pid|pid):rewardPid:probability|rewardPid:probability
+            String[] parts = body.split("\\):");
+            if (parts.length < 2) {
+                result.put("error", "重铸配方格式错误");
+                return result;
+            }
+            String consumePoolStr = parts[0].replace("(", "");
+            String[] poolIds = consumePoolStr.split("\\|");
+            String[] rewardArr = parts[1].split("\\|");
+
+            // Find a consumable item from the pool in player's bag
+            UserBag sacrificeItem = null;
+            for (String pidStr : poolIds) {
+                try {
+                    long poolPid = Long.parseLong(pidStr.trim());
+                    sacrificeItem = bagRepo.findByPlayerId(playerId).stream()
+                        .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)poolPid
+                            && b.getSums() != null && b.getSums() > 0
+                            && (b.getZbing() == null || b.getZbing() == 0))
+                        .findFirst().orElse(null);
+                    if (sacrificeItem != null) break;
+                } catch (NumberFormatException ignored) {}
+            }
+
+            if (sacrificeItem == null) {
+                result.put("error", "背包里没有待重铸的物品哦！");
+                result.put("skipConsume", true);
+                return result;
+            }
+
+            Props sacrificeProp = propsRepo.findById(sacrificeItem.getPropId().longValue()).orElse(null);
+
+            // Consume the blueprint (重铸卷轴)
+            decrementOrRemove(bagItem);
+            // Remove the sacrificed item
+            sacrificeItem.setSums(0);
+            bagRepo.save(sacrificeItem);
+
+            // Determine reward by probability (threshold-based: rand >= threshold)
+            int luckyNum = (int)(Math.random() * 101); // 0-100
+            Long rewardPid = null;
+            int[] probabilities = new int[rewardArr.length];
+            String[][] rewardData = new String[rewardArr.length][];
+            for (int i = 0; i < rewardArr.length; i++) {
+                rewardData[i] = rewardArr[i].split(":");
+            }
+            // Sort by probability ascending (matching PHP asort)
+            Arrays.sort(rewardData, (a, b) -> {
+                int pa = a.length >= 2 ? Integer.parseInt(a[1].trim()) : 0;
+                int pb = b.length >= 2 ? Integer.parseInt(b[1].trim()) : 0;
+                return Integer.compare(pa, pb);
+            });
+            for (String[] rd : rewardData) {
+                if (rd.length >= 2) {
+                    int threshold = Integer.parseInt(rd[1].trim());
+                    if (luckyNum >= threshold) {
+                        rewardPid = Long.parseLong(rd[0].trim());
+                    }
+                }
+            }
+
+            if (rewardPid != null) {
+                addItemToBag(playerId, rewardPid, 1);
+                Props rp = propsRepo.findById(rewardPid).orElse(null);
+                String rewardName = rp != null ? rp.getName() : "道具#" + rewardPid;
+                String sacrificeName = sacrificeProp != null ? sacrificeProp.getName() : "道具";
+                result.put("type", "reforge");
+                result.put("reward", rewardName);
+                result.put("message", "使用" + props.getName() + "重铸得到了" + rewardName);
+                if (rp != null && "6".equals(rp.getPropscolor())) {
+                    // Orange quality — announce
+                    result.put("announce", true);
+                }
+            } else {
+                result.put("type", "reforge");
+                result.put("message", "重铸失败，" + (sacrificeProp != null ? sacrificeProp.getName() : "物品") + "已消失");
+            }
+            return result;
+
+        } else if ("random_combine".equals(type)) {
+            // Format: random_combine:needPid,count|needPid,count;gainPid,probability,count,announceFlag|...
+            String[] sections = body.split(";");
+            if (sections.length < 2) {
+                result.put("error", "随机合成配方格式错误");
+                return result;
+            }
+            String[] needItems = sections[0].split("\\|");
+            String[] gainItems = sections[1].split("\\|");
+
+            // Check and prepare to consume required items
+            List<String[]> consumeSql = new ArrayList<>();
+            for (int idx = 0; idx < needItems.length; idx++) {
+                String[] needSetting = needItems[idx].split(",");
+                if (needSetting.length < 2) {
+                    result.put("error", "需要物品设定第" + idx + "条错误!");
+                    return result;
+                }
+                try {
+                    long needPid = Long.parseLong(needSetting[0].trim());
+                    int needCount = Integer.parseInt(needSetting[1].trim());
+                    if (needPid < 1 || needCount < 1) {
+                        result.put("error", "需要物品设定第" + idx + "条错误!");
+                        return result;
+                    }
+                    int hasCount = bagRepo.findByPlayerId(playerId).stream()
+                        .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)needPid
+                            && b.getSums() != null && b.getSums() >= needCount)
+                        .mapToInt(b -> b.getSums()).sum();
+                    if (hasCount < needCount) {
+                        result.put("error", "需要的物品不够数量!");
+                        return result;
+                    }
+                    // Find specific item to consume
+                    var item = bagRepo.findByPlayerId(playerId).stream()
+                        .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int)needPid
+                            && b.getSums() != null && b.getSums() >= needCount)
+                        .findFirst().orElse(null);
+                    consumeSql.add(new String[]{String.valueOf(item.getId()), String.valueOf(needCount)});
+                } catch (NumberFormatException e) {
+                    result.put("error", "需要物品设定第" + idx + "条错误!");
+                    return result;
+                }
+            }
+
+            // Try to get a reward
+            boolean gained = false;
+            for (int idx = 0; idx < gainItems.length; idx++) {
+                String[] gainSetting = gainItems[idx].split(",");
+                if (gainSetting.length < 3) continue;
+                try {
+                    long gainPid = Long.parseLong(gainSetting[0].trim());
+                    int probability = Integer.parseInt(gainSetting[1].trim());
+                    int gainCount = Integer.parseInt(gainSetting[2].trim());
+                    int announceFlag = gainSetting.length >= 4 ? Integer.parseInt(gainSetting[3].trim()) : 0;
+
+                    int rand = (int)(Math.random() * 101);
+                    if (rand <= probability) {
+                        Props gainProp = propsRepo.findById(gainPid).orElse(null);
+                        if (gainProp == null) {
+                            result.put("error", "获得物品设定第" + idx + "条错误,物品" + gainPid + "不存在!");
+                            return result;
+                        }
+                        addItemToBag(playerId, gainPid, gainCount);
+                        result.put("type", "randomCombine");
+                        result.put("message", "成功合成:" + gainProp.getName() + " " + gainCount + "件!");
+                        if (announceFlag > 0) result.put("announce", true);
+                        gained = true;
+                        break;
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+
+            if (!gained) {
+                result.put("type", "randomCombine");
+                result.put("message", "很遗憾,合成失败,没有获得任何物品!");
+            }
+
+            // Consume required items
+            for (String[] cs : consumeSql) {
+                long itemId = Long.parseLong(cs[0]);
+                int count = Integer.parseInt(cs[1]);
+                var item = bagRepo.findById(itemId).orElse(null);
+                if (item != null) {
+                    item.setSums(Math.max(0, (item.getSums() != null ? item.getSums() : 0) - count));
+                    bagRepo.save(item);
+                }
+            }
+
+            // Consume blueprint
+            decrementOrRemove(bagItem);
+            return result;
+        }
+
+        result.put("error", "未知的合成类型: " + type);
+        return result;
     }
 
     /** PHP usedProps.php: recursive chest opening — if given item is a chest, open it too */
@@ -1053,7 +1424,7 @@ public class BagService {
             .orElseThrow(() -> new IllegalArgumentException("装备不存在"));
         if (!bagItem.getPlayerId().equals(playerId))
             throw new IllegalArgumentException("不是你的装备");
-        if (bagItem.getVary() == null || (bagItem.getVary() != 1 && bagItem.getVary() != 2))
+        if (bagItem.getVary() == null || bagItem.getVary() != 2)
             throw new IllegalArgumentException("该物品不能穿戴");
 
         UserPet pet = userPetRepo.findById(petId)
@@ -1080,7 +1451,7 @@ public class BagService {
                         throw new IllegalArgumentException("宠物等级不足，需要" + reqLv + "级");
                 } else if ("wx".equals(kv[0]) && !kv[1].isEmpty()) {
                     int reqWx = Integer.parseInt(kv[1]);
-                    if (reqWx > 0 && !Integer.valueOf(reqWx).equals(pet.getWx()))
+                    if (!Integer.valueOf(reqWx).equals(pet.getWx()))
                         throw new IllegalArgumentException("宠物五行不匹配");
                 }
             }
@@ -1197,27 +1568,14 @@ public class BagService {
             UserBag item = bagRepo.findById(bagId).orElse(null);
             if (item == null || item.getPropId() == null) continue;
             Props props = propsRepo.findById(item.getPropId().longValue()).orElse(null);
-            if (props == null) continue;
-            // Process both effect and pluseffect (flat stats only), deduplicating keys
-            String[] effectSources = {props.getEffect(), props.getPluseffect()};
-            Set<String> seenKeys = new HashSet<>();
-            for (String source : effectSources) {
-                if (source == null || source.isEmpty()) continue;
-                for (String part : source.split(",")) {
-                    String[] kv = part.split(":");
-                    if (kv.length < 2) continue;
-                    String key = kv[0].trim();
-                    if (key.endsWith("rate") || key.equals("dxsh") || key.equals("shjs")
-                        || key.equals("hitshp") || key.equals("hitsmp")
-                        || key.equals("sdmp") || key.equals("szmp")
-                        || key.equals("crit") || key.equals("addmoney"))
-                        continue;
-                    if (!seenKeys.add(key)) continue;
-                    try {
-                        long v = Long.parseLong(kv[1].trim());
-                        bonuses.merge(key, v, Long::sum);
-                    } catch (NumberFormatException ignored) {}
-                }
+            if (props == null || props.getEffect() == null) continue;
+            for (String part : props.getEffect().split(",")) {
+                String[] kv = part.split(":");
+                if (kv.length < 2) continue;
+                try {
+                    long v = Long.parseLong(kv[1].trim());
+                    bonuses.merge(kv[0].trim(), v, Long::sum);
+                } catch (NumberFormatException ignored) {}
             }
         }
         return bonuses;
@@ -1247,7 +1605,6 @@ public class BagService {
         return sb.toString();
     }
 
-    /** Apply(+) or remove(-) equipment stats to a pet */
     /** Sell a bag item for gold */
     @Transactional
     public Map<String, Object> sellItem(Long playerId, Long bagItemId, int count) {
@@ -1281,77 +1638,60 @@ public class BagService {
         return result;
     }
 
-    /** Drop (discard) an item permanently. Unequips first if equipped. */
+    /**
+     * Drop (discard) a bag item. PHP: props2Depot.php?act=drop
+     * Sets sums=0 rather than deleting, since the same record may have depot items (bsum>0).
+     */
     @Transactional
-    public void dropItem(Long playerId, Long bagItemId) {
+    public Map<String, Object> dropItem(Long playerId, Long bagItemId) {
         UserBag item = bagRepo.findById(bagItemId)
             .orElseThrow(() -> new IllegalArgumentException("物品不存在"));
         if (!item.getPlayerId().equals(playerId))
             throw new IllegalArgumentException("不是你的物品");
-
-        // If equipped, unequip first
-        if (item.getZbing() != null && item.getZbing() == 1) {
-            Long petId = item.getEquipPetId();
-            if (petId != null) {
-                UserPet pet = userPetRepo.findById(petId).orElse(null);
-                if (pet != null) {
-                    applyEquipmentStats(pet, item.getPropId(), false);
-                    Map<Integer, Long> zbMap = parseZb(pet.getZb());
-                    zbMap.values().removeIf(v -> v.equals(bagItemId));
-                    pet.setZb(zbMapToString(zbMap));
-                    userPetRepo.save(pet);
-                }
-            }
+        if (item.getZbing() != null && item.getZbing() == 1)
+            throw new IllegalArgumentException("已装备的物品不能丢弃，请先卸下装备");
+        // PHP: checks cantrade==3 (locked items can't be dropped)
+        if (item.getCantrade() != null && item.getCantrade() == 3) {
+            throw new IllegalArgumentException("该物品已上锁，不能丢弃");
         }
-        bagRepo.delete(item);
+
+        Props props = propsRepo.findById(item.getPropId() != null ? item.getPropId().longValue() : 0).orElse(null);
+        item.setSums(0);
+        bagRepo.save(item);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("dropped", props != null ? props.getName() : "物品");
+        result.put("message", "丢弃成功");
+        return result;
     }
 
+    /** Apply(+) or remove(-) equipment stats to a pet */
     private void applyEquipmentStats(UserPet pet, Long propId, boolean apply) {
         Props props = propsRepo.findById(propId).orElse(null);
-        if (props == null) return;
+        if (props == null || props.getEffect() == null || props.getEffect().isEmpty()) return;
         long sign = apply ? 1 : -1;
-        Set<String> seenKeys = new HashSet<>();
-
-        // Process both effect and pluseffect (flat stats only), deduplicating keys
-        String[] effectSources = {
-            props.getEffect(),
-            props.getPluseffect()
-        };
-
-        for (String source : effectSources) {
-            if (source == null || source.isEmpty()) continue;
-            for (String part : source.split(",")) {
-                String[] kv = part.split(":");
-                if (kv.length < 2) continue;
-                String key = kv[0].trim();
-                // Skip percentage/special effects — handled by EquipEffectService
-                if (key.endsWith("rate") || key.equals("dxsh") || key.equals("shjs")
-                    || key.equals("hitshp") || key.equals("hitsmp")
-                    || key.equals("sdmp") || key.equals("szmp")
-                    || key.equals("crit") || key.equals("addmoney"))
-                    continue;
-                // Dedup: effect wins over pluseffect for same key
-                if (!seenKeys.add(key)) continue;
-                long value;
-                try { value = Long.parseLong(kv[1].trim()); } catch (NumberFormatException e) { continue; }
-                long delta = value * sign;
-                switch (key) {
-                    case "ac" -> pet.setAc((pet.getAc() != null ? pet.getAc() : 0) + delta);
-                    case "mc" -> pet.setMc((pet.getMc() != null ? pet.getMc() : 0) + delta);
-                    case "hp" -> {
-                        pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + delta);
-                        if (apply) pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
-                        else pet.setHp(Math.max(1, (pet.getHp() != null ? pet.getHp() : 0) + delta));
-                    }
-                    case "mp" -> {
-                        pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + delta);
-                        if (apply) pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
-                        else pet.setMp(Math.max(0, (pet.getMp() != null ? pet.getMp() : 0) + delta));
-                    }
-                    case "speed" -> pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 0) + delta);
-                    case "hits" -> pet.setHits((pet.getHits() != null ? pet.getHits() : 0) + delta);
-                    case "miss" -> pet.setMiss((pet.getMiss() != null ? pet.getMiss() : 0) + delta);
+        for (String part : props.getEffect().split(",")) {
+            String[] kv = part.split(":");
+            if (kv.length < 2) continue;
+            long value;
+            try { value = Long.parseLong(kv[1].trim()); } catch (NumberFormatException e) { continue; }
+            long delta = value * sign;
+            switch (kv[0].trim()) {
+                case "ac" -> pet.setAc((pet.getAc() != null ? pet.getAc() : 0) + delta);
+                case "mc" -> pet.setMc((pet.getMc() != null ? pet.getMc() : 0) + delta);
+                case "hp" -> {
+                    pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + delta);
+                    if (apply) pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
+                    else pet.setHp(Math.max(1, (pet.getHp() != null ? pet.getHp() : 0) + delta));
                 }
+                case "mp" -> {
+                    pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + delta);
+                    if (apply) pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
+                    else pet.setMp(Math.max(0, (pet.getMp() != null ? pet.getMp() : 0) + delta));
+                }
+                case "speed" -> pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 0) + delta);
+                case "hits" -> pet.setHits((pet.getHits() != null ? pet.getHits() : 0) + delta);
+                case "miss" -> pet.setMiss((pet.getMiss() != null ? pet.getMiss() : 0) + delta);
             }
         }
         userPetRepo.save(pet);
@@ -1432,8 +1772,7 @@ public class BagService {
         }
         // 3) Percentage attribute (hprate, mprate, acrate, mcrate, hitsrate, missrate, speedrate)
         if (FJZB1.containsKey(key)) {
-            String cleanVal = value.replace("%", "");
-            return "+" + cleanVal + "% " + FJZB1.get(key);
+            return "+" + value + "% " + FJZB1.get(key);
         }
         // 4) Special effect (dxsh, shjs, shft)
         if (FJZB2.containsKey(key)) {
@@ -1593,15 +1932,6 @@ public class BagService {
         return resolveAttribList(pluseffect);
     }
 
-    /** Resolve plus_tms_eft from userbag for inline enhancement display. Format: "stat,value" e.g. "ac,50" → "+50" */
-    private String resolvePlusTimesEffect(String plusTimesEffect) {
-        if (plusTimesEffect == null || plusTimesEffect.isEmpty()) return "";
-        String[] kv = plusTimesEffect.split(",");
-        if (kv.length < 2) return "";
-        String val = kv[1].trim();
-        return "+" + val;
-    }
-
     private static final Map<String, String> HOLE_STAT_NAMES = Map.ofEntries(
         Map.entry("ac", "攻击"), Map.entry("mc", "魔攻"), Map.entry("hp", "生命"),
         Map.entry("mp", "魔法"), Map.entry("speed", "速度"), Map.entry("hits", "命中"),
@@ -1727,80 +2057,6 @@ public class BagService {
             }
         }
         return sb.toString();
-    }
-
-    /** Build structured series display data matching PHP getZbSeriesAttrib format. */
-    private Map<String, Object> resolveSeriesDisplay(Props p, UserBag bagItem, Long playerId) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        String series = p.getSeries();
-        if (series == null || series.isEmpty()) return result;
-
-        String[] parts = series.split(":", 2);
-        if (parts.length < 2) return result;
-        String seriesName = parts[0];
-        String[] pieceIdStrs = parts[1].split("\\|");
-        int totalCount = pieceIdStrs.length;
-
-        result.put("name", seriesName);
-        result.put("totalCount", totalCount);
-
-        List<Long> pieceIds = new ArrayList<>();
-        for (String s : pieceIdStrs) {
-            try { pieceIds.add(Long.parseLong(s.trim())); } catch (NumberFormatException ignored) {}
-        }
-
-        // Count equipped pieces on the same pet
-        Long equipPetId = bagItem.getEquipPetId();
-        Set<Long> equippedPropIds = new HashSet<>();
-        int equipCount = 0;
-        if (equipPetId != null && equipPetId > 0 && !pieceIds.isEmpty()) {
-            List<UserBag> equipped = bagRepo.findByPlayerIdAndPropIdInAndEquipPetId(playerId, pieceIds, equipPetId);
-            for (UserBag ub : equipped) {
-                equippedPropIds.add(ub.getPropId());
-            }
-            equipCount = equipped.size();
-        }
-        result.put("equipCount", equipCount);
-
-        // Piece name list with equipped status
-        List<Map<String, Object>> pieces = new ArrayList<>();
-        for (Long propId : pieceIds) {
-            Map<String, Object> piece = new LinkedHashMap<>();
-            Props pieceProp = propsRepo.findById(propId).orElse(null);
-            piece.put("name", pieceProp != null ? pieceProp.getName() : ("#" + propId));
-            piece.put("equipped", equippedPropIds.contains(propId));
-            pieces.add(piece);
-        }
-        result.put("pieces", pieces);
-
-        // Stage effects with activation status
-        String serieseffect = p.getSerieseffect();
-        List<Map<String, Object>> stages = new ArrayList<>();
-        if (serieseffect != null && !serieseffect.isEmpty() && !"0".equals(serieseffect)) {
-            String[] effects = serieseffect.split(",");
-            int stage = 1;
-            for (String eff : effects) {
-                eff = eff.trim();
-                if (eff.isEmpty()) continue;
-                int ci = eff.indexOf(':');
-                if (ci < 0) continue;
-                String key = eff.substring(0, ci).trim();
-                String val = eff.substring(ci + 1).trim();
-                if (key.isEmpty() || val.isEmpty()) continue;
-                String resolved = resolveAttribKey(key, val);
-                if (!resolved.isEmpty()) {
-                    Map<String, Object> stageMap = new LinkedHashMap<>();
-                    stageMap.put("stage", stage);
-                    stageMap.put("effect", resolved);
-                    stageMap.put("active", stage <= equipCount);
-                    stages.add(stageMap);
-                }
-                stage++;
-            }
-        }
-        result.put("stages", stages);
-
-        return result;
     }
 
     private String resolveUsages(String usages) {

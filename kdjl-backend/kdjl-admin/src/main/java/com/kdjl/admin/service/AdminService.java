@@ -2,6 +2,7 @@ package com.kdjl.admin.service;
 
 import com.kdjl.common.entity.*;
 import com.kdjl.admin.repository.*;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,11 +20,14 @@ public class AdminService {
     private final AdminPetRepository petTemplateRepo;
     private final AdminFightLogRepository fightLogRepo;
     private final AdminYbLogRepository ybLogRepo;
+    private final AdminTaskDefRepository taskDefRepo;
+    private final AdminTaskAcceptRepository taskAcceptRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
-                        AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo) {
+                        AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
+                        AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -32,6 +36,8 @@ public class AdminService {
         this.petTemplateRepo = petTemplateRepo;
         this.fightLogRepo = fightLogRepo;
         this.ybLogRepo = ybLogRepo;
+        this.taskDefRepo = taskDefRepo;
+        this.taskAcceptRepo = taskAcceptRepo;
     }
 
     // ---- Dashboard stats ----
@@ -76,12 +82,8 @@ public class AdminService {
 
     // ---- Player search ----
     public List<Map<String, Object>> searchPlayers(String keyword, int page, int size) {
-        return playerRepo.findAll().stream()
-            .filter(p -> keyword == null || keyword.isEmpty() ||
-                (p.getNickname() != null && p.getNickname().contains(keyword)) ||
-                (p.getUsername() != null && p.getUsername().contains(keyword)))
-            .skip((long) (page - 1) * size)
-            .limit(size)
+        String kw = keyword != null ? keyword : "";
+        return playerRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId());
@@ -100,11 +102,8 @@ public class AdminService {
     }
 
     public long countPlayers(String keyword) {
-        if (keyword == null || keyword.isEmpty()) return playerRepo.count();
-        return playerRepo.findAll().stream()
-            .filter(p -> (p.getNickname() != null && p.getNickname().contains(keyword)) ||
-                (p.getUsername() != null && p.getUsername().contains(keyword)))
-            .count();
+        String kw = keyword != null ? keyword : "";
+        return playerRepo.countByKeyword(kw);
     }
 
     // ---- Player detail ----
@@ -218,11 +217,8 @@ public class AdminService {
 
     // ---- Props browser ----
     public List<Map<String, Object>> browseProps(String keyword, int page, int size) {
-        return propsRepo.findAll().stream()
-            .filter(p -> keyword == null || keyword.isEmpty() ||
-                (p.getName() != null && p.getName().contains(keyword)))
-            .skip((long) (page - 1) * size)
-            .limit(size)
+        String kw = keyword != null ? keyword : "";
+        return propsRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId()); m.put("name", p.getName());
@@ -235,18 +231,14 @@ public class AdminService {
     }
 
     public long countProps(String keyword) {
-        if (keyword == null || keyword.isEmpty()) return propsRepo.count();
-        return propsRepo.findAll().stream()
-            .filter(p -> p.getName() != null && p.getName().contains(keyword)).count();
+        String kw = keyword != null ? keyword : "";
+        return propsRepo.countByKeyword(kw);
     }
 
     // ---- Pet template browser ----
     public List<Map<String, Object>> browsePets(String keyword, int page, int size) {
-        return petTemplateRepo.findAll().stream()
-            .filter(p -> keyword == null || keyword.isEmpty() ||
-                (p.getName() != null && p.getName().contains(keyword)))
-            .skip((long) (page - 1) * size)
-            .limit(size)
+        String kw = keyword != null ? keyword : "";
+        return petTemplateRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId()); m.put("name", p.getName());
@@ -259,9 +251,8 @@ public class AdminService {
     }
 
     public long countPets(String keyword) {
-        if (keyword == null || keyword.isEmpty()) return petTemplateRepo.count();
-        return petTemplateRepo.findAll().stream()
-            .filter(p -> p.getName() != null && p.getName().contains(keyword)).count();
+        String kw = keyword != null ? keyword : "";
+        return petTemplateRepo.countByKeyword(kw);
     }
 
     // ---- Player ban/mute (PHP: chatGate.php FH/JY/JJ) ----
@@ -335,5 +326,204 @@ public class AdminService {
         stats.put("totalYb", totalYb);
         stats.put("byTitle", byTitle.stream().map(row -> Map.of("title", row[0], "total", row[1])).collect(Collectors.toList()));
         return stats;
+    }
+
+    // ======================== Task Definition Management ========================
+
+    public List<Map<String, Object>> browseTasks(String keyword, Integer color, int page, int size) {
+        String kw = keyword != null ? keyword : "";
+        return taskDefRepo.searchByKeywordAndColor(kw, color, Pageable.ofSize(size).withPage(page - 1)).stream()
+            .map(this::taskDefToMap)
+            .collect(Collectors.toList());
+    }
+
+    public long countTasks(String keyword, Integer color) {
+        String kw = keyword != null ? keyword : "";
+        return taskDefRepo.countByKeywordAndColor(kw, color);
+    }
+
+    public Map<String, Object> getTask(Long id) {
+        TaskDef t = taskDefRepo.findById(id).orElse(null);
+        if (t == null) return null;
+        return taskDefToMap(t);
+    }
+
+    @Transactional
+    public Map<String, Object> createTask(Map<String, Object> data) {
+        TaskDef t = new TaskDef();
+
+        // Auto-generate cid if empty
+        String cid = str(data.get("cid"));
+        if (cid == null || cid.isBlank()) {
+            cid = generateNextCid();
+        }
+        t.setCid(cid);
+
+        // Auto-increment xulie if not provided
+        Integer xulie = toInt(data.get("xulie"));
+        if (xulie == null) {
+            xulie = getMaxXulie(cid) + 1;
+        }
+        t.setXulie(xulie);
+
+        applyTaskData(t, data);
+        t.setCid(cid);  // ensure cid isn't overwritten by applyTaskData
+        t.setXulie(xulie);
+        t = taskDefRepo.save(t);
+        return Map.of("success", true, "task", taskDefToMap(t));
+    }
+
+    @Transactional
+    public Map<String, Object> updateTask(Long id, Map<String, Object> data) {
+        TaskDef t = taskDefRepo.findById(id).orElse(null);
+        if (t == null) return Map.of("error", "任务不存在");
+        applyTaskData(t, data);
+        t = taskDefRepo.save(t);
+        return Map.of("success", true, "task", taskDefToMap(t));
+    }
+
+    @Transactional
+    public Map<String, Object> deleteTask(Long id) {
+        if (!taskDefRepo.existsById(id)) return Map.of("error", "任务不存在");
+        taskDefRepo.deleteById(id);
+        return Map.of("success", true);
+    }
+
+    private Map<String, Object> taskDefToMap(TaskDef t) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", t.getId()); m.put("title", t.getTitle());
+        m.put("fromnpc", t.getFromnpc()); m.put("frommsg", t.getFrommsg());
+        m.put("okmsg", t.getOkmsg()); m.put("oknpc", t.getOknpc());
+        m.put("okneed", t.getOkneed()); m.put("result", t.getResult());
+        m.put("cid", t.getCid()); m.put("limitlv", t.getLimitlv());
+        m.put("hide", t.getHide()); m.put("xulie", t.getXulie());
+        m.put("color", t.getColor()); m.put("flags", t.getFlags());
+        return m;
+    }
+
+    private void applyTaskData(TaskDef t, Map<String, Object> data) {
+        if (data.containsKey("title")) t.setTitle(str(data.get("title")));
+        if (data.containsKey("fromnpc")) t.setFromnpc(str(data.get("fromnpc")));
+        if (data.containsKey("frommsg")) t.setFrommsg(str(data.get("frommsg")));
+        if (data.containsKey("okmsg")) t.setOkmsg(str(data.get("okmsg")));
+        if (data.containsKey("oknpc")) t.setOknpc(toInt(data.get("oknpc")));
+        if (data.containsKey("okneed")) t.setOkneed(str(data.get("okneed")));
+        if (data.containsKey("result")) t.setResult(str(data.get("result")));
+        if (data.containsKey("cid")) t.setCid(str(data.get("cid")));
+        if (data.containsKey("limitlv")) t.setLimitlv(str(data.get("limitlv")));
+        if (data.containsKey("hide")) t.setHide(toInt(data.get("hide")));
+        if (data.containsKey("xulie")) t.setXulie(toInt(data.get("xulie")));
+        if (data.containsKey("color")) t.setColor(toInt(data.get("color")));
+        if (data.containsKey("flags")) t.setFlags(toInt(data.get("flags")));
+    }
+
+    private String str(Object v) { return v != null ? v.toString() : null; }
+    private Integer toInt(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.intValue();
+        try { return Integer.parseInt(v.toString()); } catch (NumberFormatException e) { return null; }
+    }
+
+    // ---- CID / Xulie helpers ----
+
+    public Map<String, Object> getNextCid() {
+        String next = generateNextCid();
+        return Map.of("cid", next, "maxXulie", getMaxXulie(next));
+    }
+
+    private String generateNextCid() {
+        Integer max = taskDefRepo.findMaxNumericCid();
+        return String.valueOf((max != null ? max : 0) + 1);
+    }
+
+    public int getMaxXulie(String cid) {
+        Integer max = taskDefRepo.findMaxXulieByCid(cid);
+        return max != null ? max : -1;
+    }
+
+    // ---- Quick search helpers ----
+
+    public List<Map<String, Object>> searchItems(String keyword) {
+        String kw = keyword != null ? keyword : "";
+        return propsRepo.searchByName(kw, Pageable.ofSize(50)).stream()
+            .map(p -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", p.getId()); m.put("name", p.getName()); m.put("vary", p.getVary());
+                return m;
+            }).collect(Collectors.toList());
+    }
+
+    public Map<Long, String> lookupItems(String ids) {
+        Set<Long> idSet = Arrays.stream(ids.split(","))
+            .map(String::trim).filter(s -> !s.isEmpty())
+            .map(Long::parseLong).collect(Collectors.toSet());
+        return propsRepo.findAllById(idSet).stream()
+            .collect(Collectors.toMap(Props::getId, Props::getName, (a,b)->a));
+    }
+
+    public List<Map<String, Object>> searchMonsters(String keyword) {
+        String kw = keyword != null ? keyword : "";
+        return petTemplateRepo.searchByName(kw, Pageable.ofSize(50)).stream()
+            .map(p -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", p.getId()); m.put("name", p.getName());
+                return m;
+            }).collect(Collectors.toList());
+    }
+
+    public Map<Long, String> lookupMonsters(String ids) {
+        Set<Long> idSet = Arrays.stream(ids.split(","))
+            .map(String::trim).filter(s -> !s.isEmpty())
+            .map(Long::parseLong).collect(Collectors.toSet());
+        return petTemplateRepo.findAllById(idSet).stream()
+            .collect(Collectors.toMap(Pet::getId, Pet::getName, (a,b)->a));
+    }
+
+    // ======================== Player Task Management ========================
+
+    public List<Map<String, Object>> getPlayerTasks(Integer playerId) {
+        return taskAcceptRepo.findByPlayerId(playerId.longValue()).stream().map(ta -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", ta.getId()); m.put("taskId", ta.getTaskId());
+            m.put("state", ta.getState()); m.put("comself", ta.getComself());
+            m.put("time", ta.getTime());
+            TaskDef def = taskDefRepo.findById(ta.getTaskId()).orElse(null);
+            m.put("title", def != null ? def.getTitle() : "未知任务");
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> assignTask(Integer playerId, Long taskId) {
+        Player player = playerRepo.findById(playerId).orElse(null);
+        if (player == null) return Map.of("error", "玩家不存在");
+        if (!taskDefRepo.existsById(taskId)) return Map.of("error", "任务不存在");
+        List<TaskAccept> existing = taskAcceptRepo.findByPlayerIdAndTaskId(playerId.longValue(), taskId);
+        if (!existing.isEmpty()) return Map.of("error", "玩家已接取该任务");
+        TaskAccept ta = new TaskAccept();
+        ta.setPlayerId(playerId.longValue());
+        ta.setTaskId(taskId);
+        ta.setState("0");
+        ta.setComself("");
+        ta.setTime(System.currentTimeMillis() / 1000);
+        taskAcceptRepo.save(ta);
+        return Map.of("success", true, "player", player.getNickname());
+    }
+
+    @Transactional
+    public Map<String, Object> updatePlayerTask(Integer playerId, Long taskId, String state, String comself) {
+        List<TaskAccept> list = taskAcceptRepo.findByPlayerIdAndTaskId(playerId.longValue(), taskId);
+        if (list.isEmpty()) return Map.of("error", "玩家未接取该任务");
+        TaskAccept ta = list.get(0);
+        if (state != null) ta.setState(state);
+        if (comself != null) ta.setComself(comself);
+        taskAcceptRepo.save(ta);
+        return Map.of("success", true);
+    }
+
+    @Transactional
+    public Map<String, Object> removePlayerTask(Integer playerId, Long taskId) {
+        taskAcceptRepo.deleteByPlayerIdAndTaskId(playerId.longValue(), taskId);
+        return Map.of("success", true);
     }
 }

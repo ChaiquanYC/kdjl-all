@@ -92,7 +92,6 @@ public class BagController {
             Authentication auth,
             @PathVariable Long id) {
         Long uid = (Long) auth.getPrincipal();
-        bagService.dropItem(uid, id);
-        return ApiResponse.success(Map.of("dropped", true));
+        return ApiResponse.success(bagService.dropItem(uid, id));
     }
 }

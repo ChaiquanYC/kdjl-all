@@ -7,16 +7,22 @@ interface AuthState {
   player: Player | null;
   token: string | null;
   loading: boolean;
+  hydrated: boolean;
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   fetchPlayer: () => Promise<void>;
+  hydrate: () => Promise<boolean>;
+  setAuth: (token: string, player: Player) => void;
 }
+
+const storedToken = localStorage.getItem('token');
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   player: null,
-  token: localStorage.getItem('token'),
+  token: storedToken,
   loading: false,
+  hydrated: !storedToken,
   error: null,
 
   login: async (username: string, password: string) => {
@@ -41,8 +47,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             score: 0, prestige: 0,
             inMap: 0, openMap: '', fightTop: 0, maxBag: 30, sex: '',
             onlineTime: 0, newGuideStep: 0,
-          } as Player,
+          } as unknown as Player,
           loading: false,
+          hydrated: true,
         });
       } else {
         set({ error: res.message || '登录失败', loading: false });
@@ -55,7 +62,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     localStorage.removeItem('token');
     disconnectWs();
-    set({ player: null, token: null });
+    set({ player: null, token: null, hydrated: true });
+  },
+
+  setAuth: (token: string, player: Player) => {
+    localStorage.setItem('token', token);
+    try { connectWs(token); } catch { /* ws optional */ }
+    set({ token, player, hydrated: true });
+  },
+
+  hydrate: async () => {
+    const token = get().token;
+    if (!token) {
+      set({ hydrated: true });
+      return false;
+    }
+    try {
+      const res = await apiGet<Player>('/player/me');
+      if (res.code === 0 && res.data) {
+        set({ player: res.data, hydrated: true });
+        return true;
+      }
+    } catch {
+      // 401 interceptor handles logout + redirect
+    }
+    // Token invalid — clear and allow redirect to login
+    localStorage.removeItem('token');
+    set({ player: null, token: null, hydrated: true });
+    return false;
   },
 
   fetchPlayer: async () => {

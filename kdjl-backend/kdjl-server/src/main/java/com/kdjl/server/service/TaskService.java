@@ -67,11 +67,20 @@ public class TaskService {
         petCache = petRepo.findAll().stream()
             .collect(Collectors.toMap(Pet::getId, p -> p, (a, b) -> a));
         taskCache = taskDefRepo.findAll().stream()
-            .filter(t -> t.getHide() != null && t.getHide() == 1)
             .collect(Collectors.toMap(TaskDef::getId, t -> t, (a, b) -> a));
         log.info("Caches ready: {} tasks, {} props, {} monsters, {} pets ({}ms)",
             taskCache.size(), propsCache.size(), monsterCache.size(), petCache.size(),
             System.currentTimeMillis() - start);
+    }
+
+    /** Refresh task cache from database (call after admin creates/updates/deletes tasks) */
+    public synchronized int refreshTaskCache() {
+        Map<Long, TaskDef> fresh = taskDefRepo.findAll().stream()
+            .collect(Collectors.toMap(TaskDef::getId, t -> t, (a, b) -> a));
+        int delta = fresh.size() - taskCache.size();
+        taskCache = fresh;
+        log.info("Task cache refreshed: {} tasks (delta: {})", fresh.size(), delta);
+        return fresh.size();
     }
 
     // ==================== List Available Tasks ====================

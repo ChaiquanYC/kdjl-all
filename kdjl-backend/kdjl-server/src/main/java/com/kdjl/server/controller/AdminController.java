@@ -3,6 +3,7 @@ package com.kdjl.server.controller;
 import com.kdjl.common.dto.ApiResponse;
 import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
+import com.kdjl.server.service.TaskService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -16,16 +17,19 @@ public class AdminController {
     private final UserBagRepository bagRepo;
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
+    private final TaskService taskService;
 
     public AdminController(UserPetRepository userPetRepo, PetRepository petRepo,
                            PlayerRepository playerRepo, UserBagRepository bagRepo,
-                           SkillSysRepository skillSysRepo, SkillRepository skillRepo) {
+                           SkillSysRepository skillSysRepo, SkillRepository skillRepo,
+                           TaskService taskService) {
         this.userPetRepo = userPetRepo;
         this.petRepo = petRepo;
         this.playerRepo = playerRepo;
         this.bagRepo = bagRepo;
         this.skillSysRepo = skillSysRepo;
         this.skillRepo = skillRepo;
+        this.taskService = taskService;
     }
 
     /** Reset all pets for a player to level 1 */
@@ -216,5 +220,15 @@ public class AdminController {
         int min = Integer.parseInt(parts[0]);
         int max = Integer.parseInt(parts[1]);
         return (new java.util.Random().nextInt(min, max + 1)) / 10.0;
+    }
+
+    /** Refresh task cache so new/edited/deleted tasks appear without server restart */
+    @PostMapping("/refresh-task-cache")
+    public ApiResponse<Map<String, Object>> refreshTaskCache() {
+        int count = taskService.refreshTaskCache();
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("tasks", count);
+        r.put("message", "Task cache refreshed");
+        return ApiResponse.success(r);
     }
 }

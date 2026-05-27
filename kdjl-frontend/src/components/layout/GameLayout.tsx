@@ -51,6 +51,7 @@ export default function GameLayout() {
   const endBattle = useGameStore((s) => s.endBattle);
   const refreshTrigger = useGameStore((s) => s.refreshTrigger);
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
 
   // Brief flash on refresh
   const [refreshing, setRefreshing] = useState(false);
@@ -61,9 +62,7 @@ export default function GameLayout() {
     return () => clearTimeout(t);
   }, [refreshTrigger]);
 
-  // Pet selection before battle
-  const [pendingMonster, setPendingMonster] = useState<{ id: number; name: string } | null>(null);
-  const [playerPets, setPlayerPets] = useState<PetBrief[]>([]);
+  // Pet selection before battle — removed, now uses selectedPetId from gameStore
 
   // Online reward status
   const [rewardStatus, setRewardStatus] = useState<{
@@ -98,27 +97,13 @@ export default function GameLayout() {
           alert('没有可出战的宠物！');
           return;
         }
-        if (res.data.length === 1) {
-          startBattle(res.data[0].id, res.data[0].name, monsterId, monsterName, mapId);
-        } else {
-          // If player has a main pet (mbid), use it directly
-          const mainPet = player?.mbid ? res.data.find(p => p.id === player.mbid) : null;
-          if (mainPet) {
-            startBattle(mainPet.id, mainPet.name, monsterId, monsterName, mapId);
-          } else {
-            setPlayerPets(res.data);
-            setPendingMonster({ id: monsterId, name: monsterName });
-          }
-        }
+        // Use selected pet from PetList, or main pet (mbid), or first pet
+        const activeId = selectedPetId ?? player?.mbid;
+        const activePet = activeId ? res.data.find(p => p.id === activeId) : null;
+        const pet = activePet ?? res.data[0];
+        startBattle(pet.id, pet.name, monsterId, monsterName, mapId);
       }
     });
-  };
-
-  const handleSelectPet = (pet: PetBrief) => {
-    if (pendingMonster) {
-      startBattle(pet.id, pet.name, pendingMonster.id, pendingMonster.name, challengeMapId ?? undefined);
-      setPendingMonster(null);
-    }
   };
 
   const DUNGEON_IDS = new Set([11, 12, 13, 14, 50, 124, 127, 143, 144, 151]);
@@ -245,11 +230,6 @@ export default function GameLayout() {
             <div className={`${styles.gameBox} ${refreshing ? styles.refreshing : ''}`}>
               {inBattle && battlePet && battleMonster ? (
                 <BattlePanel key={`${battlePet.id}-${battleMonster.id}`} petId={battlePet.id} monsterId={battleMonster.id} mapId={battleMapId ?? undefined} mapImg={challengeMapImg ?? undefined} onClose={handleReturnFromBattle} onContinue={handleContinueBattle} />
-              ) : pendingMonster ? (
-                <div className={styles.petSelect}><h3>选择出战宠物</h3>
-                  <div className={styles.petGrid}>{playerPets.map(p=><div key={p.id} className={styles.petOption} onClick={()=>handleSelectPet(p)}><span>{p.name}</span><span>Lv.{p.level}</span></div>)}</div>
-                  <button className={styles.cancelBtn} onClick={()=>setPendingMonster(null)}>取消</button>
-                </div>
               ) : gameView==='ranch' ? (
                 <RanchPanel/>
               ) : gameView==='pvp' ? (
