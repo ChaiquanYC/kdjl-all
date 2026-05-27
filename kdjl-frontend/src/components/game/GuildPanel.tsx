@@ -32,6 +32,9 @@ export default function GuildPanel() {
       if (res.code === 0) { setMsg('公会创建成功!'); fetchData(); setShowCreate(false); }
       else setMsg(res.message);
       setTimeout(() => setMsg(null), 2500);
+    }).catch((e: any) => {
+      setMsg(e?.response?.data?.message || '创建失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 
@@ -40,6 +43,9 @@ export default function GuildPanel() {
       setMsg(res.code === 0 ? '加入成功!' : res.message);
       setTimeout(() => setMsg(null), 2500);
       fetchData();
+    }).catch((e: any) => {
+      setMsg(e?.response?.data?.message || '加入失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 
@@ -49,6 +55,9 @@ export default function GuildPanel() {
       setMsg(res.code === 0 ? '已退出' : res.message);
       setTimeout(() => setMsg(null), 2500);
       fetchData();
+    }).catch((e: any) => {
+      setMsg(e?.response?.data?.message || '退出失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 

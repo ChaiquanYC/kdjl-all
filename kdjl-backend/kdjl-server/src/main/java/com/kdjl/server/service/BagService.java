@@ -1387,7 +1387,9 @@ public class BagService {
             bag.setPlayerId(playerId);
             bag.setPropId(propId);
             bag.setSums(count);
-            bag.setVary(1);
+            // Equipment items (varyname=9) should have vary=2, others vary=1
+            Props p = propsRepo.findById(propId).orElse(null);
+            bag.setVary(p != null && p.getVaryname() != null && p.getVaryname() == 9 ? 2 : 1);
             bag.setStime(System.currentTimeMillis() / 1000);
             bagRepo.save(bag);
         }
