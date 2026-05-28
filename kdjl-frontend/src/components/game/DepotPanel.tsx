@@ -3,6 +3,7 @@ import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
+import BagColumn from './BagColumn';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './DepotPanel.module.css';
 
@@ -133,39 +134,22 @@ export default function DepotPanel() {
         </div>
       </div>
 
-      <div className={layoutStyles.column}>
-        <div className={styles.colHeader}>
-          <img src="/images/ui/icon04.jpg" alt="背包物品" className={styles.colIcon} />
-          <span className={styles.catLabel}>分类查看</span>
+      <BagColumn items={filterBag} selId={selBag}
+        onSelect={item => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}
+        extraHeader={
+          <><span className={styles.catLabel}>分类查看</span>
           <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
             {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
-          </select>
-        </div>
-        <div className={layoutStyles.itemList}>
-          <table className={layoutStyles.table}>
-            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
-            <tbody>
-              {filterBag.length === 0 ? (
-                <tr><td colSpan={4} className={layoutStyles.empty}>背包中没有物品</td></tr>
-              ) : filterBag.map(item => (
-                <tr key={item.id} className={`${layoutStyles.row} ${selBag === item.id ? layoutStyles.rowSel : ''}`}
-                  onClick={() => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}>
-                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                  <td className={styles.tdCount}>{item.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className={layoutStyles.colFoot}>
-          <span>背包空间：{bagTotal}/{maxBag}</span>
-          <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-          <button className={styles.btn} disabled>取出</button>
-          <button className={styles.btn} disabled={!selBag} onClick={handleDeposit}>存放</button>
-        </div>
-      </div>
+          </select></>
+        }
+        footer={
+          <div className={layoutStyles.colFoot}>
+            <span>背包空间：{bagTotal}/{maxBag}</span>
+            <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
+            <button className={styles.btn} disabled={!selBag} onClick={handleDeposit}>存放</button>
+          </div>
+        }
+      />
     </ShopLayout>
   );
 }

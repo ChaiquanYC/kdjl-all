@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
+import BagColumn from './BagColumn';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ShopPanel.module.css';
 
@@ -14,7 +15,22 @@ interface ShopItem {
 }
 interface BagItem {
   id: number; propId: number; count: number; sell: number; zbing?: number;
-  name?: string; img?: string; varyname?: number;
+  name?: string; img?: string; varyname?: number; category?: string;
+}
+
+const CATEGORIES = [
+  { label: '全部道具', vary: [] },
+  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
+  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
+  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
+  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
+  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
+];
+
+function filterByCat<T extends { category?: string }>(items: T[], cat: number) {
+  if (cat === 0) return items;
+  const label = CATEGORIES[cat]?.label ?? '';
+  return items.filter(i => (i.category ?? '') === label);
 }
 
 export default function ShopPanel() {
@@ -29,6 +45,8 @@ export default function ShopPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [shopCat, setShopCat] = useState(0);
+  const [bagCat, setBagCat] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
@@ -41,9 +59,6 @@ export default function ShopPanel() {
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
-
-  const bagTotal = bagItems.filter(i => i.count > 0 && i.zbing !== 1).length;
-  const maxBag = player?.maxBag ?? 30;
 
   const goldItems = shopItems.filter(i => (i.buy ?? 0) > 0 && (i.yb ?? 0) === 0 && (i.prestige ?? 0) === 0);
   const prestigeItems = shopItems.filter(i => (i.prestige ?? 0) > 0);
@@ -101,8 +116,9 @@ export default function ShopPanel() {
 
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
-  const displayItems = tab === 1 ? goldItems : prestigeItems;
+  const displayItems = filterByCat(tab === 1 ? goldItems : prestigeItems, shopCat);
   const curLabel = tab === 1 ? '金币商店' : '威望商店';
+  const filterBag = filterByCat(bagItems, bagCat);
 
   return (
     <>
@@ -129,6 +145,9 @@ export default function ShopPanel() {
       <div className={layoutStyles.column}>
         <div className={styles.colTitle}>
           <img src="/images/ui/shop03.jpg" alt={curLabel} />
+          <select className={styles.catSelect} value={shopCat} onChange={e => setShopCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
+          </select>
         </div>
         <div className={layoutStyles.itemList}>
           <table className={layoutStyles.table}>
@@ -155,32 +174,14 @@ export default function ShopPanel() {
         </div>
       </div>
 
-      <div className={layoutStyles.column}>
-        <div className={styles.colTitle}>
-          <img src="/images/ui/icon04.jpg" alt="背包物品" />
-        </div>
-        <div className={layoutStyles.itemList}>
-          <table className={layoutStyles.table}>
-            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.thType}>数量</th></tr></thead>
-            <tbody>
-              {bagItems.filter(i => i.count > 0 && i.zbing !== 1).length === 0 ? (
-                <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
-              ) : bagItems.filter(i => i.count > 0 && i.zbing !== 1).map(item => (
-                <tr key={item.id} className={`${layoutStyles.row} ${selBag === item.id ? layoutStyles.rowSel : ''}`}
-                  onClick={() => { setSelBag(item.id); setSelShop(null); }}>
-                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                  <td className={styles.tdType}>{item.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className={layoutStyles.colFoot}>
-          背包空间：{bagTotal}/{maxBag}
-        </div>
-      </div>
+      <BagColumn items={filterBag} selId={selBag}
+        onSelect={item => { setSelBag(item.id); setSelShop(null); }}
+        extraHeader={
+          <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
+          </select>
+        }
+      />
     </ShopLayout>
       <ConfirmDialog
         open={confirmDialog !== null}

@@ -4,6 +4,7 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
+import BagColumn from './BagColumn';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ZbPanel.module.css';
 
@@ -13,7 +14,22 @@ interface ShopItem {
 }
 interface BagItem {
   id: number; propId: number; count: number; sell: number;
-  name?: string; varyname?: number;
+  name?: string; varyname?: number; category?: string;
+}
+
+const CATEGORIES = [
+  { label: '全部道具', vary: [] },
+  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
+  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
+  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
+  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
+  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
+];
+
+function filterByCat<T extends { category?: string }>(items: T[], cat: number) {
+  if (cat === 0) return items;
+  const label = CATEGORIES[cat]?.label ?? '';
+  return items.filter(i => (i.category ?? '') === label);
 }
 
 const POS_FILTERS = [
@@ -44,9 +60,8 @@ export default function ZbPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [bagCat, setBagCat] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
-  const maxBag = player?.maxBag ?? 30;
-
   useEffect(() => {
     Promise.all([
       apiGet<ShopItem[]>('/shop/list?type=equip'),
@@ -66,8 +81,6 @@ export default function ZbPanel() {
     if (posFilter === 0) return true;
     return POS_FILTERS[posFilter].pos.includes(i.postion ?? -1);
   });
-
-  const bagTotal = bagItems.filter(i => i.count > 0).length;
 
   const doBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
     apiPost('/shop/buy/' + item.id, { count, currency }).then((res: any) => {
@@ -155,30 +168,15 @@ export default function ZbPanel() {
         </div>
       </div>
 
-      <div className={layoutStyles.column}>
-        <div className={styles.colHead}>
-          <span className={styles.colTitle}>我的背包</span>
-        </div>
-        <div className={layoutStyles.itemList}>
-          <table className={layoutStyles.table}>
-            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.thReq}>数量</th></tr></thead>
-            <tbody>
-              {bagItems.filter(i => i.count > 0).length === 0 ? (
-                <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
-              ) : bagItems.filter(i => i.count > 0).map(item => (
-                <tr key={item.id} className={`${layoutStyles.row} ${selBag === item.id ? layoutStyles.rowSel : ''}`}
-                  onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}>
-                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                  <td className={styles.tdReq}>{item.count}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className={layoutStyles.colFoot}>背包空间：{bagTotal}/{maxBag}</div>
-      </div>
+      <BagColumn items={filterByCat(bagItems, bagCat)} selId={selBag}
+        onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+        title={<span className={styles.colTitle}>我的背包</span>}
+        extraHeader={
+          <select className={styles.posFilter} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
+          </select>
+        }
+      />
     </ShopLayout>
       <ConfirmDialog
         open={confirmDialog !== null}

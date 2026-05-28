@@ -1,0 +1,11 @@
+/* Column header */
+.colHeader{display:flex;align-items:center;height:28px;gap:6px}
+.colHeader img{height:25px}
+
+/* Column widths */
+.thName{width:100px}.tdName{width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thPrice{width:55px}.tdPrice{width:55px}
+.thCount{}.tdCount{}
+
+/* Footer — left-aligned for bag space info */
+.bagFoot{display:flex;align-items:center;justify-content:flex-start;gap:4px;padding:4px 0;font-size:12px}

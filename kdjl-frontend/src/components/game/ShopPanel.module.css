@@ -10,8 +10,9 @@
 .resBar img{width:20px;height:18px}
 
 /* Column header */
-.colTitle{height:28px;display:flex;align-items:center}
+.colTitle{height:28px;display:flex;align-items:center;gap:6px}
 .colTitle img{height:25px}
+.catSelect{font-size:11px;border:1px solid #D9BD7A;background:#fff;color:#693600;padding:1px 2px}
 
 /* Column widths */
 .thName{width:100px}.tdName{width:100px}

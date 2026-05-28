@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
+import BagColumn from './BagColumn';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './SmShopPanel.module.css';
 
@@ -16,9 +17,24 @@ interface ShopItem {
 }
 interface BagItem {
   id: number; propId: number; count: number; sell: number; zbing?: number;
-  name?: string; img?: string; varyname?: number;
+  name?: string; img?: string; varyname?: number; category?: string;
   effect?: string; effectDesc?: string; requires?: string; requiresDesc?: string;
   propsColor?: number; vary?: number; usages?: string;
+}
+
+const CATEGORIES = [
+  { label: '全部道具', vary: [] },
+  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
+  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
+  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
+  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
+  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
+];
+
+function filterByCat<T extends { category?: string }>(items: T[], cat: number) {
+  if (cat === 0) return items;
+  const label = CATEGORIES[cat]?.label ?? '';
+  return items.filter(i => (i.category ?? '') === label);
 }
 
 const SUB_CATS = [
@@ -158,10 +174,10 @@ export default function SmShopPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [shopCat, setShopCat] = useState(0);
+  const [bagCat, setBagCat] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
   const [tooltip, setTooltip] = useState<{ item: ShopItem | BagItem; x: number; y: number } | null>(null);
-  const maxBag = player?.maxBag ?? 30;
-
   useEffect(() => {
     Promise.all([
       apiGet<ShopItem[]>('/shop/list?type=smshop'),
@@ -176,12 +192,13 @@ export default function SmShopPanel() {
   const allItems = shopItems.filter(i => `${i.stime ?? 1}`.startsWith(`${subCat}`));
   const ybItems = allItems.filter(i => (i.yb ?? 0) > 0);
   const sjItems = allItems.filter(i => (i.sj ?? 0) > 0);
-  const vipItems = allItems.filter(i => (i.yb ?? 0) > 0).slice(0, 5);
+  const vipItems = allItems.filter(i => (i.prestige ?? 0) > 0);
+  const limitItems = allItems.filter(i => (i.timelimit ?? 0) > 0);
 
-  const displayItems = tab === 1 ? ybItems : tab === 2 ? sjItems : vipItems;
-  const currency = tab === 1 ? 'yb' : tab === 2 ? 'sj' : 'vip';
-  const curLabel = tab === 1 ? '元宝' : tab === 2 ? '水晶' : 'VIP积分';
-  const bagTotal = bagItems.filter(i => i.count > 0 && i.zbing !== 1).length;
+  const displayItems = filterByCat(tab === 1 ? ybItems : tab === 2 ? sjItems : tab === 3 ? vipItems : limitItems, shopCat);
+  const currency = tab === 1 ? 'yb' : tab === 2 ? 'sj' : tab === 3 ? 'vip' : 'yb';
+  const curLabel = tab === 1 ? '元宝' : tab === 2 ? '水晶' : tab === 3 ? 'VIP积分' : '元宝';
+  const filterBag = filterByCat(bagItems, bagCat);
 
   const doBuy = () => {
     apiPost('/shop/buy/' + selShop, { count, currency }).then((res: any) => {
@@ -246,13 +263,12 @@ export default function SmShopPanel() {
             <li className={tab===1?styles.tabOn:''} onClick={()=>setTab(1)}><span className={styles.t1}/></li>
             <li className={tab===2?styles.tabOn:''} onClick={()=>setTab(2)}><span className={styles.t2}/></li>
             <li className={tab===3?styles.tabOn:''} onClick={()=>setTab(3)}><span className={styles.t3}/></li>
+            <li className={tab===4?styles.tabOn:''} onClick={()=>setTab(4)}><span className={styles.t4}/></li>
           </ul>
           <div className={styles.resBar}>
             <div className={styles.resRow}><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</div>
             <div className={styles.resRow}><img src="/images/ui/icon06.jpg" alt="" /> 水晶：{player?.sj ?? 0}</div>
-            {tab === 1 && <div className={styles.resRow}><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</div>}
-            {tab === 2 && <div className={styles.resRow}><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</div>}
-            {tab === 3 && <div className={styles.resRow}><img src="/images/ui/icon05.jpg" alt="" /> VIP：{player?.vip ?? 0}</div>}
+            <div className={styles.resRow}><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</div>
           </div>
           {tooltip && <ShopTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
         </>
@@ -266,6 +282,12 @@ export default function SmShopPanel() {
               style={subCat===c.style?{filter:'brightness(1.2)',borderBottom:'2px solid #FED625'}:{}}
               onClick={() => setSubCat(c.style)} />
           ))}
+        </div>
+        <div className={styles.catRow}>
+          <span className={styles.catLabel}>分类查看</span>
+          <select className={styles.catSelect} value={shopCat} onChange={e => setShopCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
+          </select>
         </div>
         <div className={`${layoutStyles.itemListFixed} ${styles.itemListSize}`}>
           <table className={layoutStyles.table}>
@@ -298,35 +320,15 @@ export default function SmShopPanel() {
       </div>
 
       {/* Right column — bag */}
-      <div className={`${layoutStyles.column} ${styles.column2}`}>
-        <div className={styles.colTitle}>
-          <img src="/images/ui/icon04.jpg" alt="背包物品" />
-        </div>
-        <div className={`${layoutStyles.itemListFixed} ${styles.itemListSize}`}>
-          <table className={layoutStyles.table}>
-            <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.tdType}>数量</th></tr></thead>
-          </table>
-          <div className={layoutStyles.itemBody}>
-            <table className={layoutStyles.table}>
-              <tbody>
-              {bagItems.filter(i => i.count > 0 && i.zbing !== 1).length === 0 ? (
-                <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
-              ) : bagItems.filter(i => i.count > 0 && i.zbing !== 1).map(item => (
-                <tr key={item.id} className={`${layoutStyles.row} ${selBag===item.id?layoutStyles.rowSel:''}`}
-                  onClick={() => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
-                  {...hoverProps(item)}>
-                  <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
-                  <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
-                  <td className={styles.tdPrice}>{item.sell ?? 0}</td>
-                  <td className={styles.tdType}>{item.count}</td>
-                </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <div className={styles.bagFoot}>背包空间：{bagTotal}/{maxBag}</div>
-      </div>
+      <BagColumn items={filterBag} selId={selBag}
+        onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+        listVariant="fixed" listClassName={styles.itemListSize} className={styles.column2}
+        extraHeader={
+          <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
+            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
+          </select>
+        }
+      />
     </ShopLayout>
       <ConfirmDialog
         open={confirmDialog !== null}
