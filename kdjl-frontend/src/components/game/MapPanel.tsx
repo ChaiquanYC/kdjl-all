@@ -3,7 +3,6 @@ import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
-import type { ApiResponse } from '@/types';
 import DungeonPanel from './DungeonPanel';
 import TowerPanel from './TowerPanel';
 import ChallengePanel from './ChallengePanel';
@@ -91,7 +90,6 @@ export default function MapPanel({ onChallenge }: Props) {
   const [mapPage, setMapPage] = useState(1);
   const [selectedMap, setSelectedMap] = useState<MapInfo | null>(null);
   const [monsters, setMonsters] = useState<MonsterInfo[]>([]);
-  const [loadingMonsters, setLoadingMonsters] = useState(false);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
   const [onlinePlayers, setOnlinePlayers] = useState<{id:number;nickname:string;level:number}[]>([]);
   const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
@@ -195,7 +193,6 @@ export default function MapPanel({ onChallenge }: Props) {
       setSelectedMap(map);
       setCurrentMap(map.id);
       apiPost('/player/enter-map/' + map.id, {}).then(() => triggerRefresh()).catch(() => {});
-      setLoadingMonsters(true);
       fetchMyTeam();
       Promise.all([
         apiGet<MonsterInfo[]>(`/map/${map.id}/monsters`),
@@ -203,8 +200,7 @@ export default function MapPanel({ onChallenge }: Props) {
       ]).then(([mRes, pRes]) => {
         if (mRes.code === 0 && mRes.data) setMonsters(mRes.data);
         if (pRes.code === 0 && pRes.data) setOnlinePlayers(pRes.data);
-        setLoadingMonsters(false);
-      }).catch(() => setLoadingMonsters(false));
+      });
       return;
     }
     const map = maps.find(m => m.id === mapId);
@@ -241,7 +237,6 @@ export default function MapPanel({ onChallenge }: Props) {
     setSelectedMap(map);
     setCurrentMap(map.id);
     apiPost('/player/enter-map/' + map.id, {}).then(() => triggerRefresh()).catch(() => {});
-    setLoadingMonsters(true);
     fetchMyTeam();
     setShowTeamJoin(false);
     Promise.all([
@@ -250,31 +245,6 @@ export default function MapPanel({ onChallenge }: Props) {
     ]).then(([mRes, pRes]) => {
       if (mRes.code === 0 && mRes.data) setMonsters(mRes.data);
       if (pRes.code === 0 && pRes.data) setOnlinePlayers(pRes.data);
-      setLoadingMonsters(false);
-    }).catch(() => setLoadingMonsters(false));
-  };
-
-  const handleCapture = (monsterId: number) => {
-    apiPost<Record<string, unknown>>('/pets/capture/' + monsterId, {}).then((res) => {
-      if (res.code === 0 && res.data) {
-        const d = res.data as Record<string, unknown>;
-        if (d.captured) {
-          alert('捕捉成功！获得了 ' + String(d.petName ?? '') + ' Lv.' + String(d.petLevel ?? '1'));
-          apiGet<unknown[]>('/pets').then((r) => {
-            if (r.code === 0 && r.data) {
-              setPets(r.data.map((p: any) => ({
-                id: p.id, name: p.name, level: p.level,
-                hp: 0, mp: 0, atk: 0, def: 0, speed: 0,
-                element: '金' as const, quality: 0, exp: 0,
-              })));
-            }
-          });
-        } else {
-          alert('捕捉失败！(概率 ' + String(d.roll ?? '?') + '/' + String(d.threshold ?? '?') + ')');
-        }
-      } else {
-        alert(res.message ?? '捕捉失败');
-      }
     });
   };
 
@@ -401,30 +371,6 @@ export default function MapPanel({ onChallenge }: Props) {
       </div>
 
       <div className={styles.teamCenter}>
-        {/* Monster list — PHP .zdzd_gpc */}
-        <div className={styles.monsterList}>
-          {monsters.length === 0 ? (
-            <span className={styles.teamListEmpty}>此地图暂无怪物</span>
-          ) : (
-            monsters.map(m => (
-              <div key={m.id} className={styles.monsterRow}>
-                {m.img && <img src={`/images/gpc/${m.img}`} alt="" className={styles.monsterIcon} />}
-                <span className={styles.monsterName}>{m.name}</span>
-                <span className={styles.monsterLv}>Lv.{m.level}</span>
-                <span className={styles.monsterHp}>HP:{m.hp}</span>
-                <button className={styles.challengeBtn}
-                  onClick={() => {
-                    const selPet = selectedPetId ? pets.find(p => p.id === selectedPetId) : pets[0];
-                    if (!selPet) { alert('请先选择一只宠物！'); return; }
-                    const mapMinLevel = parseInt(selectedMap?.level?.split(',')[0] || '1');
-                    if (selPet.level < mapMinLevel) { alert('宠物等级不足，无法挑战此地图！'); return; }
-                    onChallenge(m.id, m.name, selectedMap?.id, selectedMap?.img);
-                  }}>挑战</button>
-                <button className={styles.captureBtn} onClick={() => handleCapture(m.id)}>捕捉</button>
-              </div>
-            ))
-          )}
-        </div>
         {/* PHP: Team panel — full for maps >=100 or ==16, simple otherwise */}
         {!(selectedMap && (selectedMap.id >= 100 || selectedMap.id === 16)) ? (
           <div className={styles.teamList}><span className={styles.teamListEmpty}>暂未组队</span></div>
