@@ -209,7 +209,7 @@ public class DungeonController {
         return ApiResponse.success(result);
     }
 
-    /** Advance to next wave after defeating current monster */
+    /** Return current wave monster to continue. BattleService already advances gwid on kill. */
     @Transactional
     @PostMapping("/{id}/next-wave")
     public ApiResponse<Map<String, Object>> nextWave(@PathVariable Long id, Authentication auth) {
@@ -220,37 +220,34 @@ public class DungeonController {
         var fuben = fubenRepo.findByPlayerIdAndInmap(uid, di.id()).orElse(null);
         if (fuben == null) return ApiResponse.error("未进入该副本");
 
-        long now = System.currentTimeMillis() / 1000;
         int totalWaves = di.monsterIds().size();
         int currentGwId = fuben.getGwId() != null ? fuben.getGwId() : 0;
+        if (currentGwId > totalWaves) currentGwId = 0; // PHP legacy guard
 
-        // PHP legacy guard + mid-dungeon timeout: if elapsed > cooldown, reset
-        if (currentGwId > totalWaves) currentGwId = 0;
-        if (currentGwId < totalWaves && fuben.getLttime() != null) {
-            long elapsed = now - fuben.getLttime();
-            if (elapsed > di.cooldown()) currentGwId = 0;
+        // If BattleService didn't auto-advance (lttime not recently updated), fallback manual advance
+        long now = System.currentTimeMillis() / 1000;
+        Long lttime = fuben.getLttime();
+        if (lttime == null || (now - lttime) > 5) {
+            if (currentGwId < totalWaves) {
+                currentGwId = currentGwId + 1;
+                fuben.setGwId(currentGwId);
+                fuben.setSrctime((long) di.cooldown());
+                fuben.setLttime(now);
+                fubenRepo.save(fuben);
+            }
         }
 
-        int nextIdx = currentGwId + 1;
-        fuben.setSrctime((long) di.cooldown());
-        fuben.setLttime(now);
-        if (nextIdx >= totalWaves) {
-            // Dungeon complete — gwid >= totalWaves triggers cooldown
-            fuben.setGwId(nextIdx);
-            fubenRepo.save(fuben);
-            return ApiResponse.success(Map.of("completed", true, "wave", nextIdx));
+        if (currentGwId >= totalWaves) {
+            return ApiResponse.success(Map.of("completed", true, "wave", currentGwId));
         }
 
-        fuben.setGwId(nextIdx);
-        fubenRepo.save(fuben);
-
-        int monsterId = di.monsterIds().get(nextIdx);
+        int monsterId = di.monsterIds().get(currentGwId);
         Monster monster = monsterRepo.findById((long) monsterId)
             .orElseThrow(() -> new IllegalArgumentException("怪物不存在"));
 
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("wave", nextIdx);
-        result.put("totalWaves", di.monsterIds().size());
+        result.put("wave", currentGwId);
+        result.put("totalWaves", totalWaves);
         result.put("monsterId", monster.getId());
         result.put("monsterName", monster.getName());
         result.put("monsterLevel", monster.getLevel());

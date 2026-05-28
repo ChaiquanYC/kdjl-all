@@ -130,7 +130,7 @@ export default function BattlePanel({ petId, monsterId, mapId, mapImg, onClose, 
   useEffect(() => {
     setInBattle(true);
     setBattleStartTime(Date.now());
-    apiPost<BattleState>('/battle/init', { petId, monsterId, difficulty: battleDifficulty }).then((res: ApiResponse<BattleState>) => {
+    apiPost<BattleState>('/battle/init', { petId, monsterId, difficulty: battleDifficulty, mapId: mapId ?? null }).then((res: ApiResponse<BattleState>) => {
       if (res.code === 0 && res.data) {
         const d = res.data;
         setState({ ...d, petId, monsterId });

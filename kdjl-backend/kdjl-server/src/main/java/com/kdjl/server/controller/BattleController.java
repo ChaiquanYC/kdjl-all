@@ -17,7 +17,7 @@ public class BattleController {
         this.battleService = battleService;
     }
 
-    public record FightRequest(Long petId, Long monsterId, Integer difficulty) {}
+    public record FightRequest(Long petId, Long monsterId, Integer difficulty, Integer mapId) {}
     public record ActionRequest(String action, Long skillId, Long bagId) {}
 
     /** Old batch PvE — kept for backward compat */
@@ -34,7 +34,7 @@ public class BattleController {
             @RequestBody FightRequest req, Authentication auth) {
         Long uid = (Long) auth.getPrincipal();
         int diff = req.difficulty() != null ? req.difficulty() : 1;
-        return ApiResponse.success(battleService.initBattle(uid, req.petId(), req.monsterId(), diff));
+        return ApiResponse.success(battleService.initBattle(uid, req.petId(), req.monsterId(), diff, req.mapId()));
     }
 
     public record AutoFightRequest(String mode) {} // "gold" or "yb"

@@ -1,6 +1,7 @@
 package com.kdjl.server.service;
 
 import com.kdjl.common.entity.*;
+import com.kdjl.server.config.DungeonConfig;
 import com.kdjl.server.repository.*;
 import com.kdjl.server.battle.*;
 import org.slf4j.Logger;
@@ -35,6 +36,7 @@ public class BattleService {
     private final TeamRepository teamRepo;
     private final GameMapRepository gameMapRepo;
     private final TaskService taskService;
+    private final FubenRepository fubenRepo;
 
     public BattleService(UserPetRepository userPetRepo, MonsterRepository monsterRepo,
                          SkillRepository skillRepo, UserBagRepository bagRepo,
@@ -45,7 +47,8 @@ public class BattleService {
                          SkillSysRepository skillSysRepo,
                          TeamMembersRepository teamMemberRepo, TeamRepository teamRepo,
                          GameMapRepository gameMapRepo,
-                         TaskService taskService) {
+                         TaskService taskService,
+                         FubenRepository fubenRepo) {
         this.userPetRepo = userPetRepo;
         this.monsterRepo = monsterRepo;
         this.skillRepo = skillRepo;
@@ -62,6 +65,7 @@ public class BattleService {
         this.equipEffectService = equipEffectService;
         this.skillSysRepo = skillSysRepo;
         this.taskService = taskService;
+        this.fubenRepo = fubenRepo;
     }
 
     private final ThreadLocalRandom rng = ThreadLocalRandom.current();
@@ -368,7 +372,7 @@ public class BattleService {
      * Initialize a new battle session. Called once when player enters battle.
      */
     @Transactional
-    public Map<String, Object> initBattle(Long playerId, Long userPetId, Long monsterId, int difficulty) {
+    public Map<String, Object> initBattle(Long playerId, Long userPetId, Long monsterId, int difficulty, Integer mapId) {
         UserPet pet = userPetRepo.findById(userPetId)
             .orElseThrow(() -> new IllegalArgumentException("宠物不存在"));
         if (!pet.getPlayerId().equals(playerId)) {
@@ -419,6 +423,7 @@ public class BattleService {
             bonuses.getOrDefault("speed", 0L));
         // Store map type (matches PHP $_SESSION['multi_monsters'] flag)
         session.setMultiMonsters(mapMultiMonsters);
+        session.setMapId(mapId);
         // Set difficulty
         session.setDifficulty(difficulty);
         // Set EXP for UI display
@@ -700,6 +705,8 @@ public class BattleService {
             session.setState(BattleSession.State.WON);
             // Track monster kill for task progress
             taskService.onMonsterKilled(playerId.intValue(), monster.getId());
+            // Auto-advance dungeon progress on kill (matches PHP fbfightGate.php)
+            advanceDungeonProgress(session);
             session.addLog(logEntry);
             Map<String, Object> result = session.toStateMap();
             result.put("phase", "pet");
@@ -812,6 +819,8 @@ public class BattleService {
             session.setState(BattleSession.State.WON);
             // Track monster kill for task progress
             taskService.onMonsterKilled(playerId.intValue(), monster.getId());
+            // Auto-advance dungeon progress on kill (matches PHP fbfightGate.php)
+            advanceDungeonProgress(session);
             session.addLog(logEntry);
 
             // Create new pet from captured monster — use bb template for images/stats
@@ -1245,5 +1254,38 @@ public class BattleService {
                 log.warn("Invalid drop entry: {}", part);
             }
         }
+    }
+
+    /**
+     * Auto-advance dungeon progress when a monster is killed.
+     * Matches PHP fbfightGate.php: updates fuben gwid immediately on kill,
+     * not when the player clicks "continue".
+     */
+    private void advanceDungeonProgress(BattleSession session) {
+        Integer mapId = session.getMapId();
+        if (mapId == null) return;
+        var diOpt = DungeonConfig.getById(mapId);
+        if (diOpt.isEmpty()) return;
+        var di = diOpt.get();
+
+        Long uid = session.getPlayerId();
+        var fuben = fubenRepo.findByPlayerIdAndInmap(uid, mapId).orElse(null);
+        if (fuben == null) {
+            fuben = new Fuben();
+            fuben.setPlayerId(uid);
+            fuben.setInmap(mapId);
+        }
+
+        long now = System.currentTimeMillis() / 1000;
+        int totalWaves = di.monsterIds().size();
+        int currentGwId = fuben.getGwId() != null ? fuben.getGwId() : 0;
+        // PHP legacy guard
+        if (currentGwId > totalWaves) currentGwId = 0;
+
+        int nextIdx = currentGwId + 1;
+        fuben.setSrctime((long) di.cooldown());
+        fuben.setLttime(now);
+        fuben.setGwId(nextIdx);
+        fubenRepo.save(fuben);
     }
 }
