@@ -17,9 +17,9 @@
 /* Extra column gap (PHP box01 + 50px between columns) */
 .column2{padding-left:50px}
 
-/* Sub-category bar */
-.subCats{display:flex;align-items:center;height:28px}
-.subCats img{cursor:pointer;height:25px;width:auto;border:0;vertical-align:middle}
+/* Sub-category bar — PHP: box02 height:28px, images at native 100x100, overflow:visible */
+.subCats{display:flex;align-items:center;gap:2px}
+.subCats img{cursor:pointer;border:0;vertical-align:middle}
 
 /* Column title */
 .colTitle{height:28px;display:flex;align-items:center}
