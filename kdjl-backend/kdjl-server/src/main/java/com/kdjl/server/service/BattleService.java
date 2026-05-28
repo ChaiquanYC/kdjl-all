@@ -131,7 +131,7 @@ public class BattleService {
             // --- Monster attacks pet ---
             hit = rollHit(monster.getHits(), pet.getMiss());
             if (hit) {
-                long dmg = calcMonsterDamage(monster, pet);
+                long dmg = calcMonsterDamage(monster, pet.getMc() != null ? pet.getMc() : 0, pet.getMiss() != null ? pet.getMiss() : 0);
                 petCurrentHp = Math.max(0, petCurrentHp - dmg);
                 r.monsterDamage = dmg;
             } else {
@@ -239,15 +239,13 @@ public class BattleService {
         return Math.max(1, damage);
     }
 
-    private long calcMonsterDamage(Monster monster, UserPet pet) {
+    private long calcMonsterDamage(Monster monster, long petMc, long petMiss) {
         long ac = monster.getAc() != null ? monster.getAc() : 10;
-        long mc = pet.getMc() != null ? pet.getMc() : 0;
-        long base = ac - mc;
+        long base = ac - petMc;
         base = Math.max(1, base);
 
         long hits = monster.getHits() != null ? monster.getHits() : 100;
-        long miss = pet.getMiss() != null ? pet.getMiss() : 0;
-        double hitRate = (hits - miss) / 100.0;
+        double hitRate = (hits - petMiss) / 100.0;
         hitRate = Math.max(0.1, Math.min(1.5, hitRate));
 
         long damage = (long) (base * hitRate) + 1;
@@ -636,11 +634,13 @@ public class BattleService {
         EquipEffectService.BattleEffects battleEff = equipEffectService.computeBattleEffects(allEff, 0, 0); // computed after damage known
 
         // --- Pet attacks monster (with equipment bonuses) ---
-        boolean hit = rollHit((pet.getHits()!=null?pet.getHits():100)+session.getEquipHits()+allEff.hits, monster.getMiss());
+        long petTotalHits = (pet.getHits() != null ? pet.getHits() : 100) - session.getEquipHits() + allEff.hits;
+        boolean hit = rollHit(petTotalHits, monster.getMiss());
         long petDmg = 0;
         if (hit) {
-            long baseDmg = calcDamage((pet.getAc()!=null?pet.getAc():10)+session.getEquipAc()+allEff.ac,
-                (pet.getMc()!=null?pet.getMc():10)+session.getEquipMc()+allEff.mc, monster.getMc(),
+            long petTotalAc = (pet.getAc() != null ? pet.getAc() : 10) - session.getEquipAc() + allEff.ac;
+            long petTotalMc = (pet.getMc() != null ? pet.getMc() : 10) - session.getEquipMc() + allEff.mc;
+            long baseDmg = calcDamage(petTotalAc, petTotalMc, monster.getMc(),
                 skill, pet.getWx(), monster.getWx(), session.getMonsterHp() == session.getMonsterMaxHp());
 
             // Crit check with equipment crit rate
@@ -948,10 +948,12 @@ public class BattleService {
         // --- Monster attacks pet (with equipment damage reduction) ---
         EquipEffectService.Effects allEff = equipEffectService.parseAllEffects(session.getUserPetId());
         equipEffectService.resolvePercentages(allEff, pet);
-        boolean hit = rollHit(monster.getHits(), (pet.getMiss()!=null?pet.getMiss():0)+session.getEquipMiss()+allEff.miss);
+        long petTotalMiss = (pet.getMiss() != null ? pet.getMiss() : 0) - session.getEquipMiss() + allEff.miss;
+        boolean hit = rollHit(monster.getHits(), petTotalMiss);
         long monsterDmg = 0;
         if (hit) {
-            monsterDmg = calcMonsterDamage(monster, pet);
+            long petTotalMcForDef = (pet.getMc() != null ? pet.getMc() : 0) - session.getEquipMc() + allEff.mc;
+            monsterDmg = calcMonsterDamage(monster, petTotalMcForDef, petTotalMiss);
             // Damage reduction (dxsh) — capped at 70%
             long reduce = Math.round(allEff.dxsh * monsterDmg * 0.01);
             long actualDmg = Math.max(1, monsterDmg - reduce);
@@ -1152,8 +1154,8 @@ public class BattleService {
                 boolean goldMode = player.getSysAutoSum() != null && player.getSysAutoSum() > 0;
                 // HP/MP recovery for next battle
                 if (pet != null) {
-                    long maxHp = pet.getSrchp() != null ? pet.getSrchp() : pet.getHp() != null ? pet.getHp() : 100;
-                    long maxMp = pet.getSrcmp() != null ? pet.getSrcmp() : pet.getMp() != null ? pet.getMp() : 50;
+                    long maxHp = (pet.getSrchp() != null ? pet.getSrchp() : 100) + (pet.getAddhp() != null ? pet.getAddhp() : 0);
+                    long maxMp = (pet.getSrcmp() != null ? pet.getSrcmp() : 50) + (pet.getAddmp() != null ? pet.getAddmp() : 0);
                     pet.setHp(maxHp);
                     if (ybMode) pet.setMp(maxMp);
                     else if (goldMode) pet.setMp(maxMp / 2);
