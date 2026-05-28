@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
 import layoutStyles from './ShopLayout.module.css';
@@ -12,7 +13,7 @@ interface ShopItem {
   img?: string; effect?: string; varyname?: number; category?: string;
 }
 interface BagItem {
-  id: number; propId: number; count: number; sell: number;
+  id: number; propId: number; count: number; sell: number; zbing?: number;
   name?: string; img?: string; varyname?: number;
 }
 
@@ -41,7 +42,7 @@ export default function ShopPanel() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const bagTotal = bagItems.filter(i => i.count > 0).length;
+  const bagTotal = bagItems.filter(i => i.count > 0 && i.zbing !== 1).length;
   const maxBag = player?.maxBag ?? 30;
 
   const goldItems = shopItems.filter(i => (i.buy ?? 0) > 0 && (i.yb ?? 0) === 0 && (i.prestige ?? 0) === 0);
@@ -51,10 +52,15 @@ export default function ShopPanel() {
     apiPost('/shop/buy/' + item.id, { count, currency }).then((res: any) => {
       if (res.code === 0) {
         const d = res.data;
-        setMsg((d?.message as string) ?? `购买了${count}个 ${item.name}`);
+        const msg = (d?.message as string) ?? `购买了${count}个 ${item.name}`;
+        setMsg(msg);
+        systips(msg);
         apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); });
         triggerRefresh();
-      } else setMsg(res.message ?? '购买失败');
+      } else {
+        setMsg(res.message ?? '购买失败');
+        systips(res.message ?? '购买失败');
+      }
       setTimeout(() => setMsg(null), 2000);
     });
   };
@@ -62,10 +68,15 @@ export default function ShopPanel() {
   const doSell = (item: BagItem) => {
     apiPost('/bag/sell/' + item.id, { count }).then((res: any) => {
       if (res.code === 0) {
-        setMsg(`卖出成功，获得${res.data?.goldGained ?? 0}金币`);
+        const msg = `卖出成功，获得${res.data?.goldGained ?? 0}金币`;
+        setMsg(msg);
+        systips(msg);
         apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); });
         triggerRefresh();
-      } else setMsg(res.message ?? '卖出失败');
+      } else {
+        setMsg(res.message ?? '卖出失败');
+        systips(res.message ?? '卖出失败');
+      }
       setTimeout(() => setMsg(null), 2000);
     });
   };
@@ -152,9 +163,9 @@ export default function ShopPanel() {
           <table className={layoutStyles.table}>
             <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>卖价</th><th className={styles.thType}>数量</th></tr></thead>
             <tbody>
-              {bagItems.filter(i => i.count > 0).length === 0 ? (
+              {bagItems.filter(i => i.count > 0 && i.zbing !== 1).length === 0 ? (
                 <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
-              ) : bagItems.filter(i => i.count > 0).map(item => (
+              ) : bagItems.filter(i => i.count > 0 && i.zbing !== 1).map(item => (
                 <tr key={item.id} className={`${layoutStyles.row} ${selBag === item.id ? layoutStyles.rowSel : ''}`}
                   onClick={() => { setSelBag(item.id); setSelShop(null); }}>
                   <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>

@@ -80,7 +80,7 @@
 | `uid` | `UserBag.playerId (Long)` | Owner |
 | `sums` | `UserBag.sums (Integer)` | Quantity |
 | `vary` | `UserBag.vary (Integer)` | 1=item, 2=equipment |
-| `zbing` | `UserBag.zbing (Integer)` | Equipment position (0-11) |
+| `zbing` | `UserBag.zbing (Integer)` | 0=unequipped, 1=equipped (hide from bag views) |
 | `zbpets` | `UserBag.equipPetId (Long)` | Which pet is equipped on |
 | `sell` | `UserBag.sell (Integer)` | Sale price |
 | `cantrade` | `UserBag.cantrade (Integer)` | Tradable flag |
