@@ -21,7 +21,7 @@ export default function MarryPanel() {
   const handlePropose = () => {
     apiPost('/marriage/propose', { targetPlayerId: Number(targetId), bagItemId: Number(bagItemId), count: 1 }).then((res: any) => {
       showMsg(res.code === 0 ? '已求婚!' : res.message); fetchData();
-    });
+    }).catch((e: any) => showMsg(e?.response?.data?.message || '求婚失败'));
   };
 
   if (loading) return <div className={styles.loading}>加载中...</div>;
@@ -38,7 +38,7 @@ export default function MarryPanel() {
             if (confirm('离婚将消耗2000水晶, 确定?')) {
               apiPost('/marriage/divorce/request', {}).then((res: any) => {
                 showMsg(res.code === 0 ? '已提出离婚' : res.message); fetchData();
-              });
+              }).catch((e: any) => showMsg(e?.response?.data?.message || '离婚请求失败'));
             }
           }}>提出离婚 (2000水晶)</button>
         </div>
@@ -60,7 +60,7 @@ export default function MarryPanel() {
               <button className={styles.btnSm} onClick={() => {
                 apiPost('/marriage/divorce/cancel', {}).then((res: any) => {
                   showMsg(res.code === 0 ? '已取消离婚' : res.message); fetchData();
-                });
+                }).catch((e: any) => showMsg(e?.response?.data?.message || '取消离婚失败'));
               }}>取消离婚</button>
             </div>
           )}

@@ -54,6 +54,9 @@ export default function RanchPanel() {
       if (res.code === 0) { setMsg(okMsg); fetchData(); triggerRefresh(); }
       else setMsg(res.message);
       setTimeout(() => setMsg(null), 2500);
+    }).catch((err: any) => {
+      setMsg(err?.response?.data?.message || '操作失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 

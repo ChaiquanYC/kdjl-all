@@ -61,19 +61,19 @@ export default function InheritPanel() {
                         if (confirm(res.data.message)) {
                           apiPost('/inherit/complete/' + p.id, { useCrystals: true }).then((r: any) => {
                             showMsg(r.code === 0 ? '传承完成!' : r.message); fetchData();
-                          });
+                          }).catch((e: any) => showMsg(e?.response?.data?.message || '传承失败'));
                         }
                       } else {
                         showMsg(res.code === 0 ? '传承完成!' : res.message); fetchData();
                       }
-                    });
+                    }).catch((e: any) => showMsg(e?.response?.data?.message || '传承请求失败'));
                   }}>取回</button>
                 )}
                 {(p.muchang === 3 || p.muchang === 4 || p.muchang === 5) && (
                   <button className={styles.cancelBtn} onClick={() => {
                     apiPost('/inherit/cancel/' + p.id, {}).then((res: any) => {
                       showMsg(res.code === 0 ? '已取消' : res.message); fetchData();
-                    });
+                    }).catch((e: any) => showMsg(e?.response?.data?.message || '取消失败'));
                   }}>取消</button>
                 )}
               </div>
@@ -93,7 +93,7 @@ export default function InheritPanel() {
                 if (!myPet) { showMsg('请先将宠物加入配对池'); return; }
                 apiPost('/inherit/pair/' + myPet.id + '/' + p.id, {}).then((res: any) => {
                   showMsg(res.code === 0 ? '配对成功!' : res.message); fetchData();
-                });
+                }).catch((e: any) => showMsg(e?.response?.data?.message || '配对失败'));
               }}>配对</button>
             </div>
           ))

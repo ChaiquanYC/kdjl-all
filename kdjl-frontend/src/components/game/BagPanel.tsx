@@ -308,6 +308,12 @@ export default function BagPanel() {
         // Revert optimistic update on failure
         fetchItems();
       }
+    }).catch((err: any) => {
+      // 400 errors from backend (e.g. equipment conditions not met)
+      const msg = err?.response?.data?.message;
+      setUseResult(msg || '使用失败');
+      setTimeout(() => setUseResult(null), 2500);
+      fetchItems(); // Revert optimistic update
     });
   };
 
@@ -322,6 +328,9 @@ export default function BagPanel() {
       setTimeout(() => setUseResult(null), 2000);
       fetchItems();
       fetchPlayer();
+    }).catch((err: any) => {
+      setUseResult(err?.response?.data?.message || '出售失败');
+      setTimeout(() => setUseResult(null), 2000);
     });
   };
 
@@ -336,6 +345,9 @@ export default function BagPanel() {
       setTimeout(() => setUseResult(null), 2000);
       fetchItems();
       setSelectedId(null);
+    }).catch((err: any) => {
+      setUseResult(err?.response?.data?.message || '丢弃失败');
+      setTimeout(() => setUseResult(null), 2000);
     });
   };
 

@@ -72,7 +72,7 @@ export default function AuctionPanel() {
     apiPost('/auction/buy/' + selAuc, { type: auctionType, quantity: qty }).then((res: any) => {
       if (res.code === 0) { toast('购买成功！手续费 ' + (res.data?.fee || 0)); setSelAuc(null); setBuyQty('1'); fetchData(); triggerRefresh(); }
       else toast(res.message);
-    });
+    }).catch((e: any) => toast(e?.response?.data?.message || '购买失败'));
   };
 
   const handleSell = () => {
@@ -87,7 +87,7 @@ export default function AuctionPanel() {
     apiPost('/auction/sell', { bagId: id, price, type: auctionType, quantity: qty }).then((res: any) => {
       if (res.code === 0) { toast('已上架！3小时后过期'); setSellId(''); setSellPrice(''); setSellQty('1'); fetchData(); triggerRefresh(); }
       else toast(res.message);
-    });
+    }).catch((e: any) => toast(e?.response?.data?.message || '上架失败'));
   };
 
   const handleCancel = () => {
@@ -96,7 +96,7 @@ export default function AuctionPanel() {
     apiPost('/auction/cancel/' + selMyAuc).then((res: any) => {
       if (res.code === 0) { toast('已取回'); setSelMyAuc(null); fetchData(); triggerRefresh(); }
       else toast(res.message);
-    });
+    }).catch((e: any) => toast(e?.response?.data?.message || '取回失败'));
   };
 
   const handleRenew = () => {
@@ -105,7 +105,7 @@ export default function AuctionPanel() {
     apiPost('/auction/renew/' + selMyAuc).then((res: any) => {
       if (res.code === 0) { toast('续拍成功！'); setSelMyAuc(null); fetchData(); }
       else toast(res.message);
-    });
+    }).catch((e: any) => toast(e?.response?.data?.message || '续拍失败'));
   };
 
   const handleWithdraw = () => {
@@ -121,7 +121,7 @@ export default function AuctionPanel() {
     apiPost('/auction/withdraw').then((res: any) => {
       if (res.code === 0) { toast('提取成功！'); fetchData(); triggerRefresh(); }
       else toast(res.message);
-    });
+    }).catch((e: any) => toast(e?.response?.data?.message || '提取失败'));
   };
 
   const formatTime = (sec: number | undefined) => {

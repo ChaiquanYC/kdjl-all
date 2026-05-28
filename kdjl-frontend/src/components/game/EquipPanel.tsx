@@ -61,6 +61,9 @@ export default function EquipPanel() {
       if (res.code === 0) { fetchData(); fetchZb(selectedPet.id); refreshBag(); }
       else setMsg(res.message);
       if (res.message) setTimeout(() => setMsg(null), 2500);
+    }).catch((err: any) => {
+      setMsg(err?.response?.data?.message || '装备失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 
@@ -69,6 +72,9 @@ export default function EquipPanel() {
       if (res.code === 0) { fetchData(); if (selectedPet) fetchZb(selectedPet.id); refreshBag(); }
       else setMsg(res.message);
       if (res.message) setTimeout(() => setMsg(null), 2500);
+    }).catch((err: any) => {
+      setMsg(err?.response?.data?.message || '卸下装备失败');
+      setTimeout(() => setMsg(null), 2500);
     });
   };
 
