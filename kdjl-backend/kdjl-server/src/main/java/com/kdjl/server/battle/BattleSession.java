@@ -47,6 +47,8 @@ public class BattleSession {
     private long petNowexp;
     private long petLexp;
     private int difficulty = 1;
+    // Map type from multiMonsters field: "1"=challenge, "2"=tower, "3"=team, "4"=sacred, ""/"0"=normal
+    private String multiMonsters = "";
 
     // Skill cooldowns: skillId -> cooldownEndTime (unix timestamp)
     private final Map<Long, Long> cooldowns = new ConcurrentHashMap<>();
@@ -132,6 +134,8 @@ public class BattleSession {
     public long getPetLexp() { return petLexp; }
     public int getDifficulty() { return difficulty; }
     public void setDifficulty(int difficulty) { this.difficulty = difficulty; }
+    public String getMultiMonsters() { return multiMonsters; }
+    public void setMultiMonsters(String multiMonsters) { this.multiMonsters = multiMonsters != null ? multiMonsters : ""; }
 
     public long getCooldownRemaining(Long skillId) {
         Long end = cooldowns.get(skillId);

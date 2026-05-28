@@ -1686,13 +1686,23 @@ public class BagService {
                 case "mc" -> pet.setMc((pet.getMc() != null ? pet.getMc() : 0) + delta);
                 case "hp" -> {
                     pet.setAddhp((pet.getAddhp() != null ? pet.getAddhp() : 0) + delta);
-                    if (apply) pet.setHp((pet.getHp() != null ? pet.getHp() : 0) + value);
-                    else pet.setHp(Math.max(1, (pet.getHp() != null ? pet.getHp() : 0) + delta));
+                    long maxHp = (pet.getSrchp() != null ? pet.getSrchp() : 100) + (pet.getAddhp() != null ? pet.getAddhp() : 0);
+                    if (apply) {
+                        long newHp = (pet.getHp() != null ? pet.getHp() : 0) + value;
+                        pet.setHp(Math.min(maxHp, Math.max(1, newHp)));
+                    } else {
+                        pet.setHp(Math.max(1, Math.min(maxHp, (pet.getHp() != null ? pet.getHp() : 0) + delta)));
+                    }
                 }
                 case "mp" -> {
                     pet.setAddmp((pet.getAddmp() != null ? pet.getAddmp() : 0) + delta);
-                    if (apply) pet.setMp((pet.getMp() != null ? pet.getMp() : 0) + value);
-                    else pet.setMp(Math.max(0, (pet.getMp() != null ? pet.getMp() : 0) + delta));
+                    long maxMp = (pet.getSrcmp() != null ? pet.getSrcmp() : 50) + (pet.getAddmp() != null ? pet.getAddmp() : 0);
+                    if (apply) {
+                        long newMp = (pet.getMp() != null ? pet.getMp() : 0) + value;
+                        pet.setMp(Math.min(maxMp, Math.max(0, newMp)));
+                    } else {
+                        pet.setMp(Math.max(0, Math.min(maxMp, (pet.getMp() != null ? pet.getMp() : 0) + delta)));
+                    }
                 }
                 case "speed" -> pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 0) + delta);
                 case "hits" -> pet.setHits((pet.getHits() != null ? pet.getHits() : 0) + delta);

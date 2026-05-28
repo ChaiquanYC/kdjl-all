@@ -19,7 +19,8 @@ export default function TowerPanel({ onChallenge, onLeave }: Props) {
   const [tower, setTower] = useState<TowerState | null>(null);
   const [leaderboard, setLeaderboard] = useState<LbEntry[]>([]);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
+  const setSelectedPetId = useGameStore((s) => s.setSelectedPetId);
   const [difficulty, setDifficulty] = useState(1);
   const [loading, setLoading] = useState(false);
 

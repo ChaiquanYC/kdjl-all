@@ -15,7 +15,8 @@ export default function ChallengePanel({ onChallenge, onLeave }: Props) {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
   const [state, setState] = useState<CState | null>(null);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
+  const setSelectedPetId = useGameStore((s) => s.setSelectedPetId);
   const [difficulty, setDifficulty] = useState(1);
   const [loading, setLoading] = useState(false);
 

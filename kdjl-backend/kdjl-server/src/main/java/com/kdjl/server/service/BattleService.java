@@ -377,13 +377,19 @@ public class BattleService {
         Monster monster = monsterRepo.findById(monsterId)
             .orElseThrow(() -> new IllegalArgumentException("怪物不存在"));
 
-        // PHP fbfight_Mod.php:50-56 / Fight_Mod.php:617 — sacred map check
+        // PHP Fight_Mod.php:516-521 — read multiMonsters from current map
+        // Session flag mapping matches PHP: "1"=challenge, "2"=tower, others=normal
         Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        String mapMultiMonsters = "";
         if (player != null && player.getInMap() != null) {
             GameMap currentMap = gameMapRepo.findById(player.getInMap()).orElse(null);
-            if (currentMap != null && "4".equals(currentMap.getMultiMonsters())) {
-                if (pet.getWx() == null || pet.getWx() != 7) {
-                    throw new IllegalArgumentException("只有神圣宠物,才可以在这里战斗！");
+            if (currentMap != null) {
+                mapMultiMonsters = currentMap.getMultiMonsters() != null ? currentMap.getMultiMonsters() : "";
+                // PHP fbfight_Mod.php:50-56 / Fight_Mod.php:617 — sacred map check
+                if ("4".equals(mapMultiMonsters)) {
+                    if (pet.getWx() == null || pet.getWx() != 7) {
+                        throw new IllegalArgumentException("只有神圣宠物,才可以在这里战斗！");
+                    }
                 }
             }
         }
@@ -411,6 +417,8 @@ public class BattleService {
             bonuses.getOrDefault("ac", 0L), bonuses.getOrDefault("mc", 0L),
             bonuses.getOrDefault("hits", 0L), bonuses.getOrDefault("miss", 0L),
             bonuses.getOrDefault("speed", 0L));
+        // Store map type (matches PHP $_SESSION['multi_monsters'] flag)
+        session.setMultiMonsters(mapMultiMonsters);
         // Set difficulty
         session.setDifficulty(difficulty);
         // Set EXP for UI display
@@ -985,13 +993,26 @@ public class BattleService {
         return result;
     }
 
-    /** Start/stop auto-fight. Matches PHP ext_Fight.php */
+    /** Start/stop auto-fight. Matches PHP ext_Fight.php + Fight_Mod.php line 676/718 */
     @Transactional
     public Map<String, Object> setAutoFight(Long playerId, String mode) {
         Player player = playerRepo.findById(playerId.intValue()).orElse(null);
         if (player == null) throw new IllegalArgumentException("玩家不存在");
 
         Map<String, Object> result = new java.util.LinkedHashMap<>();
+
+        if (!"stop".equals(mode)) {
+            // PHP: auto-fight only allowed on normal maps (multi_monsters != "1" && != "2")
+            BattleSession session = sessionMgr.getByPlayer(playerId);
+            if (session != null) {
+                String mm = session.getMultiMonsters();
+                if ("1".equals(mm) || "2".equals(mm)) {
+                    result.put("message", "挑战地图和通天塔无法使用自动战斗！");
+                    result.put("autoFight", false);
+                    return result;
+                }
+            }
+        }
 
         if ("stop".equals(mode)) {
             player.setAutoFitFlag(0);

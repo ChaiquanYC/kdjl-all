@@ -132,15 +132,28 @@ npm run lint        # ESLint
 
 **varyname (道具分类):** 1=辅助(药水), 2=增益(永久属性), 3=捕捉(精灵球), 5=技能书, 7=进化, 8=合体, 9=装备, 10=精炼, 12=礼包/宝箱, 13=特殊(功能), 15=宠物卵, 22=魔法石, 24=卡片, 25=宝石, 26=洗练石, 28=刮刮卡, 55-58=魔塔天赋
 
-**Map types (via `multi_monsters` field):**
-| Type | multi_monsters | Maps | Status |
-|------|---------------|------|--------|
-| Normal map | not set | 1-10, 100+ | Done |
-| Dungeon/副本 | 0 | 11,12,13,14,50,124,127,143,144,151 | Done |
-| Challenge/挑战 | 1 | 125 | Done |
-| Tower/通天塔 | 2 | 126 | Done |
-| Team dungeon | 3 | 128,129,130 | Not implemented |
-| Sacred map/神圣 | 4 | 131-150 | Treated as normal (missing wx==7 check) |
+**Map types** — determined by TWO separate mechanisms (matches PHP):
+
+1. **`multi_monsters` field** (`map` table → `GameMap.multiMonsters`): drives UI template selection in `Team_Mod.php`
+   | multi_monsters | Type | Maps | Template |
+   |---|---|---|---|
+   | "1" | Challenge/挑战 | 125 | `tpl_cteam.html` |
+   | "2" | Tower/通天塔 | 126 | `tpl_tt.html` |
+   | "3" | Team dungeon | 128,129,130 | `tpl_team.html` |
+   | "4" | Sacred/神圣 | 131-150 | `tpl_team.html` |
+   | null/""/"0" | Normal (includes dungeons) | all others | `tpl_team.html` |
+
+2. **`fuben` config** (`config.fuben.php` → Java `DungeonConfig`): independent list of 10 dungeon map IDs (11,12,13,14,50,124,127,143,144,151). NOT related to `multi_monsters` — many non-dungeon maps have `multi_monsters="0"` (e.g., 1,15,20,117-123).
+
+**PHP behavior:**
+- `Team_Mod.php`: `multi_monsters == 1` → challenge template, `== 2` → tower template, else → normal template (handles normal + dungeon maps identically)
+- `Fight_Mod.php`: stores session flag from `multi_monsters` (1=challenge, 3=tower, 2=normal), used by `FightGate.php` for battle behavior
+- `manymapgate.php`: checks `multi_monsters == 3` to validate team membership
+
+**Current implementation:**
+- `MapController.listMaps()` returns `multiMonsters` field ✓
+- `MapPanel.tsx` uses `multiMonsters` for challenge/tower/team routing, `DUNGEON_MAP_IDS` Set for dungeon routing ✓
+- `BattleService.initBattle()` only checks `== "4"` (sacred map wx==7 requirement) — challenge/tower battle logic not yet implemented
 
 ### Data Flow
 

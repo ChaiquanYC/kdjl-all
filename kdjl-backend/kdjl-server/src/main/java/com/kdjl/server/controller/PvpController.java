@@ -125,7 +125,8 @@ public class PvpController {
             levelUpService.addExp(atkPet, expGain);
             result.put("expGained", expGain);
         }
-        atkPet.setHp(atkPet.getSrchp() != null ? atkPet.getSrchp() : atkHp);
+        long maxHp = (atkPet.getSrchp() != null ? atkPet.getSrchp() : 0) + (atkPet.getAddhp() != null ? atkPet.getAddhp() : 0);
+        atkPet.setHp(maxHp > 0 ? maxHp : atkHp);
         playerRepo.save(attacker);
         userPetRepo.save(atkPet);
         result.put("newPrestige", attacker.getPrestige());

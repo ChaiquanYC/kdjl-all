@@ -100,8 +100,8 @@ public class LevelUpService {
             pet.setHits((pet.getHits() != null ? pet.getHits() : 100) + 2);
             pet.setMiss((pet.getMiss() != null ? pet.getMiss() : 0) + 1);
             pet.setSpeed((pet.getSpeed() != null ? pet.getSpeed() : 10) + 1);
-            pet.setHp(pet.getSrchp());
-            pet.setMp(pet.getSrcmp());
+            pet.setHp(pet.getSrchp() + (pet.getAddhp() != null ? pet.getAddhp() : 0));
+            pet.setMp(pet.getSrcmp() + (pet.getAddmp() != null ? pet.getAddmp() : 0));
         } else {
             double czl = parseCzl(pet.getCzl());
             long curSrchp = pet.getSrchp() != null ? pet.getSrchp() : 100;
@@ -122,8 +122,8 @@ public class LevelUpService {
             pet.setSpeed(curSpeed + (long)(wxRow.getSpeed() * czl));
 
             // Reset HP/MP to new max
-            pet.setHp(pet.getSrchp());
-            pet.setMp(pet.getSrcmp());
+            pet.setHp(pet.getSrchp() + (pet.getAddhp() != null ? pet.getAddhp() : 0));
+            pet.setMp(pet.getSrcmp() + (pet.getAddmp() != null ? pet.getAddmp() : 0));
 
             // Update 5-element resistances (kx field)
             String kx = pet.getKx();

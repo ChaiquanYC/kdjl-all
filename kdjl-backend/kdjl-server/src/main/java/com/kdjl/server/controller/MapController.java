@@ -51,6 +51,8 @@ public class MapController {
             map.put("level", m.getLevel() != null ? m.getLevel().replace(",", "-") : "");
             map.put("unlocked", openMap.contains(String.valueOf(m.getId())));
             map.put("needs", m.getNeeds() != null ? m.getNeeds() : "");
+            map.put("multiMonsters", m.getMultiMonsters() != null ? m.getMultiMonsters() : "");
+            map.put("czlprops", m.getCzlprops() != null ? m.getCzlprops() : "");
             maps.add(map);
         }
         return ApiResponse.success(maps);

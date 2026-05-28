@@ -28,7 +28,8 @@ export default function DungeonPanel({ mapId, onChallenge, onLeave }: Props) {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
   const [dungeon, setDungeon] = useState<DungeonData | null>(null);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
+  const setSelectedPetId = useGameStore((s) => s.setSelectedPetId);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

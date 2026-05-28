@@ -9,7 +9,7 @@ import ChallengePanel from './ChallengePanel';
 import styles from './MapPanel.module.css';
 
 interface MapInfo {
-  id: number; name: string; desc: string; level: string; unlocked: boolean; img?: string; gpclist?: string; needs?: string;
+  id: number; name: string; desc: string; level: string; unlocked: boolean; img?: string; gpclist?: string; needs?: string; multiMonsters?: string; czlprops?: string;
 }
 
 interface PetBrief { id: number; name: string; level: number; cardImg?: string; }
@@ -20,7 +20,7 @@ interface MonsterInfo {
 
 interface MapPoint {
   id: number; name: string; left: number; top: number; width: number; height: number;
-  page: number; open?: boolean; dungeon?: boolean; pvp?: boolean; tower?: boolean; teamDungeon?: boolean; challenge?: boolean;
+  page: number; open?: boolean;
 }
 
 // PHP map locations — page 1 (map6.jpg), page 2 (map3.jpg), page 3 (map5.jpg)
@@ -37,15 +37,15 @@ const MAP_POINTS: MapPoint[] = [
   { id: 9,  name: '海市盛楼',   left: 126, top: 271, width: 83, height: 24, page: 1 },
   { id: 10, name: '冰滩',       left: 688, top: 82,  width: 83, height: 24, page: 1 },
   // 副本入口 — PHP tpl_map.html exact positions
-  { id: 11, name: '伊苏王神墓', left: 695, top: 226, width: 90, height: 24, page: 1, dungeon: true },
-  { id: 12, name: '火龙王宫殿', left: 153, top: 32,  width: 90, height: 24, page: 1, dungeon: true },
-  { id: 13, name: '史芬克斯穴', left: 22,  top: 232, width: 90, height: 24, page: 1, dungeon: true },
-  { id: 14, name: '玲珑城',     left: 523, top: 38,  width: 90, height: 24, page: 1, dungeon: true },
-  { id: 151,name: '辉煌大道',   left: 523, top: 226, width: 90, height: 24, page: 1, dungeon: true },
+  { id: 11, name: '伊苏王神墓', left: 695, top: 226, width: 90, height: 24, page: 1 },
+  { id: 12, name: '火龙王宫殿', left: 153, top: 32,  width: 90, height: 24, page: 1 },
+  { id: 13, name: '史芬克斯穴', left: 22,  top: 232, width: 90, height: 24, page: 1 },
+  { id: 14, name: '玲珑城',     left: 523, top: 38,  width: 90, height: 24, page: 1 },
+  { id: 151,name: '辉煌大道',   left: 523, top: 226, width: 90, height: 24, page: 1 },
   // 特殊地点
   { id: 15, name: '圣诞小屋',   left: 367, top: 95,  width: 90, height: 24, page: 1, open: false },
   // 组队副本 (multi_monsters=3) — 遗忘宫殿, requires team
-  { id: 128,name: '遗忘宫殿',   left: 535, top: 177, width: 90, height: 24, page: 1, teamDungeon: true },
+  { id: 128,name: '遗忘宫殿',   left: 535, top: 177, width: 90, height: 24, page: 1 },
   // 战场入口 — 未开放
   { id: 152,name: '神圣战场',   left: 507, top: 285, width: 77, height: 28, page: 1, open: false },
   // Page 2 (map3.jpg) — PHP tpl_mapnew.html
@@ -58,9 +58,9 @@ const MAP_POINTS: MapPoint[] = [
   { id: 121, name: '危之路',    left: 509, top: 184, width: 75, height: 24, page: 2 },
   { id: 109, name: '五指石印',  left: 263, top: 226, width: 75, height: 24, page: 2 },
   // 副本入口 — Page 2
-  { id: 50,  name: '厄非斯深渊', left: 170, top: 280, width: 75, height: 24, page: 2, dungeon: true },
-  { id: 124, name: '阿尔提密林', left: 441, top: 249, width: 75, height: 24, page: 2, dungeon: true },
-  { id: 127, name: '菲拉苛地域', left: 239, top: 99,  width: 88, height: 24, page: 2, dungeon: true },
+  { id: 50,  name: '厄非斯深渊', left: 170, top: 280, width: 75, height: 24, page: 2 },
+  { id: 124, name: '阿尔提密林', left: 441, top: 249, width: 75, height: 24, page: 2 },
+  { id: 127, name: '菲拉苛地域', left: 239, top: 99,  width: 88, height: 24, page: 2 },
   // Page 3 (map5.jpg) — PHP tpl_mapnew1.html
   { id: 140, name: '巨石荒野',   left: 206, top: 53,  width: 75, height: 24, page: 3 },
   { id: 137, name: '迷雾森林',   left: 552, top: 26,  width: 72, height: 24, page: 3 },
@@ -69,12 +69,12 @@ const MAP_POINTS: MapPoint[] = [
   { id: 148, name: '赎罪之塔',   left: 70,  top: 270, width: 75, height: 24, page: 3 },
   { id: 131, name: '埋骨之地',   left: 27,  top: 180, width: 73, height: 24, page: 3 },
   // 副本入口 — Page 3
-  { id: 143, name: '熔岩地宫',   left: 54,  top: 26,  width: 89, height: 24, page: 3, dungeon: true },
-  { id: 144, name: '幻魔之境',   left: 301, top: 269, width: 76, height: 24, page: 3, dungeon: true },
+  { id: 143, name: '熔岩地宫',   left: 54,  top: 26,  width: 89, height: 24, page: 3 },
+  { id: 144, name: '幻魔之境',   left: 301, top: 269, width: 76, height: 24, page: 3 },
   // 通天塔
-  { id: 126, name: '通天塔',     left: 380, top: 160, width: 75, height: 24, page: 3, tower: true },
+  { id: 126, name: '通天塔',     left: 380, top: 160, width: 75, height: 24, page: 3 },
   // 挑战模式
-  { id: 125, name: '琥珀屋',     left: 500, top: 200, width: 75, height: 24, page: 3, challenge: true },
+  { id: 125, name: '琥珀屋',     left: 500, top: 200, width: 75, height: 24, page: 3 },
 ];
 
 interface TeamMemberInfo { playerId: number; nickname: string; state: number; }
@@ -107,6 +107,50 @@ export default function MapPanel({ onChallenge }: Props) {
   const setBattleDifficulty = useGameStore((s) => s.setBattleDifficulty);
   const [difficulty, setDifficulty] = useState(1);
   const leaveMap = () => { apiPost('/player/leave-map', {}).then(() => { setSelectedMap(null); setMonsters([]); triggerRefresh(); }); };
+
+  // Player context menu (PHP tpl_team.html right-click menu)
+  const [ctxMenu, setCtxMenu] = useState<{x:number;y:number;playerId:number;nickname:string}|null>(null);
+  const closeCtxMenu = () => setCtxMenu(null);
+
+  const handlePlayerClick = (p: {id:number;nickname:string}, e: React.MouseEvent) => {
+    e.preventDefault();
+    setCtxMenu({x: e.clientX - 300, y: e.clientY - 100, playerId: p.id, nickname: p.nickname});
+  };
+
+  const handleAddFriend = (playerId: number, nickname: string) => {
+    apiPost('/friend/add/' + playerId, {}).then((res) => {
+      systips(res.code === 0 ? `已添加 ${nickname} 为好友` : (res.message || '添加失败'));
+    }).catch(() => systips('添加好友失败'));
+    closeCtxMenu();
+  };
+
+  const handleWhisper = (nickname: string) => {
+    // Set chat input prefix for whisper
+    const chatInput = document.querySelector<HTMLInputElement>('#chat-input');
+    if (chatInput) { chatInput.value = '//' + nickname + ' '; chatInput.focus(); }
+    closeCtxMenu();
+  };
+
+  const handleChallengePlayer = (playerId: number, nickname: string) => {
+    if (!confirm(`确定要挑战 ${nickname} 吗？`)) return;
+    // Redirect to PvP challenge
+    apiPost('/pvp/challenge/' + playerId, {}).then((res) => {
+      if (res.code === 0) {
+        const d = res.data as Record<string,unknown>;
+        const won = d.won ? '胜利！' : '失败...';
+        const exp = d.expGained || 0;
+        systips(`挑战${nickname} ${won} 获得 ${exp} 经验`);
+        triggerRefresh();
+      } else systips(res.message || '挑战失败');
+    }).catch(() => systips('挑战失败'));
+    closeCtxMenu();
+  };
+
+  const handleViewPet = (playerId: number) => {
+    // Open player's pet view in new panel or redirect
+    systips('侦察功能开发中');
+    closeCtxMenu();
+  };
 
   const fetchMyTeam = () => {
     apiGet<TeamInfo>('/team/my').then((res) => {
@@ -175,17 +219,19 @@ export default function MapPanel({ onChallenge }: Props) {
     }).catch(() => alert('操作失败'));
   };
 
-  const setGameView = useGameStore((s) => s.setGameView);
+  // Dungeons identified by DungeonConfig (PHP: fuben config), NOT by multiMonsters
+  const DUNGEON_MAP_IDS = new Set([11, 12, 13, 14, 50, 124, 127, 143, 144, 151]);
+  const getMapMultiMonsters = (mapId: number): string => maps.find(m => m.id === mapId)?.multiMonsters ?? '';
 
   const handleEnterMap = (mapId: number) => {
     const point = MAP_POINTS.find(p => p.id === mapId);
     if (point && point.open === false) { alert(point.name + '\n暂未开放，敬请期待！'); return; }
-    if (point && point.pvp) { setGameView('pvp'); return; }
-    // Dungeons use dedicated DungeonPanel (PHP tpl_fb.html)
-    if (point && point.dungeon) { setDungeonMapId(mapId); return; }
-    if (point && point.tower) { setTowerMapId(mapId); return; }
-    if (point && point.challenge) { setChallengeMapId(mapId); return; }
-    if (point && point.teamDungeon) {
+    // Route by map type: dungeon (fuben config), challenge/tower/team (multiMonsters)
+    if (DUNGEON_MAP_IDS.has(mapId)) { setDungeonMapId(mapId); return; }
+    const mm = getMapMultiMonsters(mapId);
+    if (mm === '1') { setChallengeMapId(mapId); return; } // 挑战
+    if (mm === '2') { setTowerMapId(mapId); return; }     // 通天塔
+    if (mm === '3') {
       if (!myTeam) { alert('遗忘宫殿为组队副本，需要先创建或加入队伍！'); return; }
       if (!isTeamLeader) { alert('只有队长才能进入组队副本！'); return; }
       // Enter as regular map but with team requirement met
@@ -292,13 +338,12 @@ export default function MapPanel({ onChallenge }: Props) {
 
         {MAP_POINTS.filter(p => p.page === mapPage).map((p) => {
           const isClosed = p.open === false;
-          const isDungeon = p.dungeon === true;
-          const isPvp = p.pvp === true;
-          const isTower = p.tower === true;
-          const isTeamDun = p.teamDungeon === true;
+          const mm = getMapMultiMonsters(p.id);
+          const isSpecial = DUNGEON_MAP_IDS.has(p.id) || mm === '1' || mm === '2' || mm === '3';
           // PHP: special map types are small invisible click areas, no label image
-          if (isDungeon || isPvp || isTower || isTeamDun || p.challenge) {
-            const label = isDungeon ? '副本：' : isPvp ? '战场：' : isTower ? '通天塔：' : isTeamDun ? '组队副本：' : '挑战：';
+          if (isSpecial) {
+            const labelMap: Record<string, string> = { '1': '挑战：', '2': '通天塔：', '3': '组队副本：' };
+            const label = DUNGEON_MAP_IDS.has(p.id) ? '副本：' : (labelMap[mm] || '');
             return (
               <div
                 key={p.id}
@@ -353,6 +398,7 @@ export default function MapPanel({ onChallenge }: Props) {
           <strong>探险 — {selectedMap?.name ?? ''}</strong>
           <p>{selectedMap?.desc ?? ''}</p>
           <p>怪物等级：{selectedMap?.level ?? ''} 级</p>
+          <p>成长限制：{selectedMap?.czlprops ? selectedMap.czlprops.replace(/\|/g, ' ~ ') : '无限制'}</p>
           {selectedMap?.gpclist && <p className={styles.monsterNames}>出现怪物：{selectedMap.gpclist}</p>}
         </div>
         <div className={styles.teamPet}>
@@ -495,13 +541,28 @@ export default function MapPanel({ onChallenge }: Props) {
             <div className={styles.noPlayers}>暂无其他玩家</div>
           ) : (
             onlinePlayers.map(p => (
-              <div key={p.id} className={styles.playerItem}>
+              <div key={p.id} className={styles.playerItem}
+                onClick={(e) => handlePlayerClick(p, e)}
+                onContextMenu={(e) => { e.preventDefault(); handlePlayerClick(p, e); }}
+                title={`${p.nickname} (右键菜单)`}>
                 <img src="/images/ui/team/ren.gif" alt="" className={styles.renIcon} />
                 <span>{p.nickname}</span>
               </div>
             ))
           )}
         </div>
+        {/* Player context menu — PHP team_menu.png */}
+        {ctxMenu && (
+          <div className={styles.ctxOverlay} onClick={closeCtxMenu}>
+            <div className={styles.ctxMenu} style={{left:ctxMenu.x,top:ctxMenu.y}}>
+              <div className={styles.ctxItem} onClick={() => { systips('请先创建队伍，然后让玩家加入'); closeCtxMenu(); }}>邀请组队</div>
+              <div className={styles.ctxItem} onClick={() => handleAddFriend(ctxMenu.playerId, ctxMenu.nickname)}>加为好友</div>
+              <div className={styles.ctxItem} onClick={() => handleChallengePlayer(ctxMenu.playerId, ctxMenu.nickname)}>挑战</div>
+              <div className={styles.ctxItem} onClick={() => handleViewPet(ctxMenu.playerId)}>侦察</div>
+              <div className={styles.ctxItem} onClick={() => handleWhisper(ctxMenu.nickname)}>私聊</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
