@@ -92,7 +92,8 @@ export default function MapPanel({ onChallenge }: Props) {
   const [monsters, setMonsters] = useState<MonsterInfo[]>([]);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
   const [onlinePlayers, setOnlinePlayers] = useState<{id:number;nickname:string;level:number}[]>([]);
-  const [selectedPetId, setSelectedPetId] = useState<number | null>(null);
+  const selectedPetId = useGameStore((s) => s.selectedPetId);
+  const setSelectedPetId = useGameStore((s) => s.setSelectedPetId);
   const [dungeonMapId, setDungeonMapId] = useState<number | null>(null);
   const [towerMapId, setTowerMapId] = useState<number | null>(null);
   const [challengeMapId, setChallengeMapId] = useState<number | null>(null);

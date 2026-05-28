@@ -50,17 +50,21 @@ public class DungeonController {
 
             // Check cooldown from fuben table
             var fuben = fubenRepo.findByPlayerIdAndInmap(uid, di.id()).orElse(null);
-            if (fuben != null && fuben.getLttime() != null) {
+            int totalWaves = di.monsterIds().size();
+            int currentWave = fuben != null && fuben.getGwId() != null ? fuben.getGwId() : 0;
+            // PHP: only apply cooldown when dungeon is completed (gwid >= totalWaves)
+            // If in progress (gwid < totalWaves), player can re-enter freely
+            if (fuben != null && fuben.getLttime() != null && currentWave >= totalWaves) {
                 long now = System.currentTimeMillis() / 1000;
                 long elapsed = now - fuben.getLttime();
                 long remaining = Math.max(0, di.cooldown() - elapsed);
                 m.put("onCooldown", remaining > 0);
                 m.put("cooldownRemaining", remaining);
-                m.put("progress", fuben.getGwId() != null ? fuben.getGwId() : 0);
+                m.put("progress", currentWave);
             } else {
                 m.put("onCooldown", false);
                 m.put("cooldownRemaining", 0);
-                m.put("progress", 0);
+                m.put("progress", currentWave);
             }
             list.add(m);
         }
@@ -84,18 +88,20 @@ public class DungeonController {
         info.put("cooldown", di.cooldown());
         info.put("waveCount", di.monsterIds().size());
 
-        // Player progress
+        // Player progress — PHP: cooldown only applies when completed (gwid >= totalWaves)
         var fuben = fubenRepo.findByPlayerIdAndInmap(uid, di.id()).orElse(null);
-        if (fuben != null && fuben.getLttime() != null) {
+        int totalWaves = di.monsterIds().size();
+        int currentWave = fuben != null && fuben.getGwId() != null ? fuben.getGwId() : 0;
+        if (fuben != null && fuben.getLttime() != null && currentWave >= totalWaves) {
             long elapsed = System.currentTimeMillis() / 1000 - fuben.getLttime();
             long remaining = Math.max(0, di.cooldown() - elapsed);
             info.put("onCooldown", remaining > 0);
             info.put("cooldownRemaining", remaining);
-            info.put("progress", fuben.getGwId() != null ? fuben.getGwId() : 0);
+            info.put("progress", currentWave);
         } else {
             info.put("onCooldown", false);
             info.put("cooldownRemaining", 0);
-            info.put("progress", 0);
+            info.put("progress", currentWave);
         }
 
         // Monster list
@@ -137,28 +143,31 @@ public class DungeonController {
             // Player data might not be loaded; skip level check for now
         }
 
-        // Check cooldown
+        // Check cooldown — PHP: only when completed (gwid >= totalWaves)
         var fuben = fubenRepo.findByPlayerIdAndInmap(uid, di.id()).orElse(null);
         long now = System.currentTimeMillis() / 1000;
+        int totalWaves = di.monsterIds().size();
         if (fuben != null && fuben.getLttime() != null) {
-            long remaining = Math.max(0, di.cooldown() - (now - fuben.getLttime()));
-            if (remaining > 0) return ApiResponse.error("副本冷却中，剩余 " + remaining / 60 + " 分钟");
+            int currentWave = fuben.getGwId() != null ? fuben.getGwId() : 0;
+            if (currentWave >= totalWaves) {
+                long remaining = Math.max(0, di.cooldown() - (now - fuben.getLttime()));
+                if (remaining > 0) return ApiResponse.error("副本冷却中，剩余 " + remaining / 60 + " 分钟");
+            }
         }
-
-        // Get first monster
-        if (di.monsterIds().isEmpty()) return ApiResponse.error("副本怪物配置为空");
-        Monster firstMonster = monsterRepo.findById((long) di.monsterIds().get(0))
-            .orElseThrow(() -> new IllegalArgumentException("怪物不存在"));
-
-        // Create/update fuben record
+        // Reset progress: start from wave 0
         if (fuben == null) {
             fuben = new Fuben();
         }
         fuben.setPlayerId(uid);
         fuben.setInmap(di.id());
         fuben.setGwId(0); // current wave index
-        fuben.setLttime(now);
+        // PHP: lttime is NOT set on entry — only set on monster kill or completion
         fubenRepo.save(fuben);
+
+        // Get first monster
+        if (di.monsterIds().isEmpty()) return ApiResponse.error("副本怪物配置为空");
+        Monster firstMonster = monsterRepo.findById((long) di.monsterIds().get(0))
+            .orElseThrow(() -> new IllegalArgumentException("怪物不存在"));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("dungeonId", di.id());
@@ -185,9 +194,10 @@ public class DungeonController {
         if (fuben == null) return ApiResponse.error("未进入该副本");
 
         int nextIdx = (fuben.getGwId() != null ? fuben.getGwId() : 0) + 1;
+        // PHP: update lttime on every wave kill, not just completion
+        fuben.setLttime(System.currentTimeMillis() / 1000);
         if (nextIdx >= di.monsterIds().size()) {
-            // Dungeon complete — set cooldown
-            fuben.setLttime(System.currentTimeMillis() / 1000);
+            // Dungeon complete — gwid >= totalWaves triggers cooldown
             fuben.setGwId(nextIdx);
             fubenRepo.save(fuben);
             return ApiResponse.success(Map.of("completed", true, "wave", nextIdx));
