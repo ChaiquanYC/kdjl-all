@@ -1,0 +1,18 @@
+.overlay{position:fixed;inset:0;z-index:30000;background:rgba(0,0,0,0.3)}
+
+.dialog{position:fixed;width:320px;background:#2a2218;border:2px solid #D9BD7A;border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.6);color:#e0d0a0;font-size:13px;z-index:30001}
+
+.titleBar{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:linear-gradient(180deg,#4a3820,#2a1a10);border-bottom:1px solid #D9BD7A;border-radius:4px 4px 0 0;cursor:move;user-select:none;font-weight:bold;color:#D9BD7A}
+
+.closeBtn{width:22px;height:22px;background:none;border:1px solid #886644;color:#886644;font-size:16px;line-height:20px;text-align:center;cursor:pointer;border-radius:3px;padding:0}
+.closeBtn:hover{color:#D9BD7A;border-color:#D9BD7A}
+
+.body{padding:16px 14px;line-height:1.8;white-space:pre-line;min-height:60px}
+
+.footer{display:flex;justify-content:center;gap:16px;padding:10px 14px 14px;border-top:1px solid #3a2a18}
+
+.confirmBtn,.cancelBtn{padding:4px 24px;border:1px solid #D9BD7A;border-radius:3px;cursor:pointer;font-size:13px}
+.confirmBtn{background:#4a3820;color:#D9BD7A}
+.confirmBtn:hover{background:#5a4830}
+.cancelBtn{background:#2a1a10;color:#886644}
+.cancelBtn:hover{color:#D9BD7A}

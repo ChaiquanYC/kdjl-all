@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { systips } from '@/stores/systipsStore';
 import type { ApiResponse } from '@/types';
 import styles from './BagPanel.module.css';
 
@@ -182,7 +183,6 @@ export default function BagPanel() {
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [useResult, setUseResult] = useState<string | null>(null);
   const [maxBag, setMaxBag] = useState(30);
   const [tooltip, setTooltip] = useState<{ item: BagItemRaw; x: number; y: number } | null>(null);
   const setBag = useGameStore((s) => s.setBag);
@@ -271,28 +271,26 @@ export default function BagPanel() {
         const err = d.error as string;
         const msg = d.message as string;
         if (err) {
-          setUseResult(err);
-          setTimeout(() => setUseResult(null), 2000);
+          systips(err);
           fetchItems();
           return;
         }
         if (d.equipped) {
-          setUseResult(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
+          systips(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
         } else if (d.unequipped) {
-          setUseResult(`已卸下装备`);
-        } else if (d.type === 'healHP') setUseResult(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
-        else if (d.type === 'healMP') setUseResult(`${item.name} 为宠物恢复了 ${d.healedMP} 点MP`);
-        else if (d.type === 'exp' && d.levelUp) setUseResult(`${item.name} 使宠物升级到 Lv.${d.newLevel}！`);
+          systips(`已卸下装备`);
+        } else if (d.type === 'healHP') systips(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
+        else if (d.type === 'healMP') systips(`${item.name} 为宠物恢复了 ${d.healedMP} 点MP`);
+        else if (d.type === 'exp' && d.levelUp) systips(`${item.name} 使宠物升级到 Lv.${d.newLevel}！`);
         else if (d.type === 'bagExpand' || d.type === 'depotExpand') {
-          setUseResult(msg ?? `扩容成功`);
+          systips(msg ?? `扩容成功`);
           if (d.type === 'bagExpand' && d.newMaxBag) setMaxBag(d.newMaxBag as number);
-        } else if (d.type === 'yuanbao') setUseResult(msg ?? `获得${d.ybGained}元宝`);
-        else if (d.type === 'crystal') setUseResult(msg ?? `获得水晶`);
-        else if (d.type === 'openMap') setUseResult(msg ?? '地图已解锁');
-        else if (d.type === 'openPet') setUseResult(msg ?? `恭喜获得宠物：${d.petName}！`);
-        else if (msg) setUseResult(msg);
-        else setUseResult(`使用了 ${item.name}`);
-        setTimeout(() => setUseResult(null), 2500);
+        } else if (d.type === 'yuanbao') systips(msg ?? `获得${d.ybGained}元宝`);
+        else if (d.type === 'crystal') systips(msg ?? `获得水晶`);
+        else if (d.type === 'openMap') systips(msg ?? '地图已解锁');
+        else if (d.type === 'openPet') systips(msg ?? `恭喜获得宠物：${d.petName}！`);
+        else if (msg) systips(msg);
+        else systips(`使用了 ${item.name}`);
         // Refresh from server to sync
         fetchItems();
         apiGet<PetBrief[]>('/pets').then((r) => {
@@ -303,16 +301,14 @@ export default function BagPanel() {
         // Clear selection if item gone
         if (item.count <= 1) setSelectedId(null);
       } else {
-        setUseResult(res.message ?? '使用失败');
-        setTimeout(() => setUseResult(null), 2000);
+        systips(res.message ?? '使用失败');
         // Revert optimistic update on failure
         fetchItems();
       }
     }).catch((err: any) => {
       // 400 errors from backend (e.g. equipment conditions not met)
       const msg = err?.response?.data?.message;
-      setUseResult(msg || '使用失败');
-      setTimeout(() => setUseResult(null), 2500);
+      systips(msg || '使用失败');
       fetchItems(); // Revert optimistic update
     });
   };
@@ -321,16 +317,14 @@ export default function BagPanel() {
     apiPost<Record<string, unknown>>('/bag/sell/' + item.id, { count: 1 }).then((res) => {
       if (res.code === 0 && res.data) {
         const d = res.data;
-        setUseResult(`出售 ${d.sold} x${d.count}，获得 ${d.goldGained} 金币`);
+        systips(`出售 ${d.sold} x${d.count}，获得 ${d.goldGained} 金币`);
       } else {
-        setUseResult(res.message ?? '出售失败');
+        systips(res.message ?? '出售失败');
       }
-      setTimeout(() => setUseResult(null), 2000);
       fetchItems();
       fetchPlayer();
     }).catch((err: any) => {
-      setUseResult(err?.response?.data?.message || '出售失败');
-      setTimeout(() => setUseResult(null), 2000);
+      systips(err?.response?.data?.message || '出售失败');
     });
   };
 
@@ -338,16 +332,14 @@ export default function BagPanel() {
     if (!confirm(`确定丢弃 ${item.name} 吗？`)) return;
     apiPost<Record<string, unknown>>('/bag/drop/' + item.id, {}).then((res) => {
       if (res.code === 0) {
-        setUseResult(`已丢弃 ${item.name}`);
+        systips(`已丢弃 ${item.name}`);
       } else {
-        setUseResult(res.message ?? '丢弃失败');
+        systips(res.message ?? '丢弃失败');
       }
-      setTimeout(() => setUseResult(null), 2000);
       fetchItems();
       setSelectedId(null);
     }).catch((err: any) => {
-      setUseResult(err?.response?.data?.message || '丢弃失败');
-      setTimeout(() => setUseResult(null), 2000);
+      systips(err?.response?.data?.message || '丢弃失败');
     });
   };
 
@@ -355,7 +347,6 @@ export default function BagPanel() {
 
   return (
     <div className={styles.container}>
-      {useResult && <div className={styles.toast}>{useResult}</div>}
 
       {/* Close button — PHP .close_btn */}
       <button className={styles.closeBtn} onClick={() => closePanel(null)} />

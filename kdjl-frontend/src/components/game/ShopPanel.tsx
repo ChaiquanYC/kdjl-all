@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
+import ConfirmDialog from './ConfirmDialog';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ShopPanel.module.css';
 
@@ -27,6 +28,7 @@ export default function ShopPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -45,9 +47,7 @@ export default function ShopPanel() {
   const goldItems = shopItems.filter(i => (i.buy ?? 0) > 0 && (i.yb ?? 0) === 0 && (i.prestige ?? 0) === 0);
   const prestigeItems = shopItems.filter(i => (i.prestige ?? 0) > 0);
 
-  const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
-    const cost = (currency === 'money' ? item.buy : item.prestige) * count;
-    if (!confirm(`确定购买 ${count}个 ${item.name}？共${cost}${currency==='money'?'金币':'威望'}`)) return;
+  const doBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
     apiPost('/shop/buy/' + item.id, { count, currency }).then((res: any) => {
       if (res.code === 0) {
         const d = res.data;
@@ -59,11 +59,7 @@ export default function ShopPanel() {
     });
   };
 
-  const handleSell = () => {
-    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
-    const item = bagItems.find(i => i.id === selBag);
-    if (!item) return;
-    if (!confirm(`确定卖出 ${count}个 ${item.name}？共${(item.sell??0)*count}金币`)) return;
+  const doSell = (item: BagItem) => {
     apiPost('/bag/sell/' + item.id, { count }).then((res: any) => {
       if (res.code === 0) {
         setMsg(`卖出成功，获得${res.data?.goldGained ?? 0}金币`);
@@ -74,12 +70,31 @@ export default function ShopPanel() {
     });
   };
 
+  const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
+    const cost = (currency === 'money' ? item.buy : item.prestige) * count;
+    setConfirmDialog({
+      message: `确定购买 ${count}个 ${item.name}？共${cost}${currency === 'money' ? '金币' : '威望'}`,
+      onConfirm: () => { doBuy(item, currency); setConfirmDialog(null); },
+    });
+  };
+
+  const handleSell = () => {
+    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
+    const item = bagItems.find(i => i.id === selBag);
+    if (!item) return;
+    setConfirmDialog({
+      message: `确定卖出 ${count}个 ${item.name}？共${(item.sell ?? 0) * count}金币`,
+      onConfirm: () => { doSell(item); setConfirmDialog(null); },
+    });
+  };
+
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
   const displayItems = tab === 1 ? goldItems : prestigeItems;
   const curLabel = tab === 1 ? '金币商店' : '威望商店';
 
   return (
+    <>
     <ShopLayout
       leftBg="/images/ui/shop01.jpg"
       onReturn={() => setGameView('city')}
@@ -156,5 +171,12 @@ export default function ShopPanel() {
         </div>
       </div>
     </ShopLayout>
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ''}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
+    </>
   );
 }

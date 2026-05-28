@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { systips } from '@/stores/systipsStore';
 import styles from './PetList.module.css';
 
 interface PetData {
@@ -33,14 +34,27 @@ interface LearnableSkill {
 }
 
 const ELE_RESIST = ['金抗','木抗','水抗','火抗','土抗'];
-const SLOT_LABELS = ['翅膀','头部','身体','脚部','武器','项链','戒指','翅膀','手镯','宝石','道具','特殊'];
+// Maps CSS visual position (s0-s11) → DB postion value (matching PHP tpl_bb.html layout)
+const SLOT_MAP = [
+  { dbPos: 0,  label: '' },       // s0  (200,5)   = PHP .i11 = zbsx装备属性汇总
+  { dbPos: 2,  label: '身体' },   // s1  (4,5)     = PHP .i1
+  { dbPos: 1,  label: '头部' },   // s2  (144,5)   = PHP .i2
+  { dbPos: 5,  label: '项链' },   // s3  (282,5)   = PHP .i3
+  { dbPos: 4,  label: '武器' },   // s4  (4,69)    = PHP .i4
+  { dbPos: 8,  label: '手镯' },   // s5  (282,69)  = PHP .i5
+  { dbPos: 3,  label: '脚部' },   // s6  (4,132)   = PHP .i6
+  { dbPos: 6,  label: '戒指' },   // s7  (282,132) = PHP .i7
+  { dbPos: 7,  label: '翅膀' },   // s8  (4,196)   = PHP .i8
+  { dbPos: 9,  label: '宝石' },   // s9  (144,196) = PHP .i9
+  { dbPos: 10, label: '道具' },   // s10 (282,196) = PHP .i10
+  { dbPos: 11, label: '' },       // s11 (200,5)   = PHP .i12 = extra
+];
 
 export default function PetList() {
   const [pets, setPets] = useState<PetData[]>([]);
   const [bagItems, setBagItems] = useState<BagItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(1);
-  const [msg, setMsg] = useState<string | null>(null);
   const [etip, setEtip] = useState<{ itemId: number; x: number; y: number } | null>(null);
   const [skills, setSkills] = useState<SkillInfo[]>([]);
   const [learnable, setLearnable] = useState<LearnableSkill[]>([]);
@@ -92,9 +106,8 @@ export default function PetList() {
   const handleSetMain = (petId: number) => {
     apiPost('/pets/set-main/' + petId, {}).then(() => {
       fetchPlayer().then(() => {
-        setMsg('已设为主战宠物'); triggerRefresh();
+        systips('已设为主战宠物'); triggerRefresh();
         setSelectedId(petId);
-        setTimeout(() => setMsg(null), 2000);
       });
     });
   };
@@ -103,12 +116,11 @@ export default function PetList() {
     if (!selectedPet) return;
     apiPost('/pets/' + selectedPet.id + '/skills/learn/' + skillSysId, {}).then((res: any) => {
       if (res.code === 0 && res.data) {
-        setMsg('学会了 ' + (res.data.learned ?? ''));
+        systips('学会了 ' + (res.data.learned ?? ''));
         apiGet<SkillInfo[]>('/pets/' + selectedPet.id + '/skills').then(r => {
           if (r.code === 0 && r.data) setSkills(r.data);
         });
-      } else setMsg(res.message ?? '学习失败');
-      setTimeout(() => setMsg(null), 2500);
+      } else systips(res.message ?? '学习失败');
     });
   };
 
@@ -138,13 +150,12 @@ export default function PetList() {
     if (!confirm(`确定取下 ${item.name} 吗？`)) return;
     apiPost('/bag/unequip/' + item.id, {}).then((res: any) => {
       if (res.code === 0) {
-        setMsg('装备取下成功');
+        systips('装备取下成功');
         Promise.all([apiGet<PetData[]>('/pets'), apiGet<BagItem[]>('/bag')]).then(([p, b]) => {
           if (p.code === 0 && p.data) setPets(p.data);
           if (b.code === 0 && b.data) setBagItems(b.data);
         });
-      } else setMsg(res.message ?? '取下失败');
-      setTimeout(() => setMsg(null), 2000);
+      } else systips(res.message ?? '取下失败');
     });
   };
 
@@ -162,7 +173,6 @@ export default function PetList() {
 
   return (
     <div className={styles.container}>
-      {msg && <div className={styles.toast}>{msg}</div>}
       {etip && (
         <div className={styles.equipTip} style={{ left: etip.x + 12, top: etip.y - 40 }}>
           {(() => {
@@ -222,17 +232,19 @@ export default function PetList() {
           <div className={styles.tabEq}>
             <div className={styles.equipPanel}>
               <div className={styles.equipSlots}>
-                {SLOT_LABELS.map((label, i) => {
-                  const img = getEquipImg(i);
-                  const equipItem = getEquipItem(i);
+                {SLOT_MAP.map((slot, i) => {
+                  // pos 0 and 11 are zbsx/extra placeholders, not real equipment slots
+                  if (slot.dbPos === 0 || slot.dbPos === 11) return <div key={i} className={`${styles.slot} ${styles['s' + i]}`} />;
+                  const img = getEquipImg(slot.dbPos);
+                  const equipItem = getEquipItem(slot.dbPos);
                   return (
                     <div key={i} className={`${styles.slot} ${styles['s' + i]}`}
                       onMouseEnter={(e) => equipItem && setEtip({ itemId: equipItem.id, x: e.clientX, y: e.clientY })}
                       onMouseMove={(e) => setEtip(prev => prev ? { ...prev, x: e.clientX, y: e.clientY } : null)}
                       onMouseLeave={() => setEtip(null)}
-                      onDoubleClick={() => equipItem && handleUnequip(i)}>
-                      {img ? <img src={img} alt={equipItem?.name ?? label} className={styles.slotImg} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                        : <span>{label}</span>}
+                      onDoubleClick={() => equipItem && handleUnequip(slot.dbPos)}>
+                      {img ? <img src={img} alt={equipItem?.name ?? slot.label} className={styles.slotImg} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        : <span>{slot.label}</span>}
                     </div>
                   );
                 })}
@@ -318,12 +330,11 @@ export default function PetList() {
                           e.stopPropagation();
                           apiPost('/pets/' + selectedPet.id + '/skills/upgrade/' + s.id, {}).then((res: any) => {
                             if (res.code === 0) {
-                              setMsg(res.data?.upgraded + ' 升级到 Lv.' + res.data?.newLevel);
+                              systips(res.data?.upgraded + ' 升级到 Lv.' + res.data?.newLevel);
                               apiGet<SkillInfo[]>('/pets/' + selectedPet.id + '/skills').then(r => {
                                 if (r.code === 0 && r.data) setSkills(r.data);
                               });
-                            } else setMsg(res.message);
-                            setTimeout(() => setMsg(null), 2000);
+                            } else systips(res.message);
                           });
                         }}>升级</button>
                       )}

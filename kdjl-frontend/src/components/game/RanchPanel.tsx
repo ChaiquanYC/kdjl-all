@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
+import { systips } from '@/stores/systipsStore';
 import styles from './RanchPanel.module.css';
 
 interface PetBrief { id: number; name: string; level: number; wx?: number; czl?: string; img?: string; cardImg?: string; }
@@ -16,7 +17,6 @@ export default function RanchPanel() {
   const [carriedPets, setCarriedPets] = useState<PetDetail[]>([]);
   const [ranchPets, setRanchPets] = useState<PetBrief[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [showDetail, setShowDetail] = useState<any | null>(null);
   const setGameView = useGameStore((s) => s.setGameView);
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
@@ -51,12 +51,10 @@ export default function RanchPanel() {
 
   const doApi = (url: string, okMsg: string) => {
     apiPost<Record<string, unknown>>(url, {}).then((res: any) => {
-      if (res.code === 0) { setMsg(okMsg); fetchData(); triggerRefresh(); }
-      else setMsg(res.message);
-      setTimeout(() => setMsg(null), 2500);
+      if (res.code === 0) { systips(okMsg); fetchData(); triggerRefresh(); }
+      else systips(res.message);
     }).catch((err: any) => {
-      setMsg(err?.response?.data?.message || '操作失败');
-      setTimeout(() => setMsg(null), 2500);
+      systips(err?.response?.data?.message || '操作失败');
     });
   };
 
@@ -68,8 +66,6 @@ export default function RanchPanel() {
 
   return (
     <div className={styles.task}>
-      {msg && <div className={styles.msg}>{msg}</div>}
-
       {/* PHP mcbbshow — pet detail popup */}
       {showDetail && (
         <div className={styles.detailPopup}>

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
+import ConfirmDialog from './ConfirmDialog';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './SmShopPanel.module.css';
 
@@ -156,6 +157,7 @@ export default function SmShopPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
   const [tooltip, setTooltip] = useState<{ item: ShopItem | BagItem; x: number; y: number } | null>(null);
   const maxBag = player?.maxBag ?? 30;
 
@@ -180,9 +182,7 @@ export default function SmShopPanel() {
   const curLabel = tab === 1 ? '元宝' : tab === 2 ? '水晶' : 'VIP积分';
   const bagTotal = bagItems.filter(i => i.count > 0).length;
 
-  const handleBuy = () => {
-    if (!selShop) { setMsg('请先选择商品'); return; }
-    if (!confirm(`确定购买 ${count}个商品？`)) return;
+  const doBuy = () => {
     apiPost('/shop/buy/' + selShop, { count, currency }).then((res: any) => {
       if (res.code === 0) {
         setMsg(`购买了${count}个商品`);
@@ -193,14 +193,22 @@ export default function SmShopPanel() {
     });
   };
 
-  const handleSell = () => {
-    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
-    if (!confirm(`确定卖出 ${count}个物品？`)) return;
+  const doSell = () => {
     apiPost('/bag/sell/' + selBag, { count }).then((res: any) => {
       if (res.code === 0) { setMsg('卖出成功'); apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); }); triggerRefresh(); }
       else setMsg(res.message ?? '卖出失败');
       setTimeout(() => setMsg(null), 2000);
     });
+  };
+
+  const handleBuy = () => {
+    if (!selShop) { setMsg('请先选择商品'); return; }
+    setConfirmDialog({ message: `确定购买 ${count}个商品？`, onConfirm: () => { doBuy(); setConfirmDialog(null); } });
+  };
+
+  const handleSell = () => {
+    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
+    setConfirmDialog({ message: `确定卖出 ${count}个物品？`, onConfirm: () => { doSell(); setConfirmDialog(null); } });
   };
 
   const hoverProps = (item: ShopItem | BagItem) => ({
@@ -212,6 +220,7 @@ export default function SmShopPanel() {
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
   return (
+    <>
     <ShopLayout
       leftBg="/images/ui/smshop01.jpg"
       onReturn={() => setGameView('city')}
@@ -305,5 +314,12 @@ export default function SmShopPanel() {
         <div className={styles.bagFoot}>背包空间：{bagTotal}/{maxBag}</div>
       </div>
     </ShopLayout>
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ''}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
+    </>
   );
 }

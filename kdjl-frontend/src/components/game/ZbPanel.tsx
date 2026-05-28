@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
+import ConfirmDialog from './ConfirmDialog';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ZbPanel.module.css';
 
@@ -43,6 +44,7 @@ export default function ZbPanel() {
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
   const maxBag = player?.maxBag ?? 30;
 
   useEffect(() => {
@@ -67,8 +69,7 @@ export default function ZbPanel() {
 
   const bagTotal = bagItems.filter(i => i.count > 0).length;
 
-  const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
-    if (!confirm(`确定购买 ${count}个 ${item.name}？`)) return;
+  const doBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
     apiPost('/shop/buy/' + item.id, { count, currency }).then((res: any) => {
       if (res.code === 0) {
         setMsg(`购买了${count}个 ${item.name}`);
@@ -79,9 +80,7 @@ export default function ZbPanel() {
     });
   };
 
-  const handleSell = () => {
-    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
-    if (!confirm(`确定卖出 ${count}个物品？`)) return;
+  const doSell = () => {
     apiPost('/bag/sell/' + selBag, { count }).then((res: any) => {
       if (res.code === 0) {
         setMsg(`卖出成功，获得${res.data?.goldGained ?? 0}金币`);
@@ -92,11 +91,21 @@ export default function ZbPanel() {
     });
   };
 
+  const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
+    setConfirmDialog({ message: `确定购买 ${count}个 ${item.name}？`, onConfirm: () => { doBuy(item, currency); setConfirmDialog(null); } });
+  };
+
+  const handleSell = () => {
+    if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
+    setConfirmDialog({ message: `确定卖出 ${count}个物品？`, onConfirm: () => { doSell(); setConfirmDialog(null); } });
+  };
+
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
   const curLabel = tab === 1 ? '装备商店' : '威望装备';
 
   return (
+    <>
     <ShopLayout
       leftBg="/images/ui/zb01.jpg"
       onReturn={() => setGameView('city')}
@@ -171,5 +180,12 @@ export default function ZbPanel() {
         <div className={layoutStyles.colFoot}>背包空间：{bagTotal}/{maxBag}</div>
       </div>
     </ShopLayout>
+      <ConfirmDialog
+        open={confirmDialog !== null}
+        message={confirmDialog?.message ?? ''}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={() => setConfirmDialog(null)}
+      />
+    </>
   );
 }

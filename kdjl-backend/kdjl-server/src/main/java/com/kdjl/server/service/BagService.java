@@ -1317,19 +1317,21 @@ public class BagService {
 
     /** PHP usedProps.php: recursive chest opening — if given item is a chest, open it too */
     private void openChestRecursive(Long playerId, long propId, int count, List<Map<String, Object>> givenItems) {
+        openChestRecursive(playerId, propId, count, givenItems, 0);
+    }
+
+    private void openChestRecursive(Long playerId, long propId, int count, List<Map<String, Object>> givenItems, int recursionDepth) {
+        if (recursionDepth >= 20) return;
         Props prop = propsRepo.findById(propId).orElse(null);
         if (prop == null || prop.getEffect() == null) return;
         String eff = prop.getEffect();
         if (!eff.startsWith("giveitems:") && !eff.startsWith("randitem:")) return;
 
-        // Recursive chest found — open it (max 3 levels deep to prevent infinite loops)
         String recPrefix = eff.startsWith("randitem:") ? "randitem:" : "giveitems:";
         String chestBody = eff.replace(recPrefix, "");
         boolean isRandom = recPrefix.equals("randitem:");
         String[] items = isRandom ? chestBody.split("\\|") : chestBody.split(",");
-        int depth = 0;
         for (String itemStr : items) {
-            if (depth >= 3) break;
             String[] parts = itemStr.split(":");
             if (parts.length < 2) continue;
             try {
@@ -1340,12 +1342,13 @@ public class BagService {
                     if ((int)(Math.random() * prob) >= 1) continue;
                     addItemToBag(playerId, childPropId, childCount);
                     givenItems.add(Map.of("propId", childPropId, "count", childCount, "fromChest", true));
+                    openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
                     break;
                 } else {
                     addItemToBag(playerId, childPropId, childCount);
                     givenItems.add(Map.of("propId", childPropId, "count", childCount, "fromChest", true));
+                    openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
                 }
-                depth++;
             } catch (NumberFormatException ignored) {}
         }
     }
