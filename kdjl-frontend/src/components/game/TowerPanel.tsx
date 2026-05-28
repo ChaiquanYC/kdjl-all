@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
 import styles from './TowerPanel.module.css';
 
 interface PetBrief { id: number; name: string; level: number; cardImg?: string; }
@@ -16,6 +17,7 @@ const STARS = ['','★','★★','★★★','★★★★','★★★★★'];
 
 export default function TowerPanel({ onChallenge, onLeave }: Props) {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const player = useAuthStore((s) => s.player);
   const [tower, setTower] = useState<TowerState | null>(null);
   const [leaderboard, setLeaderboard] = useState<LbEntry[]>([]);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
@@ -32,7 +34,13 @@ export default function TowerPanel({ onChallenge, onLeave }: Props) {
     ]).then(([tRes, lRes, pRes]) => {
       if (tRes.code === 0 && tRes.data) setTower(tRes.data);
       if (lRes.code === 0 && lRes.data) setLeaderboard(lRes.data);
-      if (pRes.code === 0 && pRes.data) setLocalPets(pRes.data);
+      if (pRes.code === 0 && pRes.data) {
+        setLocalPets(pRes.data);
+        if (!selectedPetId && pRes.data.length > 0) {
+          const mainPet = player?.mbid ? pRes.data.find(p => p.id === player.mbid) : null;
+          setSelectedPetId(mainPet ? mainPet.id : pRes.data[0].id);
+        }
+      }
     }).catch(() => {});
   }, []);
 

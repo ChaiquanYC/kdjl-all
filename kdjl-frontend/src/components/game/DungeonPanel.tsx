@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
 import styles from './DungeonPanel.module.css';
 
 interface PetBrief { id: number; name: string; level: number; cardImg?: string; }
@@ -26,6 +27,7 @@ const DUNGEON_IMG: Record<number, string> = {
 
 export default function DungeonPanel({ mapId, onChallenge, onLeave }: Props) {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const player = useAuthStore((s) => s.player);
   const [dungeon, setDungeon] = useState<DungeonData | null>(null);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
   const selectedPetId = useGameStore((s) => s.selectedPetId);
@@ -38,7 +40,13 @@ export default function DungeonPanel({ mapId, onChallenge, onLeave }: Props) {
       apiGet<PetBrief[]>('/pets'),
     ]).then(([dRes, pRes]) => {
       if (dRes.code === 0 && dRes.data) setDungeon(dRes.data as DungeonData);
-      if (pRes.code === 0 && pRes.data) setLocalPets(pRes.data);
+      if (pRes.code === 0 && pRes.data) {
+        setLocalPets(pRes.data);
+        if (!selectedPetId && pRes.data.length > 0) {
+          const mainPet = player?.mbid ? pRes.data.find(p => p.id === player.mbid) : null;
+          setSelectedPetId(mainPet ? mainPet.id : pRes.data[0].id);
+        }
+      }
       setLoading(false);
     }).catch(() => setLoading(false));
   }, [mapId]);

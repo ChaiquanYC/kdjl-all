@@ -165,7 +165,13 @@ export default function MapPanel({ onChallenge }: Props) {
       apiGet<PetBrief[]>('/pets'),
     ]).then(([mapRes, petRes]) => {
       if (mapRes.code === 0 && mapRes.data) setMaps(mapRes.data);
-      if (petRes.code === 0 && petRes.data) setLocalPets(petRes.data);
+      if (petRes.code === 0 && petRes.data) {
+        setLocalPets(petRes.data);
+        if (!selectedPetId && petRes.data.length > 0) {
+          const mainPet = player?.mbid ? petRes.data.find(p => p.id === player.mbid) : null;
+          setSelectedPetId(mainPet ? mainPet.id : petRes.data[0].id);
+        }
+      }
     }).catch(() => {});
     fetchMyTeam();
   }, [refreshTrigger]);

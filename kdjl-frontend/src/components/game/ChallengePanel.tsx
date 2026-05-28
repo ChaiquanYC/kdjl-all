@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
+import { useAuthStore } from '@/stores/authStore';
 import styles from './ChallengePanel.module.css';
 
 interface PetBrief { id: number; name: string; level: number; cardImg?: string; }
@@ -13,6 +14,7 @@ interface Props {
 
 export default function ChallengePanel({ onChallenge, onLeave }: Props) {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const player = useAuthStore((s) => s.player);
   const [state, setState] = useState<CState | null>(null);
   const [pets, setLocalPets] = useState<PetBrief[]>([]);
   const selectedPetId = useGameStore((s) => s.selectedPetId);
@@ -26,7 +28,13 @@ export default function ChallengePanel({ onChallenge, onLeave }: Props) {
       apiGet<PetBrief[]>('/pets'),
     ]).then(([sRes, pRes]) => {
       if (sRes.code === 0 && sRes.data) { setState(sRes.data); setDifficulty(sRes.data.difficulty || 1); }
-      if (pRes.code === 0 && pRes.data) setLocalPets(pRes.data);
+      if (pRes.code === 0 && pRes.data) {
+        setLocalPets(pRes.data);
+        if (!selectedPetId && pRes.data.length > 0) {
+          const mainPet = player?.mbid ? pRes.data.find(p => p.id === player.mbid) : null;
+          setSelectedPetId(mainPet ? mainPet.id : pRes.data[0].id);
+        }
+      }
     }).catch(() => {});
   }, []);
 
