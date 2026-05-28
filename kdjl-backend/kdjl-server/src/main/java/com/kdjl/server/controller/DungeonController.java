@@ -183,6 +183,12 @@ public class DungeonController {
             }
         }
 
+        // Update player's current map (PHP: set $user['inmap'] on dungeon enter)
+        if (player.getInMap() == null || !player.getInMap().equals(di.id())) {
+            player.setInMap(di.id());
+            playerRepo.save(player);
+        }
+
         Fuben fuben = existingFuben != null ? existingFuben : new Fuben();
         fuben.setPlayerId(uid);
         fuben.setInmap(di.id());
@@ -209,7 +215,12 @@ public class DungeonController {
         return ApiResponse.success(result);
     }
 
-    /** Return current wave monster to continue. BattleService already advances gwid on kill. */
+    /**
+     * Return next wave monster to continue.
+     * Primary advancement is done by BattleService.advanceDungeonProgress() on monster kill.
+     * If it didn't fire (e.g. session lost), this fallback advances progress.
+     * The fallback does NOT update lttime so it can fire repeatedly if needed.
+     */
     @Transactional
     @PostMapping("/{id}/next-wave")
     public ApiResponse<Map<String, Object>> nextWave(@PathVariable Long id, Authentication auth) {
@@ -224,7 +235,9 @@ public class DungeonController {
         int currentGwId = fuben.getGwId() != null ? fuben.getGwId() : 0;
         if (currentGwId > totalWaves) currentGwId = 0; // PHP legacy guard
 
-        // If BattleService didn't auto-advance (lttime not recently updated), fallback manual advance
+        // If BattleService didn't auto-advance (lttime not recently updated), fallback advance.
+        // Don't update lttime here — if the fallback fires, advanceDungeonProgress isn't working,
+        // and we need the fallback to keep working for subsequent waves too.
         long now = System.currentTimeMillis() / 1000;
         Long lttime = fuben.getLttime();
         if (lttime == null || (now - lttime) > 5) {
@@ -232,7 +245,7 @@ public class DungeonController {
                 currentGwId = currentGwId + 1;
                 fuben.setGwId(currentGwId);
                 fuben.setSrctime((long) di.cooldown());
-                fuben.setLttime(now);
+                // NOTE: intentionally NOT updating lttime — so fallback can fire again
                 fubenRepo.save(fuben);
             }
         }

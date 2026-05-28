@@ -1258,12 +1258,15 @@ public class BattleService {
 
     /**
      * Auto-advance dungeon progress when a monster is killed.
-     * Matches PHP fbfightGate.php: updates fuben gwid immediately on kill,
-     * not when the player clicks "continue".
+     * Matches PHP fbfightGate.php: updates fuben gwid immediately on kill.
+     * The nextWave fallback will handle cases where this method didn't fire.
      */
     private void advanceDungeonProgress(BattleSession session) {
         Integer mapId = session.getMapId();
-        if (mapId == null) return;
+        if (mapId == null) {
+            log.warn("advanceDungeonProgress: mapId is null, cannot advance progress");
+            return;
+        }
         var diOpt = DungeonConfig.getById(mapId);
         if (diOpt.isEmpty()) return;
         var di = diOpt.get();
@@ -1271,21 +1274,23 @@ public class BattleService {
         Long uid = session.getPlayerId();
         var fuben = fubenRepo.findByPlayerIdAndInmap(uid, mapId).orElse(null);
         if (fuben == null) {
+            log.warn("advanceDungeonProgress: no fuben record for uid={} mapId={}, creating", uid, mapId);
             fuben = new Fuben();
             fuben.setPlayerId(uid);
             fuben.setInmap(mapId);
+            fuben.setGwId(0);
         }
 
         long now = System.currentTimeMillis() / 1000;
         int totalWaves = di.monsterIds().size();
         int currentGwId = fuben.getGwId() != null ? fuben.getGwId() : 0;
-        // PHP legacy guard
-        if (currentGwId > totalWaves) currentGwId = 0;
+        if (currentGwId > totalWaves) currentGwId = 0; // PHP legacy guard
 
         int nextIdx = currentGwId + 1;
         fuben.setSrctime((long) di.cooldown());
         fuben.setLttime(now);
         fuben.setGwId(nextIdx);
         fubenRepo.save(fuben);
+        log.info("advanceDungeonProgress: gwid {} -> {} uid={} mapId={}", currentGwId, nextIdx, uid, mapId);
     }
 }
