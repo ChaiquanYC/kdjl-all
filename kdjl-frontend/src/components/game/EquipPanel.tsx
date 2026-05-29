@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
+import { formatEffectText, parseEffects } from '@/utils/equipEffect';
 import styles from './EquipPanel.module.css';
 
 interface EquipItem { id: number; propId: number; equipPetId: number | null; zbing: number;
@@ -131,8 +132,8 @@ export default function EquipPanel() {
       {Object.keys(totalBonuses).length > 0 && (
         <div className={styles.bonusBar}>
           <span className={styles.bonusLabel}>装备加成:</span>
-          {Object.entries(totalBonuses).map(([k, v]) => (
-            <span key={k} className={styles.bonusItem}>{k}+{v}</span>
+          {parseEffects(Object.entries(totalBonuses).map(([k, v]) => `${k}:${v}`).join(',')).map((e, i) => (
+            <span key={i} className={styles.bonusItem}>{e.value > 0 ? '+' : ''}{e.value}{e.isPercent ? '%' : ''}{e.label}</span>
           ))}
         </div>
       )}
@@ -157,7 +158,7 @@ export default function EquipPanel() {
                   <div className={styles.slotItem}>
                     {item.img && <img src={`/images/props/${item.img}`} className={styles.slotItemImg} alt="" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />}
                     <span className={styles.slotItemName}>{item.name}</span>
-                    {item.effect && <span className={styles.slotEffect}>{item.effect}</span>}
+                    {item.effect && <span className={styles.slotEffect}>{formatEffectText(item.effect)}</span>}
                   </div>
                 ) : (
                   <div className={styles.slotEmptyText}>空</div>
@@ -177,7 +178,7 @@ export default function EquipPanel() {
               {unusedEquip.map((item) => (
                 <div key={item.id} className={styles.equipCard} onClick={() => handleEquip(item.id)}>
                   <span className={styles.equipName}>{item.name ?? `装备#${item.propId}`}</span>
-                  {item.effect && <span className={styles.equipEffect}>{item.effect}</span>}
+                  {item.effect && <span className={styles.equipEffect}>{formatEffectText(item.effect)}</span>}
                   <button className={styles.wearBtn}>穿戴</button>
                 </div>
               ))}

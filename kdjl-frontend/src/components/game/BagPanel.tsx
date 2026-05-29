@@ -250,12 +250,15 @@ export default function BagPanel() {
 
   const mainPetId = useAuthStore((s) => s.player?.mbid);
   const selectedPetId = useGameStore((s) => s.selectedPetId);
+  // Default to selected pet, fallback to main pet
   const activePetId = selectedPetId ?? mainPetId;
 
   const handleUse = (item: BagItemRaw) => {
     if (needsPet(item)) {
-      if (!activePetId) { alert('请先在牧场设置主战宠物！'); return; }
-      doUse(item, activePetId);
+      // Equipment always goes to main pet
+      const targetPetId = item.varyname === 9 ? (mainPetId ?? activePetId) : activePetId;
+      if (!targetPetId) { alert('请先在牧场设置主战宠物！'); return; }
+      doUse(item, targetPetId);
     } else {
       // Player-only: chests, currency, double-exp, auto-fight, openpet, expand, etc.
       doUse(item, 0);

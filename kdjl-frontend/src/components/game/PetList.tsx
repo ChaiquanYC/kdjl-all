@@ -3,6 +3,7 @@ import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
+import { parseEffects } from '@/utils/equipEffect';
 import styles from './PetList.module.css';
 
 interface PetData {
@@ -21,8 +22,19 @@ interface PetData {
 
 interface BagItem {
   id: number; name?: string; img?: string; propId: number;
-  effect?: string; requires?: string; sell?: number; buy?: number;
+  effect?: string; effectDesc?: string; requires?: string; sell?: number; buy?: number;
   usages?: string; expire?: string; propsColor?: number;
+  // Equipment fields (matching BagPanel)
+  varyname?: number; postion?: number;
+  series?: string; serieseffect?: string; serieseffectDesc?: string;
+  seriesPieces?: { id: number; name: string }[];
+  seriesTotalPieces?: number;
+  seriesBonusConfig?: Record<number, Record<number, number>>;
+  pluseffect?: string; pluseffectDesc?: string;
+  plusflag?: number; pluspid?: number; plusget?: string; plusnum?: number;
+  plusTimesEffect?: string;
+  holeInfo?: string; holeInfoDesc?: string;
+  prestige?: number; yb?: number;
 }
 
 interface SkillInfo {
@@ -34,6 +46,10 @@ interface LearnableSkill {
 }
 
 const ELE_RESIST = ['金抗','木抗','水抗','火抗','土抗'];
+const SLOT_NAMES = ['武器','衣服','头盔','鞋子','项链','戒指左','戒指右','护腕','腰带','特殊','翅膀'];
+const PROPS_COLORS: Record<number, string> = {
+  1: '#FEFDFA', 2: '#0067CB', 3: '#9833DC', 4: '#14FD10', 5: '#FED625', 6: '#ED9037',
+};
 // Maps CSS visual position (s0-s11) → DB postion value (matching PHP tpl_bb.html layout)
 const SLOT_MAP = [
   { dbPos: 0,  label: '' },       // s0  (200,5)   = PHP .i11 = zbsx装备属性汇总
@@ -174,19 +190,75 @@ export default function PetList() {
   return (
     <div className={styles.container}>
       {etip && (
-        <div className={styles.equipTip} style={{ left: etip.x + 12, top: etip.y - 40 }}>
+        <div className={styles.equipTip} style={{ left: etip.x + 12, top: Math.max(0, etip.y - 160) }}>
           {(() => {
             const item = bagItems.find(b => b.id === etip.itemId);
             if (!item) return <span>装备 #{etip.itemId}</span>;
+            const vn = item.varyname;
+            const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
+            const requiresText = (item as any).requiresDesc || item.requires || '';
+            const requiresLines: string[] = requiresText ? requiresText.split('，') : [];
+            const holeLines: string[] = item.holeInfoDesc ? item.holeInfoDesc.split('\n') : [];
+            // Get currently equipped propIds for this pet
+            const equippedPropIds = new Set<number>();
+            zbMap.forEach((bagId) => {
+              const bagItem = bagItems.find(b => b.id === bagId);
+              if (bagItem?.propId) equippedPropIds.add(bagItem.propId);
+            });
             return (
               <>
                 {item.img && <img src={`/images/props/${item.img}`} className={styles.tipImg} alt="" />}
-                <div className={styles.tipName}>{item.name}</div>
-                {item.effect && <div className={styles.tipRow}>效果：{item.effect}</div>}
-                {item.requires && <div className={styles.tipRow}>需要：{item.requires}</div>}
+                <div className={styles.tipName} style={{ color: PROPS_COLORS[item.propsColor ?? 1] }}>{item.name}</div>
+                {vn === 9 && slotName && (
+                  <div className={styles.tipRow}>位置：{slotName}装备{item.plusflag === 1 ? '(可强化)' : '(不可强化)'}</div>
+                )}
+                {(item.effectDesc || item.effect) && <div className={styles.tipRow}>效果：{item.effectDesc || item.effect}</div>}
+                {requiresText && requiresText !== '0' && (
+                  <>
+                    <div className={styles.tipRow}>需求：</div>
+                    {requiresLines.map((line, i) => <div key={i} className={styles.tipRow} style={{ paddingLeft: 12 }}>{line}</div>)}
+                  </>
+                )}
+                {item.plusTimesEffect && item.plusTimesEffect !== '0' && item.plusget && <div className={styles.tipRow}>强化：{item.plusget}</div>}
+                {item.plusnum != null && item.plusnum > 0 && <div className={styles.tipRow}>镶嵌孔：{item.plusnum}</div>}
+                {holeLines.length > 0 && (
+                  <>
+                    <div className={styles.tipRow}>已镶嵌：</div>
+                    {holeLines.map((line, i) => <div key={i} className={styles.tipRow} style={{ paddingLeft: 12, color: '#14FD10' }}>{line}</div>)}
+                  </>
+                )}
+                {(item.pluseffectDesc || item.pluseffect) && <div className={styles.tipRow} style={{ color: '#9833DC' }}>附加：{item.pluseffectDesc || item.pluseffect}</div>}
+                {item.series && (
+                  <div className={styles.tipRow}>
+                    <span style={{ color: '#FED625' }}>套装：{item.series}{item.serieseffectDesc ? '（' + item.serieseffectDesc + '）' : ''}</span>
+                    {item.seriesPieces && item.seriesPieces.length > 0 && (
+                      <div style={{ paddingLeft: 12, marginTop: 2 }}>
+                        {item.seriesPieces.map((piece, i) => (
+                          <div key={i} style={{ color: equippedPropIds.has(piece.id) ? '#FED625' : '#888' }}>
+                            {equippedPropIds.has(piece.id) ? '✓' : '○'} {piece.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {item.seriesBonusConfig && (
+                      <div style={{ paddingLeft: 12, marginTop: 4, fontSize: 11, color: '#aaa' }}>
+                        阶段加成：
+                        {Object.entries(item.seriesBonusConfig).map(([effectIdx, thresholds]) => (
+                          <div key={effectIdx}>
+                            {Object.entries(thresholds as Record<number, number>)
+                              .sort(([a], [b]) => Number(a) - Number(b))
+                              .map(([pieces, mult]) => `${pieces}件×${mult}`)
+                              .join(' → ')}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {item.usages && <div className={styles.tipRow}>{item.usages}</div>}
+                {item.prestige != null && item.prestige > 0 && <div className={styles.tipRow}>威望：{item.prestige}</div>}
                 {item.expire && <div className={styles.tipRow}>{item.expire}</div>}
-                {item.sell != null && <div className={styles.tipRow}>售价：{item.sell}金</div>}
+                <div className={styles.tipRow}>售价：{item.sell ?? 0}金{item.buy ? ' / 买价：' + item.buy + '金' : ''}{item.yb ? ' / ' + item.yb + '元宝' : ''}</div>
               </>
             );
           })()}
@@ -208,9 +280,8 @@ export default function PetList() {
         </div>
         <div className={styles.petCards}>
           {petCards.map((p) => (
-            <div key={p.id} className={`${styles.petCard} ${p.id === selectedId ? styles.petCardActive : ''}`}
-              onClick={() => setSelectedId(p.id)}
-              onDoubleClick={() => { if (p.id !== mainPetId) handleSetMain(p.id); }}>
+            <div key={p.id} className={`${styles.petCard} ${p.id === mainPetId ? styles.petCardActive : ''}`}
+              onClick={() => { setSelectedId(p.id); if (p.id !== mainPetId) handleSetMain(p.id); }}>
               {p.cardImg ? <img src={`/images/bb/${p.cardImg}`} alt="" /> : <div className={styles.noCard}>{p.name}</div>}
               <span>{p.name}<br />Lv.{p.level}</span>
             </div>
@@ -264,6 +335,28 @@ export default function PetList() {
               <div>闪避：{selectedPet.miss}</div>
               <div>速度：{selectedPet.speed}</div>
               <div>成长：{selectedPet.czl ?? '-'}</div>
+              {(() => {
+                const allEffects: Record<string, number> = {};
+                zbMap.forEach((bagId) => {
+                  const item = bagItems.find(b => b.id === bagId);
+                  if (item?.effect) {
+                    item.effect.split(',').forEach((eff) => {
+                      const [k, v] = eff.split(':');
+                      if (k && v) allEffects[k] = (allEffects[k] || 0) + (Number(v) || 0);
+                    });
+                  }
+                });
+                const formatted = parseEffects(Object.entries(allEffects).map(([k, v]) => `${k}:${v}`).join(','));
+                if (formatted.length === 0) return null;
+                return (
+                  <div className={styles.equipBonus}>
+                    <div className={styles.equipBonusTitle}>装备加成</div>
+                    {formatted.map((e, i) => (
+                      <div key={i} className={styles.equipBonusItem}>{e.value > 0 ? '+' : ''}{e.value}{e.isPercent ? '%' : ''}{e.label}</div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}

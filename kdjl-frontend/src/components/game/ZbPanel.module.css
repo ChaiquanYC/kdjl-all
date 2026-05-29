@@ -4,6 +4,8 @@
 .t1,.t2{display:block;width:90px;height:29px;background:url('/images/ui/zb02.jpg') no-repeat}
 .t1{background-position:0 0}.tabOn .t1{background-position:0 -29px}
 .t2{background-position:-90px 0}.tabOn .t2{background-position:-90px -29px}
+.t3{display:block;width:90px;height:29px;background:#693600;color:#FED625;text-align:center;line-height:29px;font-size:12px;font-weight:bold}
+.tabOn .t3{background:#8B4513}
 
 /* Resource bar */
 .resBar{position:absolute;top:4px;left:442px;display:flex;align-items:center;gap:4px;font-size:12px;color:#333}
@@ -18,3 +20,23 @@
 .thName{width:90px}.tdName{width:90px}
 .thPrice{width:55px}.tdPrice{width:55px}
 .thReq{}.tdReq{font-size:10px;color:#888}
+
+/* Strengthen styles */
+.strengthenInfo{padding:10px;height:100%;display:flex;flex-direction:column;gap:10px}
+.strengthenEmpty{display:flex;align-items:center;justify-content:center;height:100%;color:#888;font-size:12px}
+.strengthenEquip{display:flex;gap:10px;padding:10px;background:#fffceb;border:1px solid #D9BD7A;border-radius:4px}
+.strengthenEquipImg{width:48px;height:48px;display:flex;align-items:center;justify-content:center;background:#f5f0e0;border-radius:4px}
+.strengthenEquipImg img{max-width:40px;max-height:40px}
+.strengthenEquipInfo{flex:1;font-size:12px;line-height:1.8}
+.strengthenEquipName{font-weight:bold;color:#693600;font-size:13px}
+.strengthenAuxSection{flex:1;overflow:auto}
+.strengthenAuxTitle{font-size:12px;color:#693600;font-weight:bold;margin-bottom:6px}
+.strengthenAuxList{display:flex;flex-wrap:wrap;gap:6px}
+.strengthenAuxEmpty{font-size:11px;color:#888}
+.strengthenAuxItem{display:flex;align-items:center;gap:4px;padding:4px 8px;background:#fff;border:1px solid #D9BD7A;border-radius:4px;cursor:pointer;font-size:11px}
+.strengthenAuxItem:hover{background:#fffceb}
+.strengthenAuxSel{background:#D9BD7A!important;color:#fff}
+.strengthenAuxItem img{width:20px;height:20px}
+.strengthenBtn{width:100%;padding:10px;background:#8B4513;color:#FED625;border:none;border-radius:4px;font-size:14px;font-weight:bold;cursor:pointer}
+.strengthenBtn:hover{background:#693600}
+.strengthenBtn:disabled{background:#ccc;cursor:not-allowed}

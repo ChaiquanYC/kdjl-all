@@ -18,6 +18,52 @@ public class EquipEffectService {
     private static final Logger log = LoggerFactory.getLogger(EquipEffectService.class);
     private static final int DXSH_CAP = 70;
 
+    // 套装阶段配置: seriesName -> effectIndex -> {pieceCount -> multiplier}
+    private static final Map<String, Map<Integer, Map<Integer, Double>>> SET_BONUS_CONFIG = new HashMap<>();
+    static {
+        // 盛世辉煌套装
+        Map<Integer, Map<Integer, Double>> sshh = new HashMap<>();
+        sshh.put(1, Map.of(6, 0.5, 8, 1.0, 10, 1.5));
+        SET_BONUS_CONFIG.put("盛世辉煌套装", sshh);
+
+        // 情殇
+        Map<Integer, Map<Integer, Double>> qs = new HashMap<>();
+        qs.put(1, Map.of(6, 0.3, 8, 0.6, 9, 0.8));
+        qs.put(2, Map.of(6, 0.25, 8, 0.35, 9, 0.55));
+        SET_BONUS_CONFIG.put("情殇", qs);
+
+        // 厄菲斯套装
+        Map<Integer, Map<Integer, Double>> efs = new HashMap<>();
+        efs.put(1, Map.of(6, 0.3, 8, 0.6, 10, 0.8));
+        efs.put(2, Map.of(6, 0.25, 8, 0.35, 10, 0.55));
+        SET_BONUS_CONFIG.put("厄菲斯套装", efs);
+
+        // 玲珑一套
+        Map<Integer, Map<Integer, Double>> ll = new HashMap<>();
+        ll.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("玲珑一套", ll);
+
+        // 圣光套装
+        Map<Integer, Map<Integer, Double>> sg = new HashMap<>();
+        sg.put(1, Map.of(6, 0.15, 8, 0.25, 10, 0.45));
+        SET_BONUS_CONFIG.put("圣光套装", sg);
+
+        // 神恩
+        Map<Integer, Map<Integer, Double>> se = new HashMap<>();
+        se.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("神恩", se);
+
+        // 阿尔提套装
+        Map<Integer, Map<Integer, Double>> aet = new HashMap<>();
+        aet.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("阿尔提套装", aet);
+
+        // 神圣战场套装
+        Map<Integer, Map<Integer, Double>> sszc = new HashMap<>();
+        sszc.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("神圣战场套装", sszc);
+    }
+
     private final UserBagRepository bagRepo;
     private final PropsRepository propsRepo;
 
@@ -188,13 +234,34 @@ public class EquipEffectService {
         }
         if (count == 0) return;
 
-        // Apply effects up to the count
+        // Get multiplier from config
+        String seriesName = extractSeriesName(series);
+        Map<Integer, Map<Integer, Double>> bonusConfig = seriesName != null ? SET_BONUS_CONFIG.get(seriesName) : null;
+
+        // Apply effects with multiplier
         String[] effects = seriesEffect.split(",");
-        for (int i = 0; i < Math.min(count, effects.length); i++) {
+        for (int i = 0; i < effects.length; i++) {
             String[] kv = effects[i].split(":");
             if (kv.length < 2) continue;
             String key = kv[0];
             long val = parseLong(kv[1]);
+
+            // Apply multiplier if configured
+            double multiplier = 1.0;
+            if (bonusConfig != null) {
+                Map<Integer, Double> thresholds = bonusConfig.get(i + 1); // effectIndex is 1-based
+                if (thresholds != null) {
+                    // Find the highest threshold that count meets
+                    for (Map.Entry<Integer, Double> entry : thresholds.entrySet()) {
+                        if (count >= entry.getKey()) {
+                            multiplier = entry.getValue();
+                        }
+                    }
+                }
+            }
+
+            val = Math.round(val * multiplier);
+
             // Same processing as pluseffect
             switch (key) {
                 case "ac" -> eff.ac += val;

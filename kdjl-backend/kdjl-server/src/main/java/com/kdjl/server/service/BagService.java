@@ -18,6 +18,52 @@ public class BagService {
     private final PlayerRepository playerRepo;
     private final PlayerExtRepository playerExtRepo;
     private final PetRepository petRepo;
+
+    // 套装阶段配置: seriesName -> effectIndex -> {pieceCount -> multiplier}
+    private static final Map<String, Map<Integer, Map<Integer, Double>>> SET_BONUS_CONFIG = new HashMap<>();
+    static {
+        // 盛世辉煌套装
+        Map<Integer, Map<Integer, Double>> sshh = new HashMap<>();
+        sshh.put(1, Map.of(6, 0.5, 8, 1.0, 10, 1.5));
+        SET_BONUS_CONFIG.put("盛世辉煌套装", sshh);
+
+        // 情殇
+        Map<Integer, Map<Integer, Double>> qs = new HashMap<>();
+        qs.put(1, Map.of(6, 0.3, 8, 0.6, 9, 0.8));
+        qs.put(2, Map.of(6, 0.25, 8, 0.35, 9, 0.55));
+        SET_BONUS_CONFIG.put("情殇", qs);
+
+        // 厄菲斯套装
+        Map<Integer, Map<Integer, Double>> efs = new HashMap<>();
+        efs.put(1, Map.of(6, 0.3, 8, 0.6, 10, 0.8));
+        efs.put(2, Map.of(6, 0.25, 8, 0.35, 10, 0.55));
+        SET_BONUS_CONFIG.put("厄菲斯套装", efs);
+
+        // 玲珑一套
+        Map<Integer, Map<Integer, Double>> ll = new HashMap<>();
+        ll.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("玲珑一套", ll);
+
+        // 圣光套装
+        Map<Integer, Map<Integer, Double>> sg = new HashMap<>();
+        sg.put(1, Map.of(6, 0.15, 8, 0.25, 10, 0.45));
+        SET_BONUS_CONFIG.put("圣光套装", sg);
+
+        // 神恩
+        Map<Integer, Map<Integer, Double>> se = new HashMap<>();
+        se.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("神恩", se);
+
+        // 阿尔提套装
+        Map<Integer, Map<Integer, Double>> aet = new HashMap<>();
+        aet.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("阿尔提套装", aet);
+
+        // 神圣战场套装
+        Map<Integer, Map<Integer, Double>> sszc = new HashMap<>();
+        sszc.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
+        SET_BONUS_CONFIG.put("神圣战场套装", sszc);
+    }
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
     private final WarPlayerRepository warPlayerRepo;
@@ -83,7 +129,37 @@ public class BagService {
                 m.put("usagesDesc", resolveUsages(p.getUsages()));
                 m.put("cantrade", i.getCantrade());
                 m.put("propslock", p.getPropslock() != null ? p.getPropslock() : 0);
-                m.put("series", p.getSeries());
+                // series format: "套装名:ID1|ID2|ID3" — parse and get piece names
+                String seriesRaw = p.getSeries();
+                if (seriesRaw != null && !seriesRaw.isEmpty() && !"0".equals(seriesRaw)) {
+                    int colonIdx = seriesRaw.indexOf(":");
+                    String seriesName = colonIdx > 0 ? seriesRaw.substring(0, colonIdx) : seriesRaw;
+                    m.put("series", seriesName);
+                    // Parse piece IDs and get their names
+                    if (colonIdx > 0 && colonIdx < seriesRaw.length() - 1) {
+                        String[] pieceIds = seriesRaw.substring(colonIdx + 1).split("\\|");
+                        List<Map<String, Object>> pieces = new ArrayList<>();
+                        for (String pieceIdStr : pieceIds) {
+                            try {
+                                Long pieceId = Long.parseLong(pieceIdStr.trim());
+                                Props pieceProps = propsRepo.findById(pieceId).orElse(null);
+                                if (pieceProps != null) {
+                                    Map<String, Object> piece = new LinkedHashMap<>();
+                                    piece.put("id", pieceId);
+                                    piece.put("name", pieceProps.getName());
+                                    pieces.add(piece);
+                                }
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        m.put("seriesPieces", pieces);
+                        m.put("seriesTotalPieces", pieceIds.length);
+                    }
+                    // Add set bonus config for this series
+                    Map<Integer, Map<Integer, Double>> bonusConfig = SET_BONUS_CONFIG.get(seriesName);
+                    if (bonusConfig != null) {
+                        m.put("seriesBonusConfig", bonusConfig);
+                    }
+                }
                 m.put("serieseffect", p.getSerieseffect());
                 m.put("serieseffectDesc", resolveAttribList(p.getSerieseffect()));
                 m.put("pluseffect", p.getPluseffect());
@@ -92,6 +168,7 @@ public class BagService {
                 m.put("pluspid", p.getPlusPropId());
                 m.put("plusget", p.getPlusget());
                 m.put("plusnum", p.getPlusnum());
+                m.put("plusTimesEffect", i.getPlusTimesEffect());
                 m.put("holeInfo", i.getHoleInfo());
                 m.put("holeInfoDesc", resolveHoleInfo(i.getHoleInfo()));
                 m.put("prestige", p.getPrestige());
@@ -127,6 +204,7 @@ public class BagService {
                     m.put("name", p.getName());
                     m.put("img", p.getImg());
                     m.put("effect", p.getEffect());
+                    m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
                 }
             }
             return m;
