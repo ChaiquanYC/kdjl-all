@@ -1,0 +1,180 @@
+/* Register page — matches PHP reg1.php layout */
+.layout {
+  min-height: 100vh;
+  background: url('/images/login/bg.gif') repeat-x #000;
+  display: flex;
+  justify-content: center;
+}
+
+.wrap {
+  width: 1000px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: url('/images/login/bg.jpg') no-repeat center center;
+  min-height: 600px;
+}
+
+.topBanner {
+  display: block;
+}
+
+/* Role selection area */
+.roleArea {
+  display: flex;
+  align-items: stretch;
+}
+
+.sideImg {
+  display: block;
+}
+
+.roleBg {
+  background: url('/images/login/role.jpg') no-repeat;
+  width: 707px;
+  height: 382px;
+  display: flex;
+  align-items: stretch;
+}
+
+.roleRow {
+  display: flex;
+  width: 100%;
+}
+
+.roleSlot {
+  width: 117px;
+  height: 382px;
+  cursor: pointer;
+  position: relative;
+}
+
+.roleSlot:hover .roleSprite {
+  opacity: 1;
+}
+
+.roleSprite {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url('/images/login/role_hover.jpg') no-repeat;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+/* Sprite offsets for each role */
+.roleSprite[data-role="1"] { background-position: -1px 0; }
+.roleSprite[data-role="3"] { background-position: -119px 0; }
+.roleSprite[data-role="5"] { background-position: -237px 0; }
+.roleSprite[data-role="2"] { background-position: -354px 0; }
+.roleSprite[data-role="4"] { background-position: -473px 0; }
+.roleSprite[data-role="6"] { background-position: -590px 0; }
+
+/* Active/selected role */
+.roleActive .roleSprite {
+  opacity: 1;
+}
+
+/* Bottom input bar */
+.bottomBar {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.inputBar {
+  flex: 1;
+  background: url('/images/login/r05.jpg') no-repeat;
+  min-height: 72px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 20px;
+  position: relative;
+}
+
+.errorTip {
+  color: #f00;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #333;
+}
+
+.input, .inputWide {
+  border: 1px solid #6bb111;
+  padding: 3px 6px;
+  font-size: 12px;
+  font-family: Arial, Helvetica, sans-serif;
+  outline: none;
+  background: #fff;
+}
+
+.input { width: 100px; }
+.inputWide { width: 120px; }
+
+.statusOk { color: #2a9d2a; font-size: 12px; }
+.statusFail { color: #f00; font-size: 12px; }
+
+.okBtn {
+  background: url('/images/login/okbtn.jpg') no-repeat;
+  width: 88px;
+  height: 52px;
+  border: none;
+  cursor: pointer;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.okBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Pet selection modal */
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: #000;
+  opacity: 0.5;
+  z-index: 99;
+}
+
+.petModal {
+  position: absolute;
+  z-index: 100;
+}
+
+.petTable {
+  border-collapse: collapse;
+}
+
+.petTopMid {
+  background: url('/images/login/zc07.gif') repeat-x;
+  width: 357px;
+}
+
+.petBotMid {
+  background: url('/images/login/zc27.jpg') repeat-x;
+  width: 505px;
+}
+
+/* Link back to login */
+.loginLink {
+  color: #fff;
+  font-size: 13px;
+  text-decoration: none;
+  margin-top: 8px;
+}
+.loginLink:hover {
+  text-decoration: underline;
+}
