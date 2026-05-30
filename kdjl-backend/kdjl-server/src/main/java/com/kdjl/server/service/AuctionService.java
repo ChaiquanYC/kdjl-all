@@ -107,7 +107,7 @@ public class AuctionService {
     // ---- List for auction ----
 
     @Transactional
-    public Map<String, Object> listForAuction(Long playerId, Long bagId, int price, String type, int quantity) {
+    public Map<String, Object> listForAuction(Long playerId, Long bagId, int price, String type, int quantity, String buyerNickname) {
         checkCooldown(playerId);
         if (price <= 0) throw new IllegalArgumentException("价格必须大于0");
         if (("sj".equals(type) || "yb".equals(type)) && price < 10)
@@ -124,6 +124,15 @@ public class AuctionService {
         long myAuctions = bagRepo.findByPlayerId(playerId).stream()
             .filter(b -> b.getPsum() != null && b.getPsum() > 0).count();
         if (myAuctions >= MAX_AUCTIONS) throw new IllegalArgumentException("最多同时上架" + MAX_AUCTIONS + "件");
+
+        // Set buyCode if buyer specified
+        if (buyerNickname != null && !buyerNickname.trim().isEmpty()) {
+            Player target = playerRepo.findByNickname(buyerNickname.trim()).orElse(null);
+            if (target == null) throw new IllegalArgumentException("指定购买人不存在");
+            item.setBuyCode(crc32(buyerNickname.trim()));
+        } else {
+            item.setBuyCode(0L);
+        }
 
         long now = System.currentTimeMillis() / 1000;
         item.setPstime(now); item.setPetime(now + EXPIRE_SECONDS);

@@ -14,6 +14,7 @@ public interface PlayerRepository extends JpaRepository<Player, Integer> {
     Optional<Player> findByUsername(String username);
     boolean existsByUsername(String username);
     boolean existsByNickname(String nickname);
+    Optional<Player> findByNickname(String nickname);
 
     @Query("SELECT p.id, p.nickname, p.money FROM Player p WHERE p.money > 0 ORDER BY p.money DESC")
     List<Object[]> findTopByMoney();

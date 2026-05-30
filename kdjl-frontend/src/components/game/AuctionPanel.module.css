@@ -27,8 +27,18 @@
 .colFoot{display:flex;align-items:center;gap:4px;padding:4px 0;font-size:12px;white-space:nowrap}
 .inp{width:44px;border:1px solid #D9BD7A;text-align:center;font-size:11px;padding:1px}
 
-/* Gradient buttons (NOT sprite — AuctionPanel uses unique button style) */
-.btn,.btnWide{height:20px;padding:0 8px;border:1px solid #b09040;border-radius:2px;background:linear-gradient(to bottom,#f5e6b8,#e0c870);color:#5a3a0a;cursor:pointer;font-size:11px;line-height:18px;white-space:nowrap}
-.btn:hover,.btnWide:hover{background:linear-gradient(to bottom,#ffeeb0,#e8d070)}
-.btn{min-width:39px}
-.btnWide{min-width:60px}
+/* Sprite buttons (matching ShopLayout gm13.gif) */
+.btn{width:39px;height:17px;background:url('/images/ui/shop/gm13.gif') no-repeat;border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px;white-space:nowrap}
+.btn:hover{filter:brightness(1.1)}
+.btnWide{width:60px;height:17px;background:url('/images/ui/shop/gm13.gif') no-repeat;border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:17px;white-space:nowrap}
+.btnWide:hover{filter:brightness(1.1)}
+
+/* Sell overlay + panel */
+.sellOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:100;display:flex;align-items:center;justify-content:center}
+.sellPanel{width:280px;background:#f3edc9;border:2px solid #b09040;border-radius:4px;padding:12px;color:#5a3a0a;font-size:12px}
+.sellTitle{font-weight:bold;font-size:13px;text-align:center;margin-bottom:8px;color:#693600}
+.sellRow{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.sellRow span:first-child{width:52px;text-align:right;flex-shrink:0}
+.sellInput{flex:1;width:80px;border:1px solid #D9BD7A;padding:2px 4px;font-size:12px;background:#fff}
+.sellTip{text-align:center;font-size:11px;color:#999;margin:4px 0 8px}
+.sellBtns{display:flex;justify-content:center;gap:8px}

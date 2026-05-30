@@ -35,6 +35,8 @@ export default function AuctionPanel() {
   const [sellId, setSellId] = useState('');
   const [sellPrice, setSellPrice] = useState('');
   const [sellQty, setSellQty] = useState('1');
+  const [sellBuyer, setSellBuyer] = useState('');
+  const [showSellPanel, setShowSellPanel] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
 
@@ -83,23 +85,26 @@ export default function AuctionPanel() {
   };
 
   const handleSell = () => {
+    setShowSellPanel(true);
+  };
+
+  const confirmSell = () => {
     const id = parseInt(sellId);
-    if (!id) { toast('请输入背包物品ID'); return; }
+    if (!id) { toast('请先选择要上架的物品'); return; }
     const price = parseInt(sellPrice);
     if (!price || price <= 0) { toast('请输入有效的价格'); return; }
     const qty = parseInt(sellQty) || 1;
-    const currencyName = auctionType === 'sj' ? '水晶' : auctionType === 'yb' ? '元宝' : '金币';
-    const feeRate = auctionType === 'yb' ? 0.05 : 0.08;
-    setConfirmDialog({
-      message: `上架拍卖？\n物品ID: ${id} x${qty}\n单价: ${price} ${currencyName}\n${feeRate * 100}%手续费\n3小时后过期`,
-      onConfirm: () => {
-        apiPost('/auction/sell', { bagId: id, price, type: auctionType, quantity: qty }).then((res: any) => {
-          if (res.code === 0) { toast('已上架！3小时后过期'); setSellId(''); setSellPrice(''); setSellQty('1'); fetchData(); triggerRefresh(); }
-          else toast(res.message);
-        }).catch((e: any) => toast(e?.response?.data?.message || '上架失败'));
-        setConfirmDialog(null);
-      },
-    });
+    const buyer = sellBuyer.trim();
+    const body: any = { bagId: id, price, type: auctionType, quantity: qty };
+    if (buyer) body.buyerNickname = buyer;
+    apiPost('/auction/sell', body).then((res: any) => {
+      if (res.code === 0) {
+        toast('已上架！3小时后过期');
+        setSellId(''); setSellPrice(''); setSellQty('1'); setSellBuyer('');
+        setShowSellPanel(false);
+        fetchData(); triggerRefresh();
+      } else toast(res.message);
+    }).catch((e: any) => toast(e?.response?.data?.message || '上架失败'));
   };
 
   const handleCancel = () => {
@@ -181,11 +186,11 @@ export default function AuctionPanel() {
           <div className={styles.resBar}>
             {tab !== 4 && (
               <>
-                金币: {player?.money ?? 0}
+                <img src="/images/ui/icon01.jpg" width="16" height="16" style={{verticalAlign:'middle'}} /> 金币: {player?.money ?? 0}
                 <span className={styles.resSep}>|</span>
-                水晶: {player?.sj ?? 0}
+                <img src="/images/ui/icon06.jpg" width="16" height="16" style={{verticalAlign:'middle'}} /> 水晶: {player?.sj ?? 0}
                 <span className={styles.resSep}>|</span>
-                元宝: {player?.yb ?? 0}
+                <img src="/images/ui/icon01.jpg" width="16" height="16" style={{verticalAlign:'middle'}} /> 元宝: {player?.yb ?? 0}
               </>
             )}
             {tab === 4 && (
@@ -256,6 +261,7 @@ export default function AuctionPanel() {
             <>
               数量: <input className={styles.inp} value={buyQty} onChange={e => setBuyQty(e.target.value.replace(/\D/g, '') || '1')} />
               <button className={styles.btn} onClick={handleBuy}>购买</button>
+              <button className={styles.btn} onClick={() => { if (!sellId) { toast('请先在背包中选择物品'); return; } setShowSellPanel(true); }}>拍卖</button>
             </>
           ) : (
             <>
@@ -286,7 +292,7 @@ export default function AuctionPanel() {
               {bagItems.filter(i => i.count > 0).length === 0 ? (
                 <tr><td colSpan={4} className={layoutStyles.empty}>背包空空</td></tr>
               ) : bagItems.filter(i => i.count > 0).map(i => (
-                <tr key={i.id} className={layoutStyles.row} onClick={() => { setSellId(String(i.id)); setSellQty(String(i.count)); }}>
+                <tr key={i.id} className={`${layoutStyles.row} ${String(i.id) === sellId ? layoutStyles.rowSel : ''}`} onClick={() => { setSellId(String(i.id)); setSellQty(String(i.count)); }}>
                   <td className={layoutStyles.tdIcon}>
                     {i.varyname ? <img src={`/images/ui/bag/${i.varyname}.gif`} alt="" /> : null}
                   </td>
@@ -298,14 +304,39 @@ export default function AuctionPanel() {
             </tbody>
           </table>
         </div>
-        <div className={styles.colFoot}>
-          ID: <input className={styles.inp} value={sellId} onChange={e => setSellId(e.target.value.replace(/\D/g, ''))} placeholder="ID" />
-          价: <input className={styles.inp} value={sellPrice} onChange={e => setSellPrice(e.target.value.replace(/\D/g, ''))} placeholder="价格" />
-          量: <input className={styles.inp} value={sellQty} onChange={e => setSellQty(e.target.value.replace(/\D/g, '') || '1')} />
-          <button className={styles.btn} onClick={handleSell}>上架</button>
+        <div className={layoutStyles.colFoot}>
+          背包空间：{bagItems.filter(i => i.count > 0).length}/{(player as any)?.maxBag ?? 30}
         </div>
       </div>
     </ShopLayout>
+      {/* Inline sell panel */}
+      {showSellPanel && (
+        <div className={styles.sellOverlay} onClick={() => setShowSellPanel(false)}>
+          <div className={styles.sellPanel} onClick={e => e.stopPropagation()}>
+            <div className={styles.sellTitle}>上架拍卖</div>
+            <div className={styles.sellRow}>
+              <span>物品：</span>
+              <span>{bagItems.find(b => b.id === parseInt(sellId))?.name ?? '未选择'} x{sellQty}</span>
+            </div>
+            <div className={styles.sellRow}>
+              <span>单价：</span>
+              <input className={styles.sellInput} value={sellPrice} onChange={e => setSellPrice(e.target.value.replace(/\D/g, ''))} placeholder="拍卖价格" />
+              <span>{auctionType === 'sj' ? '水晶' : auctionType === 'yb' ? '元宝' : '金币'}</span>
+            </div>
+            <div className={styles.sellRow}>
+              <span>购买人：</span>
+              <input className={styles.sellInput} value={sellBuyer} onChange={e => setSellBuyer(e.target.value)} placeholder="选填，指定买家昵称" />
+            </div>
+            <div className={styles.sellTip}>
+              {auctionType === 'yb' ? '5%' : '8%'}手续费 · {(() => { const d = new Date(Date.now() + 3*3600*1000); return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')} 过期`; })()}
+            </div>
+            <div className={styles.sellBtns}>
+              <button className={styles.btn} onClick={confirmSell}>确认上架</button>
+              <button className={styles.btn} onClick={() => setShowSellPanel(false)}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
       <ConfirmDialog
         open={confirmDialog !== null}
         message={confirmDialog?.message ?? ''}
