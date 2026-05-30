@@ -24,6 +24,7 @@ public class AdminService {
     private final AdminTaskAcceptRepository taskAcceptRepo;
     private final AdminInitialBagConfigRepository initialBagConfigRepo;
     private final AdminPlayerActionLogRepository playerActionLogRepo;
+    private final AdminAuctionLogRepository auctionLogRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
@@ -31,7 +32,8 @@ public class AdminService {
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
                         AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
                         AdminInitialBagConfigRepository initialBagConfigRepo,
-                        AdminPlayerActionLogRepository playerActionLogRepo) {
+                        AdminPlayerActionLogRepository playerActionLogRepo,
+                        AdminAuctionLogRepository auctionLogRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -44,6 +46,7 @@ public class AdminService {
         this.taskAcceptRepo = taskAcceptRepo;
         this.initialBagConfigRepo = initialBagConfigRepo;
         this.playerActionLogRepo = playerActionLogRepo;
+        this.auctionLogRepo = auctionLogRepo;
     }
 
     // ---- Dashboard stats ----
@@ -609,5 +612,32 @@ public class AdminService {
 
     public long countPlayerActionLogs(Integer playerId, String action) {
         return playerActionLogRepo.searchLogs(playerId, action, Pageable.ofSize(1)).getTotalElements();
+    }
+
+    // ---- Auction Log ----
+
+    public List<Map<String, Object>> getAuctionLogs(Integer sellerId, Integer buyerId, String action, int page, int size) {
+        return auctionLogRepo.searchLogs(sellerId, buyerId, action, Pageable.ofSize(size).withPage(page - 1))
+            .stream()
+            .map(l -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", l.getId());
+                m.put("sellerId", l.getSellerId());
+                m.put("sellerName", l.getSellerName());
+                m.put("buyerId", l.getBuyerId());
+                m.put("buyerName", l.getBuyerName());
+                m.put("propId", l.getPropId());
+                m.put("propName", l.getPropName());
+                m.put("count", l.getCount());
+                m.put("price", l.getPrice());
+                m.put("priceType", l.getPriceType());
+                m.put("action", l.getAction());
+                m.put("createdAt", l.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList());
+    }
+
+    public long countAuctionLogs(Integer sellerId, Integer buyerId, String action) {
+        return auctionLogRepo.searchLogs(sellerId, buyerId, action, Pageable.ofSize(1)).getTotalElements();
     }
 }

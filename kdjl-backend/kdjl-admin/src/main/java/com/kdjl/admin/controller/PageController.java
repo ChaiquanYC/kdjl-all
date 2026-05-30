@@ -35,4 +35,7 @@ public class PageController {
 
     @GetMapping("/logs")
     public String logs() { return "logs/list"; }
+
+    @GetMapping("/auction")
+    public String auction() { return "auction/list"; }
 }

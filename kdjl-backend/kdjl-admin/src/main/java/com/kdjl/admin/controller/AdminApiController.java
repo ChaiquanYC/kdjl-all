@@ -249,4 +249,19 @@ public class AdminApiController {
         long total = adminService.countPlayerActionLogs(playerId, action);
         return Map.of("list", list, "total", total, "page", page, "size", size);
     }
+
+    // ======================== Auction Log ========================
+
+    /** Get auction logs */
+    @GetMapping("/auction-logs")
+    public Map<String, Object> getAuctionLogs(
+            @RequestParam(required = false) Integer sellerId,
+            @RequestParam(required = false) Integer buyerId,
+            @RequestParam(defaultValue = "") String action,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        List<Map<String, Object>> list = adminService.getAuctionLogs(sellerId, buyerId, action, page, size);
+        long total = adminService.countAuctionLogs(sellerId, buyerId, action);
+        return Map.of("list", list, "total", total, "page", page, "size", size);
+    }
 }
