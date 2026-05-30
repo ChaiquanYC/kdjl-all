@@ -226,6 +226,7 @@ public class Player {
     public void setFightBb(Integer fightBb) { this.fightBb = fightBb; }
     public void setTask(String task) { this.task = task; }
     public void setTaskLog(String taskLog) { this.taskLog = taskLog; }
+    public void setHeadImg(Integer headImg) { this.headImg = headImg; }
     public void setAutoFitFlag(Integer autoFitFlag) { this.autoFitFlag = autoFitFlag; }
     public void setSysAutoSum(Integer sysAutoSum) { this.sysAutoSum = sysAutoSum; }
     public void setMaxAutoFitSum(Integer maxAutoFitSum) { this.maxAutoFitSum = maxAutoFitSum; }

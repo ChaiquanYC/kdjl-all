@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import GameLayout from '@/components/layout/GameLayout';
 import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
 
 // Decode JWT payload without verifying signature
 function decodeJwt(token: string): { exp?: number } | null {
@@ -58,6 +59,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         path="/*"
         element={
