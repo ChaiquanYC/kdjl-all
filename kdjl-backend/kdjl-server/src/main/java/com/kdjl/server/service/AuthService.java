@@ -211,6 +211,9 @@ public class AuthService {
         // --- 初始技能 (PHP: 取 skillist 第一个技能) ---
         assignInitialSkill(template, newPet);
 
+        // --- 初始背包物品 ---
+        addStarterItems(player.getId());
+
         // --- 设为主宠 ---
         player.setMbid(newPet.getId().intValue());
         player.setFightBb(newPet.getId().intValue());
@@ -237,6 +240,10 @@ public class AuthService {
         try {
             Long skillId = Long.parseLong(parts[0]);
             int skillLevel = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
+            // Skip if this pet already has this skill (prevent duplicates)
+            boolean exists = skillRepo.findByPetId(pet.getId()).stream()
+                .anyMatch(s -> s.getSkillDefId() != null && s.getSkillDefId().equals(skillId));
+            if (exists) return;
             SkillSys sys = skillSysRepo.findById(skillId).orElse(null);
             if (sys == null) return;
             Skill skill = new Skill();
@@ -262,6 +269,28 @@ public class AuthService {
 
     private Integer parseFirstInt(String csv) {
         try { return Integer.parseInt(splitFirst(csv)); } catch (NumberFormatException e) { return 0; }
+    }
+
+    private void addStarterItems(int playerId) {
+        long now = System.currentTimeMillis() / 1000;
+        // 治疗药水(小) x5
+        addItem(playerId, 1L, 1, 5, now);
+        // 魔法药水(小) x5
+        addItem(playerId, 4L, 1, 5, now);
+        // 金波姆·精灵球 x3
+        addItem(playerId, 149L, 1, 3, now);
+    }
+
+    private void addItem(int playerId, Long propId, int vary, int sums, long stime) {
+        UserBag item = new UserBag();
+        item.setPlayerId((long) playerId);
+        item.setPropId(propId);
+        item.setVary(vary);
+        item.setSums(sums);
+        item.setSell(1);
+        item.setStime(stime);
+        item.setCantrade(0);
+        bagRepo.save(item);
     }
 
     private static String md5(String input) {
