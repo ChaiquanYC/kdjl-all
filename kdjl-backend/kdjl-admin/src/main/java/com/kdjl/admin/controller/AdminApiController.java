@@ -235,4 +235,18 @@ public class AdminApiController {
     public Map<String, Object> deleteInitialBagConfig(@PathVariable Integer id) {
         return adminService.deleteInitialBagConfig(id);
     }
+
+    // ======================== Player Action Log ========================
+
+    /** Get player action logs */
+    @GetMapping("/logs")
+    public Map<String, Object> getPlayerActionLogs(
+            @RequestParam(required = false) Integer playerId,
+            @RequestParam(defaultValue = "") String action,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "50") int size) {
+        List<Map<String, Object>> list = adminService.getPlayerActionLogs(playerId, action, page, size);
+        long total = adminService.countPlayerActionLogs(playerId, action);
+        return Map.of("list", list, "total", total, "page", page, "size", size);
+    }
 }

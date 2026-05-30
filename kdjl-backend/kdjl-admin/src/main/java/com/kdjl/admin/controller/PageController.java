@@ -32,4 +32,7 @@ public class PageController {
 
     @GetMapping("/initial-bag")
     public String initialBag() { return "initial-bag/list"; }
+
+    @GetMapping("/logs")
+    public String logs() { return "logs/list"; }
 }

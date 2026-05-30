@@ -23,13 +23,15 @@ public class AdminService {
     private final AdminTaskDefRepository taskDefRepo;
     private final AdminTaskAcceptRepository taskAcceptRepo;
     private final AdminInitialBagConfigRepository initialBagConfigRepo;
+    private final AdminPlayerActionLogRepository playerActionLogRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
                         AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
-                        AdminInitialBagConfigRepository initialBagConfigRepo) {
+                        AdminInitialBagConfigRepository initialBagConfigRepo,
+                        AdminPlayerActionLogRepository playerActionLogRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -41,6 +43,7 @@ public class AdminService {
         this.taskDefRepo = taskDefRepo;
         this.taskAcceptRepo = taskAcceptRepo;
         this.initialBagConfigRepo = initialBagConfigRepo;
+        this.playerActionLogRepo = playerActionLogRepo;
     }
 
     // ---- Dashboard stats ----
@@ -581,5 +584,30 @@ public class AdminService {
     public Map<String, Object> deleteInitialBagConfig(Integer id) {
         initialBagConfigRepo.deleteById(id);
         return Map.of("success", true);
+    }
+
+    // ---- Player Action Log ----
+
+    public List<Map<String, Object>> getPlayerActionLogs(Integer playerId, String action, int page, int size) {
+        return playerActionLogRepo.searchLogs(playerId, action, Pageable.ofSize(size).withPage(page - 1))
+            .stream()
+            .map(l -> {
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", l.getId());
+                m.put("playerId", l.getPlayerId());
+                m.put("playerName", l.getPlayerName());
+                m.put("action", l.getAction());
+                m.put("targetType", l.getTargetType());
+                m.put("targetId", l.getTargetId());
+                m.put("targetName", l.getTargetName());
+                m.put("detail", l.getDetail());
+                m.put("ip", l.getIp());
+                m.put("createdAt", l.getCreatedAt());
+                return m;
+            }).collect(Collectors.toList());
+    }
+
+    public long countPlayerActionLogs(Integer playerId, String action) {
+        return playerActionLogRepo.searchLogs(playerId, action, Pageable.ofSize(1)).getTotalElements();
     }
 }

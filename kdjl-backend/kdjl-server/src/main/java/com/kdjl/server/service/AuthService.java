@@ -31,6 +31,7 @@ public class AuthService {
     private final OnlineTimeService onlineTimeService;
     private final InitialBagConfigRepository initialBagConfigRepo;
     private final PropsRepository propsRepo;
+    private final PlayerLogService playerLogService;
     private Set<String> badWords;
 
     public AuthService(PlayerRepository playerRepository,
@@ -44,7 +45,8 @@ public class AuthService {
                        SkillRepository skillRepo,
                        OnlineTimeService onlineTimeService,
                        InitialBagConfigRepository initialBagConfigRepo,
-                       PropsRepository propsRepo) {
+                       PropsRepository propsRepo,
+                       PlayerLogService playerLogService) {
         this.playerRepository = playerRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPetRepo = userPetRepo;
@@ -57,6 +59,7 @@ public class AuthService {
         this.onlineTimeService = onlineTimeService;
         this.initialBagConfigRepo = initialBagConfigRepo;
         this.propsRepo = propsRepo;
+        this.playerLogService = playerLogService;
         loadBadWords();
     }
 
@@ -108,6 +111,9 @@ public class AuthService {
 
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
         onlineTimeService.onLogin(player.getId());
+
+        // --- 记录登录日志 ---
+        playerLogService.log(player.getId(), player.getNickname(), "LOGIN", "用户登录");
 
         var data = new LinkedHashMap<String, Object>();
         data.put("token", token);
@@ -224,6 +230,9 @@ public class AuthService {
         player.setMbid(newPet.getId().intValue());
         player.setFightBb(newPet.getId().intValue());
         playerRepository.save(player);
+
+        // --- 记录注册日志 ---
+        playerLogService.log(player.getId(), player.getNickname(), "REGISTER", "pet", newPet.getId().longValue(), newPet.getName(), "新用户注册");
 
         // --- 返回 ---
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
