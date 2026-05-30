@@ -274,6 +274,7 @@ export default function PetList() {
           <div>性别：{player?.sex === '1' ? '男' : '女'}</div>
           <div>金币：{player?.money ?? 0}</div>
           <div>元宝：{player?.yb ?? 0}</div>
+          <div>水晶：{player?.sj ?? 0}</div>
         </div>
         <div className={styles.avatar}>
           <img src={`/images/head/2${player?.headImg || 1}.gif`} alt="" />
@@ -286,7 +287,9 @@ export default function PetList() {
               <span>{p.name}<br />Lv.{p.level}</span>
             </div>
           ))}
-          {petCards.length < 3 && <div className={styles.petCard}><div className={styles.noCard}>--</div></div>}
+          {Array.from({ length: 3 - petCards.length }, (_, i) => (
+            <div key={'empty-' + i} className={styles.petCard}><div className={styles.noCard}>--</div></div>
+          ))}
         </div>
       </div>
 
