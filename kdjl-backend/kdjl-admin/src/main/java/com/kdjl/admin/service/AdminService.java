@@ -640,4 +640,44 @@ public class AdminService {
     public long countAuctionLogs(Integer sellerId, Integer buyerId, String action) {
         return auctionLogRepo.searchLogs(sellerId, buyerId, action, Pageable.ofSize(1)).getTotalElements();
     }
+
+    // ---- Current Auctions ----
+
+    public List<Map<String, Object>> getCurrentAuctions(String type) {
+        long now = System.currentTimeMillis() / 1000;
+        return bagRepo.findAll().stream()
+            .filter(b -> b.getPsum() != null && b.getPsum() > 0)
+            .filter(b -> b.getPetime() == null || b.getPetime() > now)
+            .filter(b -> {
+                if ("sj".equals(type)) return b.getPsj() != null && !b.getPsj().isEmpty() && parseIntSafe(b.getPsj()) > 0;
+                if ("yb".equals(type)) return b.getPyb() != null && b.getPyb() > 0;
+                return b.getPsell() != null && b.getPsell() > 0;
+            })
+            .sorted((a, b) -> Long.compare(
+                b.getPstime() != null ? b.getPstime() : 0,
+                a.getPstime() != null ? a.getPstime() : 0))
+            .limit(100)
+            .map(b -> {
+                Props p = propsRepo.findById(b.getPropId()).orElse(null);
+                Player seller = playerRepo.findById(b.getPlayerId().intValue()).orElse(null);
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("id", b.getId());
+                m.put("name", p != null ? p.getName() : "物品");
+                m.put("count", b.getPsum());
+                m.put("sellerName", seller != null ? seller.getNickname() : "未知");
+                int price = "sj".equals(type) ? parseIntSafe(b.getPsj())
+                          : "yb".equals(type) ? (b.getPyb() != null ? b.getPyb() : 0)
+                          : (b.getPsell() != null ? b.getPsell() : 0);
+                m.put("price", price);
+                m.put("type", "sj".equals(type) ? "sj" : "yb".equals(type) ? "yb" : "gold");
+                if (b.getPetime() != null)
+                    m.put("timeRemaining", Math.max(0, b.getPetime() - System.currentTimeMillis() / 1000));
+                return m;
+            }).collect(Collectors.toList());
+    }
+
+    private int parseIntSafe(String s) {
+        try { return Integer.parseInt(s.trim().replace("\n", "").replace("\r", "")); }
+        catch (NumberFormatException e) { return 0; }
+    }
 }

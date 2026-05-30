@@ -264,4 +264,10 @@ public class AdminApiController {
         long total = adminService.countAuctionLogs(sellerId, buyerId, action);
         return Map.of("list", list, "total", total, "page", page, "size", size);
     }
+
+    /** Get current auctions */
+    @GetMapping("/auction-current")
+    public List<Map<String, Object>> getCurrentAuctions(@RequestParam(defaultValue = "gold") String type) {
+        return adminService.getCurrentAuctions(type);
+    }
 }

@@ -93,9 +93,8 @@ function formatTime(seconds){
 }
 function loadCurrent(){
     let type=document.getElementById('priceType').value;
-    fetch('/api/auction/list?type='+(type||'gold')).then(r=>r.json()).then(d=>{
-        let items=d.data||d||[];
-        if(items.length===0){
+    fetch('/api/admin/auction-current?type='+(type||'gold')).then(r=>r.json()).then(items=>{
+        if(!items||items.length===0){
             document.getElementById('currentBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:#999">暂无上架物品</td></tr>';
             return;
         }
