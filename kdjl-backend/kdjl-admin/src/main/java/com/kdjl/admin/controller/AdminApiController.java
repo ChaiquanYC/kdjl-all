@@ -206,4 +206,29 @@ public class AdminApiController {
     public Map<String, Object> removePlayerTask(@RequestBody RemovePlayerTaskRequest req) {
         return adminService.removePlayerTask(req.playerId(), req.taskId());
     }
+
+    // ======================== Online Reward Config ========================
+
+    @GetMapping("/online-rewards/config")
+    public Map<String, Object> onlineRewardConfig() {
+        return Map.of("list", adminService.getOnlineRewardConfig());
+    }
+
+    @PutMapping("/online-rewards/config")
+    public Map<String, Object> saveOnlineRewardConfig(@RequestBody List<Map<String, Object>> configs) {
+        return adminService.saveOnlineRewardConfig(configs);
+    }
+
+    @GetMapping("/online-rewards/players")
+    public Map<String, Object> onlineRewardPlayers(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return adminService.getOnlineRewardPlayers(page, size);
+    }
+
+    public record ResetRewardRequest(Integer playerId) {}
+    @PostMapping("/online-rewards/reset-player")
+    public Map<String, Object> resetOnlineReward(@RequestBody ResetRewardRequest req) {
+        return adminService.resetPlayerOnlineReward(req.playerId());
+    }
 }

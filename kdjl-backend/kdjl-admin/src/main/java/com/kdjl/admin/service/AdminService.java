@@ -22,12 +22,14 @@ public class AdminService {
     private final AdminYbLogRepository ybLogRepo;
     private final AdminTaskDefRepository taskDefRepo;
     private final AdminTaskAcceptRepository taskAcceptRepo;
+    private final AdminOnlineRewardConfigRepository rewardConfigRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
-                        AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo) {
+                        AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
+                        AdminOnlineRewardConfigRepository rewardConfigRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -38,6 +40,7 @@ public class AdminService {
         this.ybLogRepo = ybLogRepo;
         this.taskDefRepo = taskDefRepo;
         this.taskAcceptRepo = taskAcceptRepo;
+        this.rewardConfigRepo = rewardConfigRepo;
     }
 
     // ---- Dashboard stats ----
@@ -525,5 +528,116 @@ public class AdminService {
     public Map<String, Object> removePlayerTask(Integer playerId, Long taskId) {
         taskAcceptRepo.deleteByPlayerIdAndTaskId(playerId.longValue(), taskId);
         return Map.of("success", true);
+    }
+
+    // ======================== Online Reward Config Management ========================
+
+    public List<Map<String, Object>> getOnlineRewardConfig() {
+        List<OnlineRewardConfig> all = rewardConfigRepo.findAllByOrderByStepAscLevelMinAsc();
+        // Collect all item IDs for name lookup
+        Set<Long> allItemIds = new LinkedHashSet<>();
+        for (OnlineRewardConfig c : all) {
+            for (String id : c.getItemIds().split(",")) {
+                try { allItemIds.add(Long.parseLong(id.trim())); } catch (NumberFormatException ignored) {}
+            }
+        }
+        Map<Long, String> itemNames = propsRepo.findAllById(allItemIds).stream()
+            .collect(Collectors.toMap(Props::getId, Props::getName, (a, b) -> a));
+
+        return all.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("step", c.getStep());
+            m.put("levelMin", c.getLevelMin());
+            m.put("levelMax", c.getLevelMax());
+            m.put("timeMinutes", c.getTimeMinutes());
+            m.put("itemIds", c.getItemIds());
+            m.put("itemCounts", c.getItemCounts());
+            // Resolve item names
+            String[] ids = c.getItemIds().split(",");
+            String[] counts = c.getItemCounts().split(",");
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (int i = 0; i < ids.length; i++) {
+                try {
+                    long propId = Long.parseLong(ids[i].trim());
+                    Map<String, Object> im = new LinkedHashMap<>();
+                    im.put("id", propId);
+                    im.put("name", itemNames.getOrDefault(propId, "未知道具"));
+                    im.put("count", i < counts.length ? counts[i].trim() : "0");
+                    items.add(im);
+                } catch (NumberFormatException ignored) {}
+            }
+            m.put("items", items);
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> saveOnlineRewardConfig(List<Map<String, Object>> configs) {
+        rewardConfigRepo.deleteAll();
+        for (Map<String, Object> data : configs) {
+            OnlineRewardConfig c = new OnlineRewardConfig();
+            c.setStep(toInt(data.get("step")));
+            c.setLevelMin(toInt(data.get("levelMin")));
+            c.setLevelMax(toInt(data.get("levelMax")));
+            c.setTimeMinutes(toInt(data.get("timeMinutes")));
+            c.setItemIds(str(data.get("itemIds")));
+            c.setItemCounts(str(data.get("itemCounts")));
+            c.setSortOrder(toInt(data.get("sortOrder")));
+            rewardConfigRepo.save(c);
+        }
+        return Map.of("success", true, "count", configs.size());
+    }
+
+    public Map<String, Object> getOnlineRewardPlayers(int page, int size) {
+        // Query player_ext with expGotStep > 0 or onlineTimeToday > 0
+        List<PlayerExt> allExts = playerExtRepo.findAll();
+        List<Map<String, Object>> players = new ArrayList<>();
+        for (PlayerExt ext : allExts) {
+            int step = ext.getExpGotStep() != null ? ext.getExpGotStep() : 0;
+            int today = ext.getOnlineTimeToday() != null ? ext.getOnlineTimeToday() : 0;
+            if (step > 0 || today > 0) {
+                Player p = playerRepo.findById(ext.getPlayerId()).orElse(null);
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("playerId", ext.getPlayerId());
+                m.put("nickname", p != null ? p.getNickname() : "未知");
+                m.put("onlineTimeToday", today);
+                m.put("onlineTimeTodayFmt", formatSeconds(today));
+                m.put("expGotStep", step);
+                m.put("lastOnlineDay", ext.getLastOnlineDay());
+                players.add(m);
+            }
+        }
+        // Sort by onlineTimeToday desc
+        players.sort((a, b) -> Integer.compare(
+            (int) b.get("onlineTimeToday"), (int) a.get("onlineTimeToday")));
+        int total = players.size();
+        int from = Math.min((page - 1) * size, total);
+        int to = Math.min(from + size, total);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("list", players.subList(from, to));
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> resetPlayerOnlineReward(Integer playerId) {
+        PlayerExt ext = playerExtRepo.findById(playerId).orElse(null);
+        if (ext == null) return Map.of("error", "玩家扩展数据不存在");
+        ext.setExpGotStep(0);
+        playerExtRepo.save(ext);
+        Player p = playerRepo.findById(playerId).orElse(null);
+        return Map.of("success", true, "player", p != null ? p.getNickname() : playerId);
+    }
+
+    private static String formatSeconds(int totalSeconds) {
+        if (totalSeconds >= 3600) {
+            int hours = totalSeconds / 3600;
+            int minutes = (totalSeconds % 3600) / 60;
+            return hours + "小时" + (minutes > 0 ? minutes + "分钟" : "");
+        }
+        return (totalSeconds / 60) + "分钟";
     }
 }

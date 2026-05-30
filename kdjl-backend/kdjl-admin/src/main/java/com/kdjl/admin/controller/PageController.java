@@ -29,4 +29,7 @@ public class PageController {
 
     @GetMapping("/tasks")
     public String tasks() { return "tasks/list"; }
+
+    @GetMapping("/online-rewards")
+    public String onlineRewards() { return "online-rewards/list"; }
 }
