@@ -28,6 +28,7 @@ public class AuthService {
     private final LevelUpService levelUpService;
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
+    private final OnlineTimeService onlineTimeService;
     private Set<String> badWords;
 
     public AuthService(PlayerRepository playerRepository,
@@ -38,7 +39,8 @@ public class AuthService {
                        PlayerExtRepository extRepo,
                        LevelUpService levelUpService,
                        SkillSysRepository skillSysRepo,
-                       SkillRepository skillRepo) {
+                       SkillRepository skillRepo,
+                       OnlineTimeService onlineTimeService) {
         this.playerRepository = playerRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPetRepo = userPetRepo;
@@ -48,6 +50,7 @@ public class AuthService {
         this.levelUpService = levelUpService;
         this.skillSysRepo = skillSysRepo;
         this.skillRepo = skillRepo;
+        this.onlineTimeService = onlineTimeService;
         loadBadWords();
     }
 
@@ -98,6 +101,7 @@ public class AuthService {
         }
 
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
+        onlineTimeService.onLogin(player.getId());
 
         var data = new LinkedHashMap<String, Object>();
         data.put("token", token);
@@ -214,6 +218,7 @@ public class AuthService {
 
         // --- 返回 ---
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
+        onlineTimeService.onLogin(player.getId());
         var data = new LinkedHashMap<String, Object>();
         data.put("token", token);
         data.put("uid", player.getId());

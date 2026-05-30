@@ -1,6 +1,7 @@
 package com.kdjl.server.controller;
 
 import com.kdjl.common.dto.ApiResponse;
+import com.kdjl.server.service.OnlineTimeService;
 import com.kdjl.server.service.PlayerService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -12,9 +13,11 @@ import java.util.Map;
 public class PlayerController {
 
     private final PlayerService playerService;
+    private final OnlineTimeService onlineTimeService;
 
-    public PlayerController(PlayerService playerService) {
+    public PlayerController(PlayerService playerService, OnlineTimeService onlineTimeService) {
         this.playerService = playerService;
+        this.onlineTimeService = onlineTimeService;
     }
 
     @GetMapping("/me")
@@ -43,5 +46,19 @@ public class PlayerController {
     @GetMapping("/online/count")
     public ApiResponse<Map<String, Object>> onlineCount() {
         return ApiResponse.success(Map.of("count", playerService.getOnlineCount()));
+    }
+
+    @PostMapping("/heartbeat")
+    public ApiResponse<Void> heartbeat(Authentication auth) {
+        Integer uid = ((Long) auth.getPrincipal()).intValue();
+        onlineTimeService.onHeartbeat(uid);
+        return ApiResponse.success(null);
+    }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout(Authentication auth) {
+        Integer uid = ((Long) auth.getPrincipal()).intValue();
+        onlineTimeService.onLogout(uid);
+        return ApiResponse.success(null);
     }
 }

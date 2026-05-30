@@ -38,6 +38,7 @@ interface PetBrief { id: number; name: string; level: number }
 export default function GameLayout() {
   const player = useAuthStore((s) => s.player);
   const fetchPlayer = useAuthStore((s) => s.fetchPlayer);
+  const logout = useAuthStore((s) => s.logout);
   const addChatMessage = useGameStore((s) => s.addChatMessage);
   const activePanel = useGameStore((s) => s.activePanel);
   const setActivePanel = useGameStore((s) => s.setActivePanel);
@@ -331,7 +332,11 @@ export default function GameLayout() {
               <button onClick={()=>{const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){useGameStore.getState().addChatMessage({id:Date.now().toString(),senderId:player?.id||0,senderName:player?.nickname||'?',content:inp.value,channel:'world',timestamp:Date.now()});inp.value='';}}}>发送</button>
             </div>
           </div>
-          <div className={styles.tipR}></div>
+          <div className={styles.tipR}>
+            <div className={styles.links}>
+              <a onClick={() => { if (confirm('确定退出登录？')) logout(); }}>退出</a>
+            </div>
+          </div>
         </div>
       </div>
 

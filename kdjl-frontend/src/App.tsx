@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useOnlineHeartbeat } from '@/hooks/useOnlineHeartbeat';
 import GameLayout from '@/components/layout/GameLayout';
 import LoginPage from '@/pages/LoginPage';
 import RegisterPage from '@/pages/RegisterPage';
@@ -55,6 +56,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function GameContent() {
+  useOnlineHeartbeat();
+  return <GameLayout />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -64,7 +70,7 @@ export default function App() {
         path="/*"
         element={
           <ProtectedRoute>
-            <GameLayout />
+            <GameContent />
           </ProtectedRoute>
         }
       />

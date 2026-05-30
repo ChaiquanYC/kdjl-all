@@ -60,6 +60,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Fire-and-forget: flush online time to DB before clearing token
+      apiPost('/player/logout').catch(() => {});
+    }
     localStorage.removeItem('token');
     disconnectWs();
     set({ player: null, token: null, hydrated: true });
