@@ -22,12 +22,14 @@ public class AdminService {
     private final AdminYbLogRepository ybLogRepo;
     private final AdminTaskDefRepository taskDefRepo;
     private final AdminTaskAcceptRepository taskAcceptRepo;
+    private final AdminInitialBagConfigRepository initialBagConfigRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
-                        AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo) {
+                        AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
+                        AdminInitialBagConfigRepository initialBagConfigRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -38,6 +40,7 @@ public class AdminService {
         this.ybLogRepo = ybLogRepo;
         this.taskDefRepo = taskDefRepo;
         this.taskAcceptRepo = taskAcceptRepo;
+        this.initialBagConfigRepo = initialBagConfigRepo;
     }
 
     // ---- Dashboard stats ----
@@ -216,9 +219,9 @@ public class AdminService {
     }
 
     // ---- Props browser ----
-    public List<Map<String, Object>> browseProps(String keyword, int page, int size) {
+    public List<Map<String, Object>> browseProps(String keyword, Integer vary, int page, int size) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
+        return propsRepo.searchByKeywordAndVary(kw, vary, Pageable.ofSize(size).withPage(page - 1)).stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId()); m.put("name", p.getName());
@@ -230,9 +233,9 @@ public class AdminService {
             }).collect(Collectors.toList());
     }
 
-    public long countProps(String keyword) {
+    public long countProps(String keyword, Integer vary) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.countByKeyword(kw);
+        return propsRepo.countByKeywordAndVary(kw, vary);
     }
 
     // ---- Pet template browser ----
@@ -524,6 +527,59 @@ public class AdminService {
     @Transactional
     public Map<String, Object> removePlayerTask(Integer playerId, Long taskId) {
         taskAcceptRepo.deleteByPlayerIdAndTaskId(playerId.longValue(), taskId);
+        return Map.of("success", true);
+    }
+
+    // ---- Initial Bag Config Management ----
+
+    public List<Map<String, Object>> getInitialBagConfigs() {
+        List<InitialBagConfig> configs = initialBagConfigRepo.findAllByOrderBySortOrderAsc();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (InitialBagConfig config : configs) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", config.getId());
+            m.put("propId", config.getPropId());
+            m.put("count", config.getCount());
+            m.put("sortOrder", config.getSortOrder());
+            m.put("enabled", config.getEnabled());
+            // Get prop name
+            Props props = propsRepo.findById(config.getPropId()).orElse(null);
+            m.put("propName", props != null ? props.getName() : "未知道具");
+            m.put("propImg", props != null ? props.getImg() : null);
+            result.add(m);
+        }
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> addInitialBagConfig(Long propId, Integer count, Integer sortOrder) {
+        Props props = propsRepo.findById(propId).orElse(null);
+        if (props == null) return Map.of("error", "道具不存在");
+
+        InitialBagConfig config = new InitialBagConfig();
+        config.setPropId(propId);
+        config.setCount(count != null ? count : 1);
+        config.setSortOrder(sortOrder != null ? sortOrder : 0);
+        config.setEnabled(1);
+        initialBagConfigRepo.save(config);
+        return Map.of("success", true, "id", config.getId(), "propName", props.getName());
+    }
+
+    @Transactional
+    public Map<String, Object> updateInitialBagConfig(Integer id, Integer count, Integer sortOrder, Integer enabled) {
+        InitialBagConfig config = initialBagConfigRepo.findById(id).orElse(null);
+        if (config == null) return Map.of("error", "配置不存在");
+
+        if (count != null) config.setCount(count);
+        if (sortOrder != null) config.setSortOrder(sortOrder);
+        if (enabled != null) config.setEnabled(enabled);
+        initialBagConfigRepo.save(config);
+        return Map.of("success", true);
+    }
+
+    @Transactional
+    public Map<String, Object> deleteInitialBagConfig(Integer id) {
+        initialBagConfigRepo.deleteById(id);
         return Map.of("success", true);
     }
 }

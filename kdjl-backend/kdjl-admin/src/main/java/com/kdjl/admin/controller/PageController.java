@@ -29,4 +29,7 @@ public class PageController {
 
     @GetMapping("/tasks")
     public String tasks() { return "tasks/list"; }
+
+    @GetMapping("/initial-bag")
+    public String initialBag() { return "initial-bag/list"; }
 }

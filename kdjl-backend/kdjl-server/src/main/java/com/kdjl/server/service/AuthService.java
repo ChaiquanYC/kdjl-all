@@ -29,6 +29,8 @@ public class AuthService {
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
     private final OnlineTimeService onlineTimeService;
+    private final InitialBagConfigRepository initialBagConfigRepo;
+    private final PropsRepository propsRepo;
     private Set<String> badWords;
 
     public AuthService(PlayerRepository playerRepository,
@@ -40,7 +42,9 @@ public class AuthService {
                        LevelUpService levelUpService,
                        SkillSysRepository skillSysRepo,
                        SkillRepository skillRepo,
-                       OnlineTimeService onlineTimeService) {
+                       OnlineTimeService onlineTimeService,
+                       InitialBagConfigRepository initialBagConfigRepo,
+                       PropsRepository propsRepo) {
         this.playerRepository = playerRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPetRepo = userPetRepo;
@@ -51,6 +55,8 @@ public class AuthService {
         this.skillSysRepo = skillSysRepo;
         this.skillRepo = skillRepo;
         this.onlineTimeService = onlineTimeService;
+        this.initialBagConfigRepo = initialBagConfigRepo;
+        this.propsRepo = propsRepo;
         loadBadWords();
     }
 
@@ -137,7 +143,7 @@ public class AuthService {
         player.setSecret(md5Hash);
         player.setNickname(nickname);
         player.setSex(sex != null ? sex : "帅哥");
-        player.setHeadImg(headImg != null ? headImg : 1);
+        player.setHeadImg(headImg != null ? headImg : Integer.valueOf(1));
         player.setVip(0);
         player.setMoney(0);
         player.setYb(0);
@@ -211,6 +217,9 @@ public class AuthService {
         // --- 初始技能 (PHP: 取 skillist 第一个技能) ---
         assignInitialSkill(template, newPet);
 
+        // --- 初始背包物品 (从配置表读取) ---
+        assignInitialBag(player.getId());
+
         // --- 设为主宠 ---
         player.setMbid(newPet.getId().intValue());
         player.setFightBb(newPet.getId().intValue());
@@ -253,6 +262,33 @@ public class AuthService {
             skill.setUmp(parseFirstInt(sys.getUmp()));
             skillRepo.save(skill);
         } catch (NumberFormatException ignored) {}
+    }
+
+    private void assignInitialBag(Integer playerId) {
+        List<InitialBagConfig> configs = initialBagConfigRepo.findByEnabledOrderBySortOrderAsc(1);
+        if (configs.isEmpty()) return;
+
+        long now = System.currentTimeMillis() / 1000;
+        for (InitialBagConfig config : configs) {
+            Props props = propsRepo.findById(config.getPropId()).orElse(null);
+            if (props == null) continue;
+
+            UserBag item = new UserBag();
+            item.setPlayerId(playerId.longValue());
+            item.setPropId(config.getPropId());
+            item.setSums(config.getCount());
+            item.setVary(props.getVary() != null ? props.getVary() : 1);
+            item.setSell(props.getSell());
+            item.setZbing(0);
+            item.setPyb(0);
+            item.setPsell(0);
+            item.setPstime(0L);
+            item.setBsum(0);
+            item.setPetime(0L);
+            item.setPsum(0);
+            item.setStime(now);
+            bagRepo.save(item);
+        }
     }
 
     private String splitFirst(String csv) {

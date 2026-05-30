@@ -58,10 +58,11 @@ public class AdminApiController {
     @GetMapping("/props")
     public Map<String, Object> props(
             @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(required = false) Integer vary,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<Map<String, Object>> list = adminService.browseProps(keyword, page, size);
-        long total = adminService.countProps(keyword);
+        List<Map<String, Object>> list = adminService.browseProps(keyword, vary, page, size);
+        long total = adminService.countProps(keyword, vary);
         return Map.of("list", list, "total", total, "page", page, "size", size);
     }
 
@@ -205,5 +206,33 @@ public class AdminApiController {
     @DeleteMapping("/tasks/player")
     public Map<String, Object> removePlayerTask(@RequestBody RemovePlayerTaskRequest req) {
         return adminService.removePlayerTask(req.playerId(), req.taskId());
+    }
+
+    // ======================== Initial Bag Config Management ========================
+
+    /** Get all initial bag configs */
+    @GetMapping("/initial-bag")
+    public List<Map<String, Object>> getInitialBagConfigs() {
+        return adminService.getInitialBagConfigs();
+    }
+
+    /** Add initial bag config */
+    public record AddInitialBagRequest(Long propId, Integer count, Integer sortOrder) {}
+    @PostMapping("/initial-bag")
+    public Map<String, Object> addInitialBagConfig(@RequestBody AddInitialBagRequest req) {
+        return adminService.addInitialBagConfig(req.propId(), req.count(), req.sortOrder());
+    }
+
+    /** Update initial bag config */
+    public record UpdateInitialBagRequest(Integer id, Integer count, Integer sortOrder, Integer enabled) {}
+    @PutMapping("/initial-bag")
+    public Map<String, Object> updateInitialBagConfig(@RequestBody UpdateInitialBagRequest req) {
+        return adminService.updateInitialBagConfig(req.id(), req.count(), req.sortOrder(), req.enabled());
+    }
+
+    /** Delete initial bag config */
+    @DeleteMapping("/initial-bag/{id}")
+    public Map<String, Object> deleteInitialBagConfig(@PathVariable Integer id) {
+        return adminService.deleteInitialBagConfig(id);
     }
 }
