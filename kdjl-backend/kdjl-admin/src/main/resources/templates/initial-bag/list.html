@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>初始背包配置 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.search-box{position:relative;display:inline-block;vertical-align:top}
+.dropdown{position:absolute;top:100%;left:0;width:350px;max-height:350px;overflow-y:auto;background:#fff;border:1px solid #ddd;border-radius:4px;z-index:100;display:none;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.dropdown.show{display:block}
+.dropdown-item{padding:10px 12px;cursor:pointer;display:flex;align-items:center;gap:10px;border-bottom:1px solid #f0f0f0}
+.dropdown-item:hover{background:#e8f4fd}
+.dropdown-item:last-child{border-bottom:none}
+.dropdown-item .name{flex:1;font-size:13px;color:#333}
+.dropdown-item .id{color:#888;font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:3px}
+.dropdown-empty{padding:16px;color:#999;text-align:center}
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('initial-bag')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('初始背包配置')"></div>
+    <div class="content">
+        <div class="card">
+            <h3 style="margin-bottom:15px">添加初始道具</h3>
+            <div class="flex-row" style="margin-bottom:20px;gap:10px;flex-wrap:wrap;align-items:flex-start">
+                <div class="search-box">
+                    <input class="input" id="propSearch" placeholder="输入道具名称搜索..." style="width:220px" oninput="searchProps()">
+                    <select class="input" id="propCategory" style="width:100px;margin-top:5px" onchange="searchProps()">
+                        <option value="">全部类型</option>
+                        <option value="0">其他道具</option>
+                        <option value="1">消耗品</option>
+                        <option value="2">技能</option>
+                    </select>
+                    <div class="dropdown" id="propDropdown"></div>
+                </div>
+                <div>
+                    <input class="input" id="propId" placeholder="道具ID" style="width:80px" readonly>
+                    <input class="input" id="propName" placeholder="选择的道具" style="width:150px" readonly>
+                </div>
+                <input class="input" id="count" placeholder="数量" value="1" style="width:70px">
+                <input class="input" id="sortOrder" placeholder="排序" value="0" style="width:70px">
+                <button class="btn btn-primary" onclick="addItem()">添加</button>
+            </div>
+            <h3 style="margin:20px 0 10px">已配置的初始道具</h3>
+            <table><thead><tr>
+                <th style="width:50px">ID</th>
+                <th style="width:80px">道具ID</th>
+                <th>道具名称</th>
+                <th style="width:80px">数量</th>
+                <th style="width:80px">排序</th>
+                <th style="width:60px">状态</th>
+                <th style="width:120px">操作</th>
+            </tr></thead><tbody id="tbody"></tbody></table>
+        </div>
+    </div>
+</div>
+<script>
+let searchTimer=null;
+function searchProps(){
+    clearTimeout(searchTimer);
+    searchTimer=setTimeout(()=>{
+        let keyword=document.getElementById('propSearch').value.trim();
+        let category=document.getElementById('propCategory').value;
+        if(!keyword&&!category){
+            document.getElementById('propDropdown').classList.remove('show');
+            return;
+        }
+        let url='/api/admin/props?keyword='+encodeURIComponent(keyword)+'&page=1&size=50';
+        if(category)url+='&vary='+category;
+        fetch(url).then(r=>r.json()).then(d=>{
+            let items=d.list||[];
+            let total=d.total||0;
+            if(items.length===0){
+                document.getElementById('propDropdown').innerHTML='<div class="dropdown-empty">未找到匹配的道具</div>';
+            }else{
+                let html=items.map(i=>{
+                    let safeName=i.name.replace(/'/g,"&#39;").replace(/"/g,"&quot;");
+                    return `<div class="dropdown-item" onclick="selectProp(${i.id},'${safeName}')">
+                        <span class="name">${i.name}</span>
+                        <span class="id">ID: ${i.id}</span>
+                    </div>`;
+                }).join('');
+                if(total>50)html+=`<div class="dropdown-empty">显示前50条，共${total}条结果</div>`;
+                document.getElementById('propDropdown').innerHTML=html;
+            }
+            document.getElementById('propDropdown').classList.add('show');
+        });
+    },200);
+}
+function selectProp(id,name){
+    document.getElementById('propId').value=id;
+    document.getElementById('propName').value=name;
+    document.getElementById('propDropdown').classList.remove('show');
+    document.getElementById('propSearch').value='';
+}
+document.addEventListener('click',e=>{
+    if(!e.target.closest('.search-box'))document.getElementById('propDropdown').classList.remove('show');
+});
+function load(){
+    fetch('/api/admin/initial-bag').then(r=>r.json()).then(d=>{
+        if(d.length===0){
+            document.getElementById('tbody').innerHTML='<tr><td colspan="7" style="text-align:center;color:#999">暂无配置，请添加初始道具</td></tr>';
+            return;
+        }
+        document.getElementById('tbody').innerHTML=d.map(i=>
+            `<tr>
+                <td>${i.id}</td>
+                <td>${i.propId}</td>
+                <td>${i.propName||'未知'}</td>
+                <td><input class="input" value="${i.count}" style="width:60px" onchange="updateItem(${i.id},this.value,null,null)"></td>
+                <td><input class="input" value="${i.sortOrder}" style="width:60px" onchange="updateItem(${i.id},null,this.value,null)"></td>
+                <td>${i.enabled?'<span style="color:green">启用</span>':'<span style="color:red">禁用</span>'}</td>
+                <td>
+                    <button class="btn btn-sm" onclick="toggleItem(${i.id},${i.enabled?0:1})">${i.enabled?'禁用':'启用'}</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteItem(${i.id})">删除</button>
+                </td>
+            </tr>`
+        ).join('');
+    });
+}
+function addItem(){
+    let propId=document.getElementById('propId').value;
+    let count=document.getElementById('count').value||1;
+    let sortOrder=document.getElementById('sortOrder').value||0;
+    if(!propId){alert('请先搜索并选择道具');return;}
+    fetch('/api/admin/initial-bag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({propId:+propId,count:+count,sortOrder:+sortOrder})})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){alert(d.error);return;}
+        document.getElementById('propId').value='';
+        document.getElementById('propName').value='';
+        document.getElementById('count').value='1';
+        load();
+    });
+}
+function updateItem(id,count,sortOrder,enabled){
+    let body={id};
+    if(count!==null)body.count=+count;
+    if(sortOrder!==null)body.sortOrder=+sortOrder;
+    if(enabled!==null)body.enabled=enabled;
+    fetch('/api/admin/initial-bag',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}).then(()=>load());
+}
+function toggleItem(id,enabled){updateItem(id,null,null,enabled);}
+function deleteItem(id){if(!confirm('确定删除该初始道具？'))return;fetch('/api/admin/initial-bag/'+id,{method:'DELETE'}).then(()=>load());}
+load();
+</script>
+</body>
+</html>

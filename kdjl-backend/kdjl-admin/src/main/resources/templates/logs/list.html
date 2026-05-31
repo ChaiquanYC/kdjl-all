@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作日志 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.log-action{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:bold}
+.log-action-LOGIN{background:#e8f5e9;color:#2e7d32}
+.log-action-REGISTER{background:#e3f2fd;color:#1565c0}
+.log-action-OTHER{background:#f5f5f5;color:#666}
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('logs')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('操作日志')"></div>
+    <div class="content">
+        <div class="card">
+            <div class="flex-row" style="margin-bottom:15px;gap:10px;flex-wrap:wrap">
+                <input class="input" id="playerId" placeholder="玩家ID" style="width:100px">
+                <select class="input" id="actionFilter" style="width:120px">
+                    <option value="">全部操作</option>
+                    <option value="LOGIN">登录</option>
+                    <option value="REGISTER">注册</option>
+                </select>
+                <button class="btn btn-primary" onclick="load(1)">查询</button>
+            </div>
+            <table><thead><tr>
+                <th style="width:60px">ID</th>
+                <th style="width:80px">玩家ID</th>
+                <th style="width:100px">玩家昵称</th>
+                <th style="width:80px">操作</th>
+                <th>详情</th>
+                <th style="width:150px">时间</th>
+            </tr></thead><tbody id="tbody"></tbody></table>
+            <div class="pagination" id="pager"></div>
+        </div>
+    </div>
+</div>
+<script>
+let page=1,total=0;
+function load(p){
+    page=p||1;
+    let playerId=document.getElementById('playerId').value||'';
+    let action=document.getElementById('actionFilter').value;
+    let url='/api/admin/logs?page='+page+'&size=50';
+    if(playerId)url+='&playerId='+playerId;
+    if(action)url+='&action='+action;
+    fetch(url).then(r=>r.json()).then(d=>{
+        total=d.total;
+        if(d.list.length===0){
+            document.getElementById('tbody').innerHTML='<tr><td colspan="6" style="text-align:center;color:#999">暂无日志</td></tr>';
+        }else{
+            document.getElementById('tbody').innerHTML=d.list.map(l=>{
+                let actionClass='log-action-'+(l.action||'OTHER');
+                return `<tr>
+                    <td>${l.id}</td>
+                    <td>${l.playerId||''}</td>
+                    <td>${l.playerName||''}</td>
+                    <td><span class="log-action ${actionClass}">${l.action||''}</span></td>
+                    <td>${l.detail||''}</td>
+                    <td>${l.createdAt||''}</td>
+                </tr>`;
+            }).join('');
+        }
+        renderPager();
+    });
+}
+function renderPager(){
+    let pages=Math.ceil(total/50), html='';
+    for(let i=1;i<=pages;i++){
+        if(i>10){html+='<span>...</span>';break;}
+        html+=`<button class="${i===page?'current':''}" onclick="load(${i})">${i}</button>`;
+    }
+    document.getElementById('pager').innerHTML=html;
+}
+document.getElementById('playerId').addEventListener('keydown',e=>{if(e.key==='Enter')load(1);});
+load(1);
+</script>
+</body>
+</html>
