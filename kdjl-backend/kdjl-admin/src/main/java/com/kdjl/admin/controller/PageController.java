@@ -30,6 +30,12 @@ public class PageController {
     @GetMapping("/tasks")
     public String tasks() { return "tasks/list"; }
 
-    @GetMapping("/online-rewards")
-    public String onlineRewards() { return "online-rewards/list"; }
+    @GetMapping("/initial-bag")
+    public String initialBag() { return "initial-bag/list"; }
+
+    @GetMapping("/logs")
+    public String logs() { return "logs/list"; }
+
+    @GetMapping("/auction")
+    public String auction() { return "auction/list"; }
 }

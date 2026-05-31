@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拍卖行管理 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.tab{display:flex;gap:10px;margin-bottom:15px}
+.tab button{padding:8px 16px;border:1px solid #ddd;background:#fff;cursor:pointer;border-radius:4px}
+.tab button.active{background:#1890ff;color:#fff;border-color:#1890ff}
+.price-gold{color:#ffd700;font-weight:bold}
+.price-yb{color:#ff6b6b;font-weight:bold}
+.price-sj{color:#52c41a;font-weight:bold}
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('auction')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('拍卖行管理')"></div>
+    <div class="content">
+        <div class="card">
+            <div class="tab">
+                <button class="active" onclick="switchTab('current',this)">当前上架</button>
+                <button onclick="switchTab('history',this)">交易记录</button>
+            </div>
+            <div id="currentTab">
+                <div class="flex-row" style="margin-bottom:15px;gap:10px">
+                    <select class="input" id="priceType" style="width:100px" onchange="loadCurrent()">
+                        <option value="">全部类型</option>
+                        <option value="gold">金币</option>
+                        <option value="yb">元宝</option>
+                        <option value="sj">水晶</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadCurrent()">刷新</button>
+                </div>
+                <table><thead><tr>
+                    <th style="width:60px">ID</th>
+                    <th>道具名称</th>
+                    <th style="width:60px">数量</th>
+                    <th style="width:100px">价格</th>
+                    <th style="width:80px">卖家</th>
+                    <th style="width:120px">剩余时间</th>
+                </tr></thead><tbody id="currentBody"></tbody></table>
+            </div>
+            <div id="historyTab" style="display:none">
+                <div class="flex-row" style="margin-bottom:15px;gap:10px;flex-wrap:wrap">
+                    <input class="input" id="sellerId" placeholder="卖家ID" style="width:80px">
+                    <input class="input" id="buyerId" placeholder="买家ID" style="width:80px">
+                    <select class="input" id="actionFilter" style="width:100px">
+                        <option value="">全部操作</option>
+                        <option value="list">上架</option>
+                        <option value="buy">购买</option>
+                        <option value="cancel">下架</option>
+                        <option value="expire">过期</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="loadHistory(1)">查询</button>
+                </div>
+                <table><thead><tr>
+                    <th style="width:60px">ID</th>
+                    <th>道具名称</th>
+                    <th style="width:60px">数量</th>
+                    <th style="width:100px">价格</th>
+                    <th style="width:80px">卖家</th>
+                    <th style="width:80px">买家</th>
+                    <th style="width:80px">操作</th>
+                    <th style="width:150px">时间</th>
+                </tr></thead><tbody id="historyBody"></tbody></table>
+                <div class="pagination" id="pager"></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+let currentTab='current',historyPage=1,historyTotal=0;
+function switchTab(tab,btn){
+    currentTab=tab;
+    document.querySelectorAll('.tab button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('currentTab').style.display=tab==='current'?'':'none';
+    document.getElementById('historyTab').style.display=tab==='history'?'':'none';
+    if(tab==='current')loadCurrent();
+    else loadHistory(1);
+}
+function formatPrice(price,type){
+    if(type==='yb')return`<span class="price-yb">${price}元宝</span>`;
+    if(type==='sj')return`<span class="price-sj">${price}水晶</span>`;
+    return`<span class="price-gold">${price}金</span>`;
+}
+function formatTime(seconds){
+    if(!seconds||seconds<=0)return'<span style="color:red">已过期</span>';
+    let h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60);
+    return h>0?`${h}小时${m}分`:`${m}分`;
+}
+function loadCurrent(){
+    let type=document.getElementById('priceType').value;
+    fetch('/api/admin/auction-current?type='+(type||'gold')).then(r=>r.json()).then(items=>{
+        if(!items||items.length===0){
+            document.getElementById('currentBody').innerHTML='<tr><td colspan="6" style="text-align:center;color:#999">暂无上架物品</td></tr>';
+            return;
+        }
+        document.getElementById('currentBody').innerHTML=items.map(i=>
+            `<tr>
+                <td>${i.id}</td>
+                <td>${i.name||''}</td>
+                <td>${i.count||1}</td>
+                <td>${formatPrice(i.price||0,i.type||'gold')}</td>
+                <td>${i.sellerName||''}</td>
+                <td>${formatTime(i.timeRemaining)}</td>
+            </tr>`
+        ).join('');
+    });
+}
+function loadHistory(p){
+    historyPage=p||1;
+    let sellerId=document.getElementById('sellerId').value||'';
+    let buyerId=document.getElementById('buyerId').value||'';
+    let action=document.getElementById('actionFilter').value;
+    let url='/api/admin/auction-logs?page='+historyPage+'&size=50';
+    if(sellerId)url+='&sellerId='+sellerId;
+    if(buyerId)url+='&buyerId='+buyerId;
+    if(action)url+='&action='+action;
+    fetch(url).then(r=>r.json()).then(d=>{
+        historyTotal=d.total;
+        if(d.list.length===0){
+            document.getElementById('historyBody').innerHTML='<tr><td colspan="8" style="text-align:center;color:#999">暂无交易记录</td></tr>';
+        }else{
+            document.getElementById('historyBody').innerHTML=d.list.map(l=>{
+                let actionText={list:'上架',buy:'购买',cancel:'下架',expire:'过期'}[l.action]||l.action;
+                let actionColor={list:'#1890ff',buy:'#52c41a',cancel:'#ff4d4f',expire:'#999'}[l.action]||'#333';
+                return`<tr>
+                    <td>${l.id}</td>
+                    <td>${l.propName||''}</td>
+                    <td>${l.count||1}</td>
+                    <td>${formatPrice(l.price||0,l.priceType||'gold')}</td>
+                    <td>${l.sellerName||''}</td>
+                    <td>${l.buyerName||'-'}</td>
+                    <td><span style="color:${actionColor}">${actionText}</span></td>
+                    <td>${l.createdAt||''}</td>
+                </tr>`;
+            }).join('');
+        }
+        renderPager();
+    });
+}
+function renderPager(){
+    let pages=Math.ceil(historyTotal/50), html='';
+    for(let i=1;i<=pages;i++){
+        if(i>10){html+='<span>...</span>';break;}
+        html+=`<button class="${i===historyPage?'current':''}" onclick="loadHistory(${i})">${i}</button>`;
+    }
+    document.getElementById('pager').innerHTML=html;
+}
+loadCurrent();
+</script>
+</body>
+</html>
