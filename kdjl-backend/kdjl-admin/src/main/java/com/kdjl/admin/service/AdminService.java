@@ -22,18 +22,14 @@ public class AdminService {
     private final AdminYbLogRepository ybLogRepo;
     private final AdminTaskDefRepository taskDefRepo;
     private final AdminTaskAcceptRepository taskAcceptRepo;
-    private final AdminInitialBagConfigRepository initialBagConfigRepo;
-    private final AdminPlayerActionLogRepository playerActionLogRepo;
-    private final AdminAuctionLogRepository auctionLogRepo;
+    private final AdminOnlineRewardConfigRepository rewardConfigRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
                         AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
-                        AdminInitialBagConfigRepository initialBagConfigRepo,
-                        AdminPlayerActionLogRepository playerActionLogRepo,
-                        AdminAuctionLogRepository auctionLogRepo) {
+                        AdminOnlineRewardConfigRepository rewardConfigRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -44,9 +40,7 @@ public class AdminService {
         this.ybLogRepo = ybLogRepo;
         this.taskDefRepo = taskDefRepo;
         this.taskAcceptRepo = taskAcceptRepo;
-        this.initialBagConfigRepo = initialBagConfigRepo;
-        this.playerActionLogRepo = playerActionLogRepo;
-        this.auctionLogRepo = auctionLogRepo;
+        this.rewardConfigRepo = rewardConfigRepo;
     }
 
     // ---- Dashboard stats ----
@@ -225,9 +219,9 @@ public class AdminService {
     }
 
     // ---- Props browser ----
-    public List<Map<String, Object>> browseProps(String keyword, Integer vary, int page, int size) {
+    public List<Map<String, Object>> browseProps(String keyword, int page, int size) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.searchByKeywordAndVary(kw, vary, Pageable.ofSize(size).withPage(page - 1)).stream()
+        return propsRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId()); m.put("name", p.getName());
@@ -239,9 +233,9 @@ public class AdminService {
             }).collect(Collectors.toList());
     }
 
-    public long countProps(String keyword, Integer vary) {
+    public long countProps(String keyword) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.countByKeywordAndVary(kw, vary);
+        return propsRepo.countByKeyword(kw);
     }
 
     // ---- Pet template browser ----
@@ -536,148 +530,114 @@ public class AdminService {
         return Map.of("success", true);
     }
 
-    // ---- Initial Bag Config Management ----
+    // ======================== Online Reward Config Management ========================
 
-    public List<Map<String, Object>> getInitialBagConfigs() {
-        List<InitialBagConfig> configs = initialBagConfigRepo.findAllByOrderBySortOrderAsc();
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (InitialBagConfig config : configs) {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("id", config.getId());
-            m.put("propId", config.getPropId());
-            m.put("count", config.getCount());
-            m.put("sortOrder", config.getSortOrder());
-            m.put("enabled", config.getEnabled());
-            // Get prop name
-            Props props = propsRepo.findById(config.getPropId()).orElse(null);
-            m.put("propName", props != null ? props.getName() : "未知道具");
-            m.put("propImg", props != null ? props.getImg() : null);
-            result.add(m);
+    public List<Map<String, Object>> getOnlineRewardConfig() {
+        List<OnlineRewardConfig> all = rewardConfigRepo.findAllByOrderByStepAscLevelMinAsc();
+        // Collect all item IDs for name lookup
+        Set<Long> allItemIds = new LinkedHashSet<>();
+        for (OnlineRewardConfig c : all) {
+            for (String id : c.getItemIds().split(",")) {
+                try { allItemIds.add(Long.parseLong(id.trim())); } catch (NumberFormatException ignored) {}
+            }
         }
+        Map<Long, String> itemNames = propsRepo.findAllById(allItemIds).stream()
+            .collect(Collectors.toMap(Props::getId, Props::getName, (a, b) -> a));
+
+        return all.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("step", c.getStep());
+            m.put("levelMin", c.getLevelMin());
+            m.put("levelMax", c.getLevelMax());
+            m.put("timeMinutes", c.getTimeMinutes());
+            m.put("itemIds", c.getItemIds());
+            m.put("itemCounts", c.getItemCounts());
+            // Resolve item names
+            String[] ids = c.getItemIds().split(",");
+            String[] counts = c.getItemCounts().split(",");
+            List<Map<String, Object>> items = new ArrayList<>();
+            for (int i = 0; i < ids.length; i++) {
+                try {
+                    long propId = Long.parseLong(ids[i].trim());
+                    Map<String, Object> im = new LinkedHashMap<>();
+                    im.put("id", propId);
+                    im.put("name", itemNames.getOrDefault(propId, "未知道具"));
+                    im.put("count", i < counts.length ? counts[i].trim() : "0");
+                    items.add(im);
+                } catch (NumberFormatException ignored) {}
+            }
+            m.put("items", items);
+            return m;
+        }).collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Map<String, Object> saveOnlineRewardConfig(List<Map<String, Object>> configs) {
+        rewardConfigRepo.deleteAll();
+        for (Map<String, Object> data : configs) {
+            OnlineRewardConfig c = new OnlineRewardConfig();
+            c.setStep(toInt(data.get("step")));
+            c.setLevelMin(toInt(data.get("levelMin")));
+            c.setLevelMax(toInt(data.get("levelMax")));
+            c.setTimeMinutes(toInt(data.get("timeMinutes")));
+            c.setItemIds(str(data.get("itemIds")));
+            c.setItemCounts(str(data.get("itemCounts")));
+            c.setSortOrder(toInt(data.get("sortOrder")));
+            rewardConfigRepo.save(c);
+        }
+        return Map.of("success", true, "count", configs.size());
+    }
+
+    public Map<String, Object> getOnlineRewardPlayers(int page, int size) {
+        // Query player_ext with expGotStep > 0 or onlineTimeToday > 0
+        List<PlayerExt> allExts = playerExtRepo.findAll();
+        List<Map<String, Object>> players = new ArrayList<>();
+        for (PlayerExt ext : allExts) {
+            int step = ext.getExpGotStep() != null ? ext.getExpGotStep() : 0;
+            int today = ext.getOnlineTimeToday() != null ? ext.getOnlineTimeToday() : 0;
+            if (step > 0 || today > 0) {
+                Player p = playerRepo.findById(ext.getPlayerId()).orElse(null);
+                Map<String, Object> m = new LinkedHashMap<>();
+                m.put("playerId", ext.getPlayerId());
+                m.put("nickname", p != null ? p.getNickname() : "未知");
+                m.put("onlineTimeToday", today);
+                m.put("onlineTimeTodayFmt", formatSeconds(today));
+                m.put("expGotStep", step);
+                m.put("lastOnlineDay", ext.getLastOnlineDay());
+                players.add(m);
+            }
+        }
+        // Sort by onlineTimeToday desc
+        players.sort((a, b) -> Integer.compare(
+            (int) b.get("onlineTimeToday"), (int) a.get("onlineTimeToday")));
+        int total = players.size();
+        int from = Math.min((page - 1) * size, total);
+        int to = Math.min(from + size, total);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("list", players.subList(from, to));
+        result.put("total", total);
+        result.put("page", page);
+        result.put("size", size);
         return result;
     }
 
     @Transactional
-    public Map<String, Object> addInitialBagConfig(Long propId, Integer count, Integer sortOrder) {
-        Props props = propsRepo.findById(propId).orElse(null);
-        if (props == null) return Map.of("error", "道具不存在");
-
-        InitialBagConfig config = new InitialBagConfig();
-        config.setPropId(propId);
-        config.setCount(count != null ? count : 1);
-        config.setSortOrder(sortOrder != null ? sortOrder : 0);
-        config.setEnabled(1);
-        initialBagConfigRepo.save(config);
-        return Map.of("success", true, "id", config.getId(), "propName", props.getName());
+    public Map<String, Object> resetPlayerOnlineReward(Integer playerId) {
+        PlayerExt ext = playerExtRepo.findById(playerId).orElse(null);
+        if (ext == null) return Map.of("error", "玩家扩展数据不存在");
+        ext.setExpGotStep(0);
+        playerExtRepo.save(ext);
+        Player p = playerRepo.findById(playerId).orElse(null);
+        return Map.of("success", true, "player", p != null ? p.getNickname() : playerId);
     }
 
-    @Transactional
-    public Map<String, Object> updateInitialBagConfig(Integer id, Integer count, Integer sortOrder, Integer enabled) {
-        InitialBagConfig config = initialBagConfigRepo.findById(id).orElse(null);
-        if (config == null) return Map.of("error", "配置不存在");
-
-        if (count != null) config.setCount(count);
-        if (sortOrder != null) config.setSortOrder(sortOrder);
-        if (enabled != null) config.setEnabled(enabled);
-        initialBagConfigRepo.save(config);
-        return Map.of("success", true);
-    }
-
-    @Transactional
-    public Map<String, Object> deleteInitialBagConfig(Integer id) {
-        initialBagConfigRepo.deleteById(id);
-        return Map.of("success", true);
-    }
-
-    // ---- Player Action Log ----
-
-    public List<Map<String, Object>> getPlayerActionLogs(Integer playerId, String action, int page, int size) {
-        return playerActionLogRepo.searchLogs(playerId, action, Pageable.ofSize(size).withPage(page - 1))
-            .stream()
-            .map(l -> {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", l.getId());
-                m.put("playerId", l.getPlayerId());
-                m.put("playerName", l.getPlayerName());
-                m.put("action", l.getAction());
-                m.put("targetType", l.getTargetType());
-                m.put("targetId", l.getTargetId());
-                m.put("targetName", l.getTargetName());
-                m.put("detail", l.getDetail());
-                m.put("ip", l.getIp());
-                m.put("createdAt", l.getCreatedAt());
-                return m;
-            }).collect(Collectors.toList());
-    }
-
-    public long countPlayerActionLogs(Integer playerId, String action) {
-        return playerActionLogRepo.searchLogs(playerId, action, Pageable.ofSize(1)).getTotalElements();
-    }
-
-    // ---- Auction Log ----
-
-    public List<Map<String, Object>> getAuctionLogs(Integer sellerId, Integer buyerId, String action, int page, int size) {
-        return auctionLogRepo.searchLogs(sellerId, buyerId, action, Pageable.ofSize(size).withPage(page - 1))
-            .stream()
-            .map(l -> {
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", l.getId());
-                m.put("sellerId", l.getSellerId());
-                m.put("sellerName", l.getSellerName());
-                m.put("buyerId", l.getBuyerId());
-                m.put("buyerName", l.getBuyerName());
-                m.put("propId", l.getPropId());
-                m.put("propName", l.getPropName());
-                m.put("count", l.getCount());
-                m.put("price", l.getPrice());
-                m.put("priceType", l.getPriceType());
-                m.put("action", l.getAction());
-                m.put("createdAt", l.getCreatedAt());
-                return m;
-            }).collect(Collectors.toList());
-    }
-
-    public long countAuctionLogs(Integer sellerId, Integer buyerId, String action) {
-        return auctionLogRepo.searchLogs(sellerId, buyerId, action, Pageable.ofSize(1)).getTotalElements();
-    }
-
-    // ---- Current Auctions ----
-
-    public List<Map<String, Object>> getCurrentAuctions(String type) {
-        long now = System.currentTimeMillis() / 1000;
-        return bagRepo.findAll().stream()
-            .filter(b -> b.getPsum() != null && b.getPsum() > 0)
-            .filter(b -> b.getPetime() == null || b.getPetime() > now)
-            .filter(b -> {
-                if ("sj".equals(type)) return b.getPsj() != null && !b.getPsj().isEmpty() && parseIntSafe(b.getPsj()) > 0;
-                if ("yb".equals(type)) return b.getPyb() != null && b.getPyb() > 0;
-                return b.getPsell() != null && b.getPsell() > 0;
-            })
-            .sorted((a, b) -> Long.compare(
-                b.getPstime() != null ? b.getPstime() : 0,
-                a.getPstime() != null ? a.getPstime() : 0))
-            .limit(100)
-            .map(b -> {
-                Props p = propsRepo.findById(b.getPropId()).orElse(null);
-                Player seller = playerRepo.findById(b.getPlayerId().intValue()).orElse(null);
-                Map<String, Object> m = new LinkedHashMap<>();
-                m.put("id", b.getId());
-                m.put("name", p != null ? p.getName() : "物品");
-                m.put("count", b.getPsum());
-                m.put("sellerName", seller != null ? seller.getNickname() : "未知");
-                int price = "sj".equals(type) ? parseIntSafe(b.getPsj())
-                          : "yb".equals(type) ? (b.getPyb() != null ? b.getPyb() : 0)
-                          : (b.getPsell() != null ? b.getPsell() : 0);
-                m.put("price", price);
-                m.put("type", "sj".equals(type) ? "sj" : "yb".equals(type) ? "yb" : "gold");
-                if (b.getPetime() != null)
-                    m.put("timeRemaining", Math.max(0, b.getPetime() - System.currentTimeMillis() / 1000));
-                return m;
-            }).collect(Collectors.toList());
-    }
-
-    private int parseIntSafe(String s) {
-        try { return Integer.parseInt(s.trim().replace("\n", "").replace("\r", "")); }
-        catch (NumberFormatException e) { return 0; }
+    private static String formatSeconds(int totalSeconds) {
+        if (totalSeconds >= 3600) {
+            int hours = totalSeconds / 3600;
+            int minutes = (totalSeconds % 3600) / 60;
+            return hours + "小时" + (minutes > 0 ? minutes + "分钟" : "");
+        }
+        return (totalSeconds / 60) + "分钟";
     }
 }

@@ -29,9 +29,6 @@ public class AuthService {
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
     private final OnlineTimeService onlineTimeService;
-    private final InitialBagConfigRepository initialBagConfigRepo;
-    private final PropsRepository propsRepo;
-    private final PlayerLogService playerLogService;
     private Set<String> badWords;
 
     public AuthService(PlayerRepository playerRepository,
@@ -43,10 +40,7 @@ public class AuthService {
                        LevelUpService levelUpService,
                        SkillSysRepository skillSysRepo,
                        SkillRepository skillRepo,
-                       OnlineTimeService onlineTimeService,
-                       InitialBagConfigRepository initialBagConfigRepo,
-                       PropsRepository propsRepo,
-                       PlayerLogService playerLogService) {
+                       OnlineTimeService onlineTimeService) {
         this.playerRepository = playerRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPetRepo = userPetRepo;
@@ -57,9 +51,6 @@ public class AuthService {
         this.skillSysRepo = skillSysRepo;
         this.skillRepo = skillRepo;
         this.onlineTimeService = onlineTimeService;
-        this.initialBagConfigRepo = initialBagConfigRepo;
-        this.propsRepo = propsRepo;
-        this.playerLogService = playerLogService;
         loadBadWords();
     }
 
@@ -112,9 +103,6 @@ public class AuthService {
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
         onlineTimeService.onLogin(player.getId());
 
-        // --- 记录登录日志 ---
-        playerLogService.log(player.getId(), player.getNickname(), "LOGIN", "用户登录");
-
         var data = new LinkedHashMap<String, Object>();
         data.put("token", token);
         data.put("uid", player.getId());
@@ -149,7 +137,7 @@ public class AuthService {
         player.setSecret(md5Hash);
         player.setNickname(nickname);
         player.setSex(sex != null ? sex : "帅哥");
-        player.setHeadImg(headImg != null ? headImg : Integer.valueOf(1));
+        player.setHeadImg(headImg != null ? headImg : 1);
         player.setVip(0);
         player.setMoney(0);
         player.setYb(0);
@@ -223,16 +211,13 @@ public class AuthService {
         // --- 初始技能 (PHP: 取 skillist 第一个技能) ---
         assignInitialSkill(template, newPet);
 
-        // --- 初始背包物品 (从配置表读取) ---
-        assignInitialBag(player.getId());
+        // --- 初始背包物品 ---
+        addStarterItems(player.getId());
 
         // --- 设为主宠 ---
         player.setMbid(newPet.getId().intValue());
         player.setFightBb(newPet.getId().intValue());
         playerRepository.save(player);
-
-        // --- 记录注册日志 ---
-        playerLogService.log(player.getId(), player.getNickname(), "REGISTER", "pet", newPet.getId().longValue(), newPet.getName(), "新用户注册");
 
         // --- 返回 ---
         String token = jwtTokenProvider.generateToken(player.getId().longValue(), player.getUsername());
@@ -255,6 +240,10 @@ public class AuthService {
         try {
             Long skillId = Long.parseLong(parts[0]);
             int skillLevel = parts.length > 1 ? Integer.parseInt(parts[1]) : 1;
+            // Skip if this pet already has this skill (prevent duplicates)
+            boolean exists = skillRepo.findByPetId(pet.getId()).stream()
+                .anyMatch(s -> s.getSkillDefId() != null && s.getSkillDefId().equals(skillId));
+            if (exists) return;
             SkillSys sys = skillSysRepo.findById(skillId).orElse(null);
             if (sys == null) return;
             Skill skill = new Skill();
@@ -273,33 +262,6 @@ public class AuthService {
         } catch (NumberFormatException ignored) {}
     }
 
-    private void assignInitialBag(Integer playerId) {
-        List<InitialBagConfig> configs = initialBagConfigRepo.findByEnabledOrderBySortOrderAsc(1);
-        if (configs.isEmpty()) return;
-
-        long now = System.currentTimeMillis() / 1000;
-        for (InitialBagConfig config : configs) {
-            Props props = propsRepo.findById(config.getPropId()).orElse(null);
-            if (props == null) continue;
-
-            UserBag item = new UserBag();
-            item.setPlayerId(playerId.longValue());
-            item.setPropId(config.getPropId());
-            item.setSums(config.getCount());
-            item.setVary(props.getVary() != null ? props.getVary() : 1);
-            item.setSell(props.getSell());
-            item.setZbing(0);
-            item.setPyb(0);
-            item.setPsell(0);
-            item.setPstime(0L);
-            item.setBsum(0);
-            item.setPetime(0L);
-            item.setPsum(0);
-            item.setStime(now);
-            bagRepo.save(item);
-        }
-    }
-
     private String splitFirst(String csv) {
         if (csv == null || csv.isEmpty()) return "0";
         return csv.split(",")[0];
@@ -307,6 +269,28 @@ public class AuthService {
 
     private Integer parseFirstInt(String csv) {
         try { return Integer.parseInt(splitFirst(csv)); } catch (NumberFormatException e) { return 0; }
+    }
+
+    private void addStarterItems(int playerId) {
+        long now = System.currentTimeMillis() / 1000;
+        // 治疗药水(小) x5
+        addItem(playerId, 1L, 1, 5, now);
+        // 魔法药水(小) x5
+        addItem(playerId, 4L, 1, 5, now);
+        // 金波姆·精灵球 x3
+        addItem(playerId, 149L, 1, 3, now);
+    }
+
+    private void addItem(int playerId, Long propId, int vary, int sums, long stime) {
+        UserBag item = new UserBag();
+        item.setPlayerId((long) playerId);
+        item.setPropId(propId);
+        item.setVary(vary);
+        item.setSums(sums);
+        item.setSell(1);
+        item.setStime(stime);
+        item.setCantrade(0);
+        bagRepo.save(item);
     }
 
     private static String md5(String input) {

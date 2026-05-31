@@ -58,11 +58,10 @@ public class AdminApiController {
     @GetMapping("/props")
     public Map<String, Object> props(
             @RequestParam(defaultValue = "") String keyword,
-            @RequestParam(required = false) Integer vary,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<Map<String, Object>> list = adminService.browseProps(keyword, vary, page, size);
-        long total = adminService.countProps(keyword, vary);
+        List<Map<String, Object>> list = adminService.browseProps(keyword, page, size);
+        long total = adminService.countProps(keyword);
         return Map.of("list", list, "total", total, "page", page, "size", size);
     }
 
@@ -208,66 +207,28 @@ public class AdminApiController {
         return adminService.removePlayerTask(req.playerId(), req.taskId());
     }
 
-    // ======================== Initial Bag Config Management ========================
+    // ======================== Online Reward Config ========================
 
-    /** Get all initial bag configs */
-    @GetMapping("/initial-bag")
-    public List<Map<String, Object>> getInitialBagConfigs() {
-        return adminService.getInitialBagConfigs();
+    @GetMapping("/online-rewards/config")
+    public Map<String, Object> onlineRewardConfig() {
+        return Map.of("list", adminService.getOnlineRewardConfig());
     }
 
-    /** Add initial bag config */
-    public record AddInitialBagRequest(Long propId, Integer count, Integer sortOrder) {}
-    @PostMapping("/initial-bag")
-    public Map<String, Object> addInitialBagConfig(@RequestBody AddInitialBagRequest req) {
-        return adminService.addInitialBagConfig(req.propId(), req.count(), req.sortOrder());
+    @PutMapping("/online-rewards/config")
+    public Map<String, Object> saveOnlineRewardConfig(@RequestBody List<Map<String, Object>> configs) {
+        return adminService.saveOnlineRewardConfig(configs);
     }
 
-    /** Update initial bag config */
-    public record UpdateInitialBagRequest(Integer id, Integer count, Integer sortOrder, Integer enabled) {}
-    @PutMapping("/initial-bag")
-    public Map<String, Object> updateInitialBagConfig(@RequestBody UpdateInitialBagRequest req) {
-        return adminService.updateInitialBagConfig(req.id(), req.count(), req.sortOrder(), req.enabled());
-    }
-
-    /** Delete initial bag config */
-    @DeleteMapping("/initial-bag/{id}")
-    public Map<String, Object> deleteInitialBagConfig(@PathVariable Integer id) {
-        return adminService.deleteInitialBagConfig(id);
-    }
-
-    // ======================== Player Action Log ========================
-
-    /** Get player action logs */
-    @GetMapping("/logs")
-    public Map<String, Object> getPlayerActionLogs(
-            @RequestParam(required = false) Integer playerId,
-            @RequestParam(defaultValue = "") String action,
+    @GetMapping("/online-rewards/players")
+    public Map<String, Object> onlineRewardPlayers(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        List<Map<String, Object>> list = adminService.getPlayerActionLogs(playerId, action, page, size);
-        long total = adminService.countPlayerActionLogs(playerId, action);
-        return Map.of("list", list, "total", total, "page", page, "size", size);
+            @RequestParam(defaultValue = "20") int size) {
+        return adminService.getOnlineRewardPlayers(page, size);
     }
 
-    // ======================== Auction Log ========================
-
-    /** Get auction logs */
-    @GetMapping("/auction-logs")
-    public Map<String, Object> getAuctionLogs(
-            @RequestParam(required = false) Integer sellerId,
-            @RequestParam(required = false) Integer buyerId,
-            @RequestParam(defaultValue = "") String action,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "50") int size) {
-        List<Map<String, Object>> list = adminService.getAuctionLogs(sellerId, buyerId, action, page, size);
-        long total = adminService.countAuctionLogs(sellerId, buyerId, action);
-        return Map.of("list", list, "total", total, "page", page, "size", size);
-    }
-
-    /** Get current auctions */
-    @GetMapping("/auction-current")
-    public List<Map<String, Object>> getCurrentAuctions(@RequestParam(defaultValue = "gold") String type) {
-        return adminService.getCurrentAuctions(type);
+    public record ResetRewardRequest(Integer playerId) {}
+    @PostMapping("/online-rewards/reset-player")
+    public Map<String, Object> resetOnlineReward(@RequestBody ResetRewardRequest req) {
+        return adminService.resetPlayerOnlineReward(req.playerId());
     }
 }
