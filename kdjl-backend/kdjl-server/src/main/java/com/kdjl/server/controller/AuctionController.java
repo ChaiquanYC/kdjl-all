@@ -33,14 +33,14 @@ public class AuctionController {
         return ApiResponse.success(auctionService.myAuctions(uid));
     }
 
-    public record ListRequest(Long bagId, int price, String type, int quantity) {
+    public record ListRequest(Long bagId, int price, String type, int quantity, String buyerNickname) {
         public int quantity() { return quantity > 0 ? quantity : 1; }
     }
     @PostMapping("/sell")
     public ApiResponse<Map<String, Object>> sell(@RequestBody ListRequest req, Authentication auth) {
         Long uid = (Long) auth.getPrincipal();
         String type = req.type() != null ? req.type() : "gold";
-        return ApiResponse.success(auctionService.listForAuction(uid, req.bagId(), req.price(), type, req.quantity()));
+        return ApiResponse.success(auctionService.listForAuction(uid, req.bagId(), req.price(), type, req.quantity(), req.buyerNickname()));
     }
 
     public record BuyRequest(String type, int quantity) {

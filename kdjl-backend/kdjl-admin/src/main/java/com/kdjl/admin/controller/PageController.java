@@ -38,4 +38,7 @@ public class PageController {
 
     @GetMapping("/auction")
     public String auction() { return "auction/list"; }
+
+    @GetMapping("/online-rewards")
+    public String onlineRewards() { return "online-rewards/list"; }
 }

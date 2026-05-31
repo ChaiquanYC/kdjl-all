@@ -3,6 +3,7 @@ package com.kdjl.server.controller;
 import com.kdjl.common.dto.ApiResponse;
 import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
+import com.kdjl.server.service.OnlineRewardConfigService;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -20,45 +21,19 @@ public class DailyController {
     private final UserBagRepository bagRepo;
     private final UserPetRepository petRepo;
     private final PropsRepository propsRepo;
+    private final OnlineRewardConfigService rewardConfigService;
 
-    private static final int[] TIME_THRESHOLDS = {10, 30, 60, 120, 300}; // minutes
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
-
-    // Reward config: levelThreshold -> (stepIndex -> (itemId -> count))
-    // Matches PHP onlineforexp config from welcome table
-    private static final Map<Integer, Map<Integer, Map<Long, Integer>>> REWARD_CONFIG = buildRewardConfig();
 
     public DailyController(PlayerRepository playerRepo, PlayerExtRepository playerExtRepo,
                            UserBagRepository bagRepo, UserPetRepository petRepo,
-                           PropsRepository propsRepo) {
+                           PropsRepository propsRepo, OnlineRewardConfigService rewardConfigService) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.bagRepo = bagRepo;
         this.petRepo = petRepo;
         this.propsRepo = propsRepo;
-    }
-
-    private static Map<Integer, Map<Integer, Map<Long, Integer>>> buildRewardConfig() {
-        Map<Integer, Map<Integer, Map<Long, Integer>>> config = new LinkedHashMap<>();
-        config.put(30, Map.of(
-            0, Map.of(2008L, 1, 912L, 2),
-            1, Map.of(1994L, 1, 913L, 2),
-            2, Map.of(2778L, 1, 913L, 2),
-            3, Map.of(2791L, 15, 2794L, 2),
-            4, Map.of(2780L, 3, 2810L, 3)));
-        config.put(60, Map.of(
-            0, Map.of(2008L, 2, 912L, 3),
-            1, Map.of(1994L, 2, 913L, 3),
-            2, Map.of(2778L, 2, 913L, 3),
-            3, Map.of(2791L, 20, 2794L, 3),
-            4, Map.of(2780L, 5, 2810L, 5)));
-        config.put(Integer.MAX_VALUE, Map.of(
-            0, Map.of(2008L, 3, 912L, 4),
-            1, Map.of(1994L, 3, 913L, 4),
-            2, Map.of(2778L, 3, 913L, 4),
-            3, Map.of(2791L, 30, 2794L, 5),
-            4, Map.of(2780L, 8, 2810L, 8)));
-        return config;
+        this.rewardConfigService = rewardConfigService;
     }
 
     @PostMapping("/online-reward")
@@ -86,9 +61,10 @@ public class DailyController {
         int onlineSeconds = ext.getOnlineTimeToday() != null ? ext.getOnlineTimeToday() : 0;
         int onlineMinutes = (int) Math.ceil(onlineSeconds / 60.0);
 
-        int eligibleStep = getEligibleStep(onlineMinutes);
+        int eligibleStep = rewardConfigService.getEligibleStep(onlineMinutes);
+        int[] thresholds = rewardConfigService.getTimeThresholds();
         if (eligibleStep == 0) {
-            int remaining = TIME_THRESHOLDS[0] * 60 - onlineSeconds;
+            int remaining = thresholds[0] * 60 - onlineSeconds;
             return ApiResponse.error("还不到领奖时间呢！还需在线" + formatTime(remaining));
         }
 
@@ -98,7 +74,7 @@ public class DailyController {
         }
 
         int petLevel = battlePet.getLevel() != null ? battlePet.getLevel() : 1;
-        Map<Long, Integer> rewards = getRewardsForLevel(petLevel, currentStep);
+        Map<Long, Integer> rewards = rewardConfigService.getRewards(petLevel, currentStep);
         if (rewards == null || rewards.isEmpty()) {
             return ApiResponse.error("后台没有给等级为" + petLevel + "的宠物做设定！");
         }
@@ -117,7 +93,7 @@ public class DailyController {
         ext.setExpGotStep(currentStep + 1);
         playerExtRepo.save(ext);
 
-        boolean isLast = (currentStep + 1 >= 5);
+        boolean isLast = (currentStep + 1 >= rewardConfigService.getStepCount());
         String message = isLast
             ? "恭喜，您得到了今天最后大奖" + prizeWord + "，今日在线奖励已全部发放，祝您游戏愉快！"
             : "恭喜，您获得在线奖励" + prizeWord + "更大的礼包还在后面，继续努力吧…";
@@ -136,31 +112,33 @@ public class DailyController {
         if (player == null) return ApiResponse.error("玩家不存在");
 
         PlayerExt ext = playerExtRepo.findById(uidInt).orElse(null);
+        int[] thresholds = rewardConfigService.getTimeThresholds();
+        int totalSteps = rewardConfigService.getStepCount();
         if (ext == null) {
             return ApiResponse.success(Map.of(
-                "canClaim", false, "currentStep", 0, "totalSteps", 5,
-                "onlineMinutes", 0, "remainingSeconds", TIME_THRESHOLDS[0] * 60,
-                "nextThresholdMinutes", TIME_THRESHOLDS[0]));
+                "canClaim", false, "currentStep", 0, "totalSteps", totalSteps,
+                "onlineMinutes", 0, "remainingSeconds", thresholds[0] * 60,
+                "nextThresholdMinutes", thresholds[0]));
         }
 
         updateOnlineTime(ext, player);
 
         int onlineSeconds = ext.getOnlineTimeToday() != null ? ext.getOnlineTimeToday() : 0;
         int onlineMinutes = (int) Math.ceil(onlineSeconds / 60.0);
-        int eligibleStep = getEligibleStep(onlineMinutes);
+        int eligibleStep = rewardConfigService.getEligibleStep(onlineMinutes);
         int currentStep = ext.getExpGotStep() != null ? ext.getExpGotStep() : 0;
         boolean canClaim = currentStep < eligibleStep;
 
         int remainingSeconds = 0;
         int nextThresholdMinutes = 0;
-        if (currentStep < TIME_THRESHOLDS.length) {
-            nextThresholdMinutes = TIME_THRESHOLDS[currentStep];
+        if (currentStep < thresholds.length) {
+            nextThresholdMinutes = thresholds[currentStep];
             remainingSeconds = Math.max(0, nextThresholdMinutes * 60 - onlineSeconds);
         }
 
         return ApiResponse.success(Map.of(
             "canClaim", canClaim, "currentStep", currentStep, "eligibleStep", eligibleStep,
-            "totalSteps", 5, "onlineMinutes", onlineMinutes,
+            "totalSteps", totalSteps, "onlineMinutes", onlineMinutes,
             "remainingSeconds", remainingSeconds, "nextThresholdMinutes", nextThresholdMinutes));
     }
 
@@ -196,21 +174,6 @@ public class DailyController {
         }
         player.setLastVisitTime(now);
         playerRepo.save(player);
-    }
-
-    private static int getEligibleStep(int onlineMinutes) {
-        for (int i = TIME_THRESHOLDS.length - 1; i >= 0; i--) {
-            if (onlineMinutes > TIME_THRESHOLDS[i]) return i + 1;
-        }
-        return 0;
-    }
-
-    private Map<Long, Integer> getRewardsForLevel(int level, int step) {
-        return REWARD_CONFIG.entrySet().stream()
-            .filter(e -> level <= e.getKey())
-            .findFirst()
-            .map(e -> e.getValue().get(step))
-            .orElse(null);
     }
 
     private boolean hasBagSpace(Long uid, Player player, int itemTypes) {

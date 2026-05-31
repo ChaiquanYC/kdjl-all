@@ -106,4 +106,5 @@ public class UserBag {
     public void setPsj(String psj) { this.psj = psj; }
     public void setHoleInfo(String holeInfo) { this.holeInfo = holeInfo; }
     public void setPlusTimesEffect(String plusTimesEffect) { this.plusTimesEffect = plusTimesEffect; }
+    public void setBuyCode(Long buyCode) { this.buyCode = buyCode; }
 }

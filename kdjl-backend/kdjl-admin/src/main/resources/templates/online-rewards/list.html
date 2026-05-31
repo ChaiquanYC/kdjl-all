@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在线奖励管理 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.tabs { display:flex; gap:0; margin-bottom:16px; border-bottom:2px solid #e0e0e0; }
+.tab { padding:10px 24px; cursor:pointer; border:none; background:none; font-size:14px; color:#666; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .2s; }
+.tab.active { color:#4a90d9; border-bottom-color:#4a90d9; font-weight:600; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; font-size:13px; }
+.btn-primary { background:#4a90d9; color:#fff; }
+.btn-danger { background:#e74c3c; color:#fff; }
+.btn-success { background:#27ae60; color:#fff; }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.config-table { width:100%; border-collapse:collapse; font-size:13px; }
+.config-table th { background:#f5f5f5; padding:8px 10px; text-align:center; border:1px solid #e0e0e0; font-weight:500; }
+.config-table td { padding:6px 8px; border:1px solid #e0e0e0; vertical-align:middle; text-align:center; }
+.config-table input { padding:5px 8px; border:1px solid #ddd; border-radius:3px; font-size:12px; text-align:center; }
+.config-table .item-input { width:120px; }
+.config-table .count-input { width:50px; }
+.config-table .time-input { width:70px; }
+.step-header { background:#e8f0fe !important; font-weight:600; }
+.item-row { display:flex; gap:4px; align-items:center; justify-content:center; flex-wrap:wrap; }
+.pagination { display:flex; align-items:center; gap:6px; margin-top:16px; font-size:13px; }
+.pagination button { padding:6px 12px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; font-size:13px; min-width:32px; }
+.pagination button.current { background:#4a90d9; color:#fff; border-color:#4a90d9; font-weight:600; }
+.pagination button:disabled { color:#ccc; cursor:not-allowed; background:#f5f5f5; }
+.toast { position:fixed; top:20px; right:20px; padding:12px 24px; border-radius:6px; color:#fff; font-size:14px; z-index:9999; display:none; }
+.toast.success { background:#27ae60; }
+.toast.error { background:#e74c3c; }
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('online-rewards')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('在线奖励管理')"></div>
+    <div class="content">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab(0)">奖励配置</button>
+            <button class="tab" onclick="switchTab(1)">玩家状态</button>
+        </div>
+
+        <!-- Tab 0: Config -->
+        <div class="tab-content active" id="tab0">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <p style="font-size:13px;color:#888;margin:0">配置5个在线时长阶梯的奖励，修改后点击保存并刷新缓存生效</p>
+                <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+            </div>
+            <table class="config-table">
+                <thead>
+                    <tr>
+                        <th>阶梯</th>
+                        <th>在线时长(分钟)</th>
+                        <th>等级段</th>
+                        <th>奖励道具 (ID:数量，多个用逗号分隔)</th>
+                    </tr>
+                </thead>
+                <tbody id="configBody"></tbody>
+            </table>
+        </div>
+
+        <!-- Tab 1: Players -->
+        <div class="tab-content" id="tab1">
+            <table class="config-table" style="text-align:left">
+                <thead>
+                    <tr>
+                        <th>玩家ID</th>
+                        <th>昵称</th>
+                        <th>今日在线</th>
+                        <th>当前阶梯</th>
+                        <th>最后在线日</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="playerBody"></tbody>
+            </table>
+            <div class="pagination" id="playerPagination"></div>
+        </div>
+    </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API = '/api/admin';
+let configData = [];
+
+function switchTab(idx) {
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
+    document.querySelectorAll('.tab-content').forEach((c,i) => c.classList.toggle('active', i===idx));
+    if (idx === 1) loadPlayers();
+}
+
+// ============ Config Tab ============
+async function loadConfig() {
+    const res = await fetch(API + '/online-rewards/config');
+    const data = await res.json();
+    configData = data.list || [];
+    renderConfig();
+}
+
+function renderConfig() {
+    const tbody = document.getElementById('configBody');
+    if (configData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:#999;padding:20px">暂无配置数据</td></tr>';
+        return;
+    }
+    // Group by step
+    const steps = {};
+    configData.forEach(c => {
+        if (!steps[c.step]) steps[c.step] = [];
+        steps[c.step].push(c);
+    });
+    let html = '';
+    for (const [step, rows] of Object.entries(steps)) {
+        rows.forEach((row, i) => {
+            html += '<tr>';
+            if (i === 0) {
+                html += '<td class="step-header" rowspan="' + rows.length + '">第' + step + '阶</td>';
+                html += '<td class="step-header" rowspan="' + rows.length + '">';
+                html += '<input type="number" class="time-input" value="' + row.timeMinutes + '" data-step="' + step + '" onchange="updateTime(this)">';
+                html += '</td>';
+            }
+            html += '<td>' + levelLabel(row.levelMin, row.levelMax) + '</td>';
+            html += '<td>';
+            const items = row.items || [];
+            items.forEach((item, j) => {
+                html += '<div class="item-row">';
+                html += '<input class="item-input" value="' + item.id + '" data-id="' + row.id + '" data-idx="' + j + '" placeholder="道具ID">';
+                html += '<span>:</span>';
+                html += '<input class="count-input" value="' + item.count + '" data-id="' + row.id + '" data-idx="' + j + '" placeholder="数量">';
+                if (j > 0) html += '<span style="color:#999">,</span>';
+                html += '</div>';
+            });
+            if (items.length === 0) {
+                html += '<div class="item-row"><input class="item-input" value="" data-id="' + row.id + '" data-idx="0" placeholder="道具ID"><span>:</span><input class="count-input" value="0" data-id="' + row.id + '" data-idx="0" placeholder="数量"></div>';
+            }
+            html += '</td></tr>';
+        });
+    }
+    tbody.innerHTML = html;
+}
+
+function levelLabel(min, max) {
+    if (max >= 999) return min + '级+';
+    return min + '-' + max + '级';
+}
+
+function updateTime(input) {
+    const step = input.dataset.step;
+    configData.forEach(c => { if (String(c.step) === step) c.timeMinutes = parseInt(input.value) || 0; });
+}
+
+async function saveConfig() {
+    // Collect data from form
+    const rows = [];
+    const trs = document.querySelectorAll('#configBody tr');
+    const stepTimes = {};
+    document.querySelectorAll('.time-input').forEach(inp => { stepTimes[inp.dataset.step] = parseInt(inp.value) || 0; });
+
+    configData.forEach(c => {
+        const itemInputs = document.querySelectorAll('input.item-input[data-id="' + c.id + '"]');
+        const countInputs = document.querySelectorAll('input.count-input[data-id="' + c.id + '"]');
+        const ids = [];
+        const counts = [];
+        itemInputs.forEach((inp, i) => {
+            ids.push(inp.value.trim());
+            counts.push(countInputs[i] ? countInputs[i].value.trim() : '0');
+        });
+        rows.push({
+            step: c.step,
+            levelMin: c.levelMin,
+            levelMax: c.levelMax,
+            timeMinutes: stepTimes[String(c.step)] || c.timeMinutes,
+            itemIds: ids.join(','),
+            itemCounts: counts.join(','),
+            sortOrder: c.sortOrder || 0
+        });
+    });
+
+    const res = await fetch(API + '/online-rewards/config', {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(rows)
+    });
+    const data = await res.json();
+    if (data.success) {
+        showToast('配置已保存，正在刷新缓存...', 'success');
+        // Refresh server cache
+        fetch('http://localhost:8080/api/admin/refresh-online-reward-cache', {method:'POST'}).catch(()=>{});
+        loadConfig();
+    } else {
+        showToast(data.error || '保存失败', 'error');
+    }
+}
+
+// ============ Player Tab ============
+let playerPage = 1;
+const playerSize = 20;
+
+async function loadPlayers() {
+    const res = await fetch(API + '/online-rewards/players?page=' + playerPage + '&size=' + playerSize);
+    const data = await res.json();
+    const tbody = document.getElementById('playerBody');
+    const list = data.list || [];
+    if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="color:#999;padding:20px">暂无玩家在线奖励数据</td></tr>';
+    } else {
+        tbody.innerHTML = list.map(p => '<tr>' +
+            '<td>' + p.playerId + '</td>' +
+            '<td>' + (p.nickname||'') + '</td>' +
+            '<td>' + (p.onlineTimeTodayFmt||'0分钟') + '</td>' +
+            '<td>' + p.expGotStep + '/5</td>' +
+            '<td>' + (p.lastOnlineDay||'-') + '</td>' +
+            '<td><button class="btn btn-danger btn-sm" onclick="resetPlayer(' + p.playerId + ')">重置</button></td>' +
+            '</tr>').join('');
+    }
+    renderPagination(data.total || 0);
+}
+
+function renderPagination(total) {
+    const totalPages = Math.ceil(total / playerSize);
+    const div = document.getElementById('playerPagination');
+    if (totalPages <= 1) { div.innerHTML = ''; return; }
+    let html = '<button ' + (playerPage<=1?'disabled':'') + ' onclick="goPlayerPage('+(playerPage-1)+')">上一页</button>';
+    html += '<span>第' + playerPage + '/' + totalPages + '页 (共' + total + '条)</span>';
+    html += '<button ' + (playerPage>=totalPages?'disabled':'') + ' onclick="goPlayerPage('+(playerPage+1)+')">下一页</button>';
+    div.innerHTML = html;
+}
+
+function goPlayerPage(p) { playerPage = p; loadPlayers(); }
+
+async function resetPlayer(playerId) {
+    if (!confirm('确定重置玩家 ' + playerId + ' 的今日在线奖励进度？')) return;
+    const res = await fetch(API + '/online-rewards/reset-player', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({playerId})
+    });
+    const data = await res.json();
+    if (data.success) {
+        showToast('已重置 ' + data.player + ' 的奖励进度', 'success');
+        loadPlayers();
+    } else {
+        showToast(data.error || '重置失败', 'error');
+    }
+}
+
+function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast ' + type;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+// Init
+loadConfig();
+</script>
+</body>
+</html>

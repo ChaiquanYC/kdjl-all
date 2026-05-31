@@ -506,11 +506,6 @@ export default function BattlePanel({ petId, monsterId, mapId, mapImg, onClose, 
       {subPanel === 'skills' && state.skills && (
         <div className={styles.subPanel}>
           <div className={styles.subTitle}>选择技能</div>
-          {/* 普通攻击 always available (PHP Usejn(1)) */}
-          <div className={styles.skillItem}
-            onClick={() => { setSubPanel(null); doAction('attack'); }}>
-            <span className={styles.skillName}>普通攻击</span>
-          </div>
           {state.skills.map(sk => (
             <div key={sk.id} className={styles.skillItem}
               onClick={() => { setSubPanel(null); doAction('skill', sk.id); }}>

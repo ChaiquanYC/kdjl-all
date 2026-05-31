@@ -3,6 +3,7 @@ package com.kdjl.server.controller;
 import com.kdjl.common.dto.ApiResponse;
 import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
+import com.kdjl.server.service.OnlineRewardConfigService;
 import com.kdjl.server.service.TaskService;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,16 +19,18 @@ public class AdminController {
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
     private final TaskService taskService;
+    private final OnlineRewardConfigService rewardConfigService;
 
     public AdminController(UserPetRepository userPetRepo, PetRepository petRepo,
                            PlayerRepository playerRepo, UserBagRepository bagRepo,
                            SkillSysRepository skillSysRepo, SkillRepository skillRepo,
-                           TaskService taskService) {
+                           TaskService taskService, OnlineRewardConfigService rewardConfigService) {
         this.userPetRepo = userPetRepo;
         this.petRepo = petRepo;
         this.playerRepo = playerRepo;
         this.bagRepo = bagRepo;
         this.skillSysRepo = skillSysRepo;
+        this.rewardConfigService = rewardConfigService;
         this.skillRepo = skillRepo;
         this.taskService = taskService;
     }
@@ -229,6 +232,15 @@ public class AdminController {
         Map<String, Object> r = new LinkedHashMap<>();
         r.put("tasks", count);
         r.put("message", "Task cache refreshed");
+        return ApiResponse.success(r);
+    }
+
+    @PostMapping("/refresh-online-reward-cache")
+    public ApiResponse<Map<String, Object>> refreshOnlineRewardCache() {
+        rewardConfigService.refreshCache();
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("message", "Online reward cache refreshed");
+        r.put("steps", rewardConfigService.getStepCount());
         return ApiResponse.success(r);
     }
 }
