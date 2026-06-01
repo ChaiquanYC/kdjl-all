@@ -1,5 +1,9 @@
 package com.kdjl.server.websocket;
 
+import com.kdjl.common.entity.Player;
+import com.kdjl.common.entity.PlayerExt;
+import com.kdjl.server.repository.PlayerExtRepository;
+import com.kdjl.server.repository.PlayerRepository;
 import com.kdjl.server.security.JwtTokenProvider;
 import com.kdjl.server.service.CacheService;
 import org.slf4j.Logger;
@@ -12,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Controller
@@ -20,15 +25,20 @@ public class ChatHandler {
     private static final Logger log = LoggerFactory.getLogger(ChatHandler.class);
     private final SimpMessagingTemplate messaging;
     private final CacheService cache;
+    private final PlayerRepository playerRepo;
+    private final PlayerExtRepository playerExtRepo;
 
-    public ChatHandler(SimpMessagingTemplate messaging, CacheService cache) {
+    public ChatHandler(SimpMessagingTemplate messaging, CacheService cache,
+                       PlayerRepository playerRepo, PlayerExtRepository playerExtRepo) {
         this.messaging = messaging;
         this.cache = cache;
+        this.playerRepo = playerRepo;
+        this.playerExtRepo = playerExtRepo;
     }
 
     @MessageMapping("/chat")
     public void handleChat(@Payload ChatPayload payload, Principal principal) {
-        String senderName = principal.getName();
+        if (principal == null) return;
         long senderId = Long.parseLong(principal.getName());
 
         // Rate limit: 3 messages per 2 seconds
@@ -39,13 +49,31 @@ public class ChatHandler {
             return;
         }
 
+        // Query player info for nickname and vip
+        String senderName = String.valueOf(senderId);
+        int vip = 0;
+        boolean isMarried = false;
+        Optional<Player> playerOpt = playerRepo.findById((int) senderId);
+        if (playerOpt.isPresent()) {
+            Player p = playerOpt.get();
+            senderName = p.getNickname() != null ? p.getNickname() : senderName;
+            vip = p.getVip() != null ? p.getVip() : 0;
+        }
+        Optional<PlayerExt> extOpt = playerExtRepo.findById((int) senderId);
+        if (extOpt.isPresent()) {
+            PlayerExt ext = extOpt.get();
+            isMarried = ext.getMerge() != null && ext.getMerge() > 0;
+        }
+
         ChatMessage msg = new ChatMessage(
             UUID.randomUUID().toString(),
             senderId,
             senderName,
             payload.content(),
             payload.channel() != null ? payload.channel() : "world",
-            System.currentTimeMillis()
+            System.currentTimeMillis(),
+            vip,
+            isMarried
         );
 
         switch (msg.channel()) {
@@ -59,5 +87,6 @@ public class ChatHandler {
     }
 
     public record ChatPayload(String content, String channel) {}
-    public record ChatMessage(String id, long senderId, String senderName, String content, String channel, long timestamp) {}
+    public record ChatMessage(String id, long senderId, String senderName, String content,
+                              String channel, long timestamp, int vip, boolean isMarried) {}
 }

@@ -56,7 +56,7 @@ npm run lint        # ESLint
 
 **Module layout:**
 - `kdjl-common` — JPA entities + `ApiResponse` DTO (`{code, message, data, total, page, limit}`)
-- `kdjl-server` — 26 Controllers, 18 Services, 19 Repositories, plus `battle/` (BattleSession/BattleSessionManager), `security/` (JWT filter), `websocket/` (STOMP chat)
+- `kdjl-server` — 26 Controllers, 18 Services, 19 Repositories, plus `battle/` (BattleSession/BattleSessionManager), `security/` (JWT filter), `websocket/` (STOMP chat + WsAuthInterceptor)
 - `kdjl-admin` — Thymeleaf admin panel, separate port + SecurityConfig (`admin`/`admin123`). PageController for pages, AdminApiController for REST
 
 **Key service responsibilities:**
@@ -86,6 +86,13 @@ npm run lint        # ESLint
 - Failure → monster counter-attacks
 - Ranch full + party full → reject capture
 
+**Chat system:**
+- STOMP over WebSocket (`/ws` endpoint), topics: `/topic/chat` (world), `/topic/guild`, `/topic/team`
+- `WsAuthInterceptor` — channel interceptor parses JWT from STOMP CONNECT headers, sets Principal to userId
+- `ChatHandler.handleChat()` — queries Player (nickname, vip) + PlayerExt (merge) per message, broadcasts ChatMessage record with `vip` and `isMarried` fields
+- `ChatMessage` record: `id, senderId, senderName, content, channel, timestamp, vip, isMarried`
+- Rate limit: 3 messages / 2s per player via Redis
+
 ### Frontend (kdjl-frontend)
 
 **Layout system:** 1000px fixed width, side.jpg sidebar + content.jpg main area. Game area 788×319px using `zdzd_bj`/`team` background images matching PHP's `images/ui/` directory (5119 images). CSS Modules for component isolation.
@@ -105,6 +112,15 @@ npm run lint        # ESLint
 - `phase` guards on doAction/doCapture/doFlee (disabled during animation)
 - `handleBattleResponse` uses `{...prev, ...s}` merge to preserve `skills` field
 - No `<StrictMode>` — double-mount effects trigger duplicate battle API calls
+
+**Chat rendering (ChatPanel):**
+- Channel colors: world=#fff, private=#B64ABA, guild=#4E7BE7, team=#009900, system=#C95C14
+- Player name: red `#ff0000`, clickable (sets input to `//name` for whisper)
+- VIP badge: `(VIP)` in red when vip=1 or vip=3
+- Marriage icon: `merge.gif` after name when vip>=2
+- Emoticons: `(1)`~`(36)` → `<img src="/images/ui/motion/N.gif">`, max 5 per message
+- `useChatAll` hook subscribes to all 3 topics; uses `useRef` pattern to avoid duplicate subscriptions
+- GameLayout bottom bar sends via `useSendMessage()` (WebSocket), not local store
 
 ### Key Domain Concepts
 

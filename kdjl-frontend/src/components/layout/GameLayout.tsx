@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useGameStore, type Panel } from '@/stores/gameStore';
-import { useChat } from '@/hooks/useWebSocket';
+import { useChatAll, useSendMessage } from '@/hooks/useWebSocket';
 import { apiGet, apiPost } from '@/api/client';
 import ChatPanel from '@/components/game/ChatPanel';
 import PetList from '@/components/game/PetList';
@@ -61,9 +61,9 @@ export default function GameLayout() {
   const [chatType, setChatType] = useState(0); // 0=公聊 1=私聊 2=队聊 3=家族
   const [chatTypeOpen, setChatTypeOpen] = useState(false);
   const CHAT_TYPES = ['公聊','私聊','队聊','家族'];
-  const [channel, setChannel] = useState(''); // ''=全部 WP=私聊 SG=组队 GC=家族
+  const [channel, setChannel] = useState(''); // ''=全部 private=私聊 team=组队 guild=家族
   const [channelOpen, setChannelOpen] = useState(false);
-  const CHANNELS = [{k:'',v:'全部'},{k:'WP',v:'私聊'},{k:'SG',v:'组队'},{k:'GC',v:'家族'}];
+  const CHANNELS = [{k:'',v:'全部'},{k:'private',v:'私聊'},{k:'team',v:'组队'},{k:'guild',v:'家族'}];
   useEffect(() => {
     if (refreshTrigger === 0) return;
     setRefreshing(true);
@@ -204,7 +204,9 @@ export default function GameLayout() {
   useEffect(() => { fetchPlayer(); }, [fetchPlayer, refreshTrigger]);
   useEffect(() => { checkReward(); }, [refreshTrigger]);
 
-  useChat((msg) => {
+  const sendMessage = useSendMessage();
+
+  useChatAll((msg) => {
     addChatMessage(msg);
   });
 
@@ -342,9 +344,9 @@ export default function GameLayout() {
                 title={rewardStatus ? `在线奖励 (${rewardStatus.currentStep}/${rewardStatus.totalSteps}) ${rewardStatus.canClaim ? '可领取' : formatRemaining(rewardStatus.remainingSeconds)}` : '在线奖励'}
               />
             </div>
-            <ChatPanel embedded />
+            <ChatPanel embedded channelFilter={channel} />
             <div className={styles.chatInputW}>
-              <input id="chatmsg" placeholder="输入聊天内容..." onKeyDown={(e)=>{if(e.key==='Enter'){const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){useGameStore.getState().addChatMessage({id:Date.now().toString(),senderId:player?.id||0,senderName:player?.nickname||'?',content:inp.value,channel:'world',timestamp:Date.now()});inp.value='';}}}} />
+              <input id="chatmsg" placeholder="输入聊天内容..." onKeyDown={(e)=>{if(e.key==='Enter'){const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){const ch=['world','private','team','guild'][chatType]||'world';sendMessage(inp.value.trim(),ch);inp.value='';}}}} />
               <div className={styles.chatSelect} onClick={()=>{setChatTypeOpen(!chatTypeOpen);setChannelOpen(false)}}>
                 <span className={styles.chatSelectTrigger}>{CHAT_TYPES[chatType]}</span>
                 {chatTypeOpen && (
@@ -364,7 +366,7 @@ export default function GameLayout() {
                 )}
               </div>
               <button className={styles.emojiBtn} title="表情"><img src="/images/ui/motion/3.gif" alt="表情" /></button>
-              <button onClick={()=>{const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){useGameStore.getState().addChatMessage({id:Date.now().toString(),senderId:player?.id||0,senderName:player?.nickname||'?',content:inp.value,channel:'world',timestamp:Date.now()});inp.value='';}}}>发送</button>
+              <button onClick={()=>{const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){const ch=['world','private','team','guild'][chatType]||'world';sendMessage(inp.value.trim(),ch);inp.value='';}}}>发送</button>
               <button className={styles.friendsBtn} title="好友"><img src="/images/friends.gif" alt="好友" /></button>
             </div>
           </div>

@@ -75,4 +75,6 @@ export interface ChatMessage {
   content: string;
   channel: 'world' | 'private' | 'guild' | 'team' | 'system';
   timestamp: number;
+  vip?: number;          // 0=普通 1=VIP 2=结婚 3=VIP+结婚
+  isMarried?: boolean;
 }
