@@ -3,7 +3,6 @@ import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
-import { parseEffects } from '@/utils/equipEffect';
 import styles from './PetList.module.css';
 
 interface PetData {
@@ -338,28 +337,6 @@ export default function PetList() {
               <div>闪避：{selectedPet.miss}</div>
               <div>速度：{selectedPet.speed}</div>
               <div>成长：{selectedPet.czl ?? '-'}</div>
-              {(() => {
-                const allEffects: Record<string, number> = {};
-                zbMap.forEach((bagId) => {
-                  const item = bagItems.find(b => b.id === bagId);
-                  if (item?.effect) {
-                    item.effect.split(',').forEach((eff) => {
-                      const [k, v] = eff.split(':');
-                      if (k && v) allEffects[k] = (allEffects[k] || 0) + (Number(v) || 0);
-                    });
-                  }
-                });
-                const formatted = parseEffects(Object.entries(allEffects).map(([k, v]) => `${k}:${v}`).join(','));
-                if (formatted.length === 0) return null;
-                return (
-                  <div className={styles.equipBonus}>
-                    <div className={styles.equipBonusTitle}>装备加成</div>
-                    {formatted.map((e, i) => (
-                      <div key={i} className={styles.equipBonusItem}>{e.value > 0 ? '+' : ''}{e.value}{e.isPercent ? '%' : ''}{e.label}</div>
-                    ))}
-                  </div>
-                );
-              })()}
             </div>
           </div>
         )}
