@@ -1,5 +1,5 @@
 .chatPanel { display:flex; flex-direction:column; flex:1; min-height:0; background:transparent; }
-.msgEmbed { flex:1; overflow-y:auto; color:#333; font-size:12px; line-height:18px; min-height:0; padding-left:50px; padding-top:10px; }
+.msgEmbed { position:absolute; left:60px; top:47px; width:595px; height:145px; overflow-x:hidden; overflow-y:auto; color:#fff; font-size:12px; line-height:20px; scrollbar-arrow-color:#fff; scrollbar-face-color:#603011; scrollbar-darkshadow-color:#603011; scrollbar-base-color:#996332; scrollbar-highlight-color:#996332; scrollbar-shadow-color:#996332; scrollbar-track-color:#996332; scrollbar-3dlight-color:#603011 }
 
 .header { display:flex; gap:2px; padding:4px 6px; background:#5a3d18; border-bottom:1px solid #8B6914; }
 .chBtn, .chActive {
@@ -27,6 +27,10 @@
 
 .time { color:#636e72; font-size:10px; margin-right:4px; }
 .sender { color:#74b9ff; margin-right:4px; }
+.msgEmbed .time { color:#888; }
+.msgEmbed .sender { color:#ff0000; }
+.msgEmbed .content { color:#fff; word-break:break-all; }
+.msgEmbed img { margin:0 5px; }
 
 .content {
   color: #333;

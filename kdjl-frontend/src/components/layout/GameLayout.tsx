@@ -56,6 +56,14 @@ export default function GameLayout() {
 
   // Brief flash on refresh
   const [refreshing, setRefreshing] = useState(false);
+
+  // Chat type & channel filter
+  const [chatType, setChatType] = useState(0); // 0=公聊 1=私聊 2=队聊 3=家族
+  const [chatTypeOpen, setChatTypeOpen] = useState(false);
+  const CHAT_TYPES = ['公聊','私聊','队聊','家族'];
+  const [channel, setChannel] = useState(''); // ''=全部 WP=私聊 SG=组队 GC=家族
+  const [channelOpen, setChannelOpen] = useState(false);
+  const CHANNELS = [{k:'',v:'全部'},{k:'WP',v:'私聊'},{k:'SG',v:'组队'},{k:'GC',v:'家族'}];
   useEffect(() => {
     if (refreshTrigger === 0) return;
     setRefreshing(true);
@@ -312,8 +320,8 @@ export default function GameLayout() {
         {/* Bottom: chat area */}
         <div className={styles.main_b}>
           <div className={styles.chatL}>
-            <div className={styles.chatStatus}>
-              <span className={styles.onlineCount}>在线玩家：{onlineCount}</span>
+            <div className={styles.chatOnline}>在线玩家：{onlineCount}</div>
+            <div className={styles.chatBar}>
               <span className={styles.serverTime}>{serverTime}</span>
               {player?.dblExpFlag && player.dblExpFlag > 1 && (
                 <span className={styles.doubleExp} title="双倍经验生效中">
@@ -337,7 +345,27 @@ export default function GameLayout() {
             <ChatPanel embedded />
             <div className={styles.chatInputW}>
               <input id="chatmsg" placeholder="输入聊天内容..." onKeyDown={(e)=>{if(e.key==='Enter'){const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){useGameStore.getState().addChatMessage({id:Date.now().toString(),senderId:player?.id||0,senderName:player?.nickname||'?',content:inp.value,channel:'world',timestamp:Date.now()});inp.value='';}}}} />
+              <div className={styles.chatSelect} onClick={()=>{setChatTypeOpen(!chatTypeOpen);setChannelOpen(false)}}>
+                <span className={styles.chatSelectTrigger}>{CHAT_TYPES[chatType]}</span>
+                {chatTypeOpen && (
+                  <ul className={styles.selectMenu}>
+                    <li className={styles.selectLabel}>发送到</li>
+                    {CHAT_TYPES.map((t,i)=>(<li key={i}><a onClick={(e)=>{e.stopPropagation();setChatType(i);setChatTypeOpen(false)}}>{t}</a></li>))}
+                  </ul>
+                )}
+              </div>
+              <div className={styles.channelSelect} onClick={()=>{setChannelOpen(!channelOpen);setChatTypeOpen(false)}}>
+                <span className={styles.channelSelectTrigger}>{CHANNELS.find(c=>c.k===channel)?.v||'全部'}</span>
+                {channelOpen && (
+                  <ul className={styles.selectMenu}>
+                    <li className={styles.selectLabel}>显示频道</li>
+                    {CHANNELS.map(c=>(<li key={c.k}><a onClick={(e)=>{e.stopPropagation();setChannel(c.k);setChannelOpen(false)}}>{c.v}</a></li>))}
+                  </ul>
+                )}
+              </div>
+              <button className={styles.emojiBtn} title="表情"><img src="/images/ui/motion/3.gif" alt="表情" /></button>
               <button onClick={()=>{const inp=document.getElementById('chatmsg') as HTMLInputElement;if(inp?.value.trim()){useGameStore.getState().addChatMessage({id:Date.now().toString(),senderId:player?.id||0,senderName:player?.nickname||'?',content:inp.value,channel:'world',timestamp:Date.now()});inp.value='';}}}>发送</button>
+              <button className={styles.friendsBtn} title="好友"><img src="/images/friends.gif" alt="好友" /></button>
             </div>
           </div>
           <div className={styles.tipR}>
