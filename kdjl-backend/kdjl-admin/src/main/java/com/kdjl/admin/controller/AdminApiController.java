@@ -152,6 +152,41 @@ public class AdminApiController {
         return Map.of("maxXulie", adminService.getMaxXulie(cid));
     }
 
+    // ======================== Announcement (公告) CRUD ========================
+
+    @GetMapping("/announcements")
+    public Map<String, Object> announcements(
+            @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        List<Map<String, Object>> list = adminService.browseAnnouncements(keyword, status, page, size);
+        long total = adminService.countAnnouncements(keyword, status);
+        return Map.of("list", list, "total", total, "page", page, "size", size);
+    }
+
+    @GetMapping("/announcements/{id}")
+    public Map<String, Object> getAnnouncement(@PathVariable Long id) {
+        Map<String, Object> a = adminService.getAnnouncement(id);
+        if (a == null) return Map.of("error", "公告不存在");
+        return a;
+    }
+
+    @PostMapping("/announcements")
+    public Map<String, Object> createAnnouncement(@RequestBody Map<String, Object> data) {
+        return adminService.createAnnouncement(data);
+    }
+
+    @PutMapping("/announcements/{id}")
+    public Map<String, Object> updateAnnouncement(@PathVariable Long id, @RequestBody Map<String, Object> data) {
+        return adminService.updateAnnouncement(id, data);
+    }
+
+    @DeleteMapping("/announcements/{id}")
+    public Map<String, Object> deleteAnnouncement(@PathVariable Long id) {
+        return adminService.deleteAnnouncement(id);
+    }
+
     // ======================== Item/Monster Quick Search ========================
 
     /** Quick search items (id+name only, for autocomplete) */

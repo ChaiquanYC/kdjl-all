@@ -185,6 +185,14 @@ export default function GameLayout() {
     return () => clearInterval(timer);
   }, []);
 
+  // Gonggao announcements
+  const [gonggaoList, setGonggaoList] = useState<{ id: number; msg: string; href?: string }[]>([]);
+  useEffect(() => {
+    apiGet<{ id: number; msg: string; href?: string }[]>('/announcement').then((r) => {
+      if (r.code === 0 && r.data) setGonggaoList(r.data);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => { fetchPlayer(); }, [fetchPlayer, refreshTrigger]);
   useEffect(() => { checkReward(); }, [refreshTrigger]);
 
@@ -337,17 +345,25 @@ export default function GameLayout() {
               <input type="text" placeholder="口袋百科搜索..." />
             </div>
             <div className={styles.news}>
-              <div className={styles.newsItem}>欢迎来到口袋精灵2！</div>
-              <div className={styles.newsItem}>新服开启，精彩活动等你来！</div>
-              <div className={styles.newsItem}>维护公告：服务器将于凌晨维护</div>
+              {gonggaoList.length > 0 ? gonggaoList.map((g) => (
+                g.href ? (
+                  <a key={g.id} className={styles.newsItem} href={g.href} target="_blank" rel="noopener noreferrer">{g.msg}</a>
+                ) : (
+                  <div key={g.id} className={styles.newsItem}>{g.msg}</div>
+                )
+              )) : (
+                <div className={styles.newsItem}>暂无公告</div>
+              )}
             </div>
             <div className={styles.links}>
-              <a onClick={() => window.open('#', '_blank')}>帮助</a>
-              <a onClick={() => window.open('#', '_blank')}>官网</a>
-              <a onClick={() => window.open('#', '_blank')}>充值</a>
-              <a onClick={() => window.open('#', '_blank')}>客服</a>
-              <a onClick={() => window.open('#', '_blank')}>论坛</a>
-              <a onClick={() => { if (confirm('确定退出登录？')) logout(); }}>退出</a>
+              <ul>
+                <li><a onClick={() => window.open('#', '_blank')}>帮助</a></li>
+                <li><a onClick={() => window.open('#', '_blank')}>官网</a></li>
+                <li><a className={styles.pay} onClick={() => window.open('#', '_blank')}>充值</a></li>
+                <li><a onClick={() => window.open('#', '_blank')}>客服</a></li>
+                <li><a onClick={() => window.open('#', '_blank')}>论坛</a></li>
+                <li><a onClick={() => { if (confirm('确定退出登录？')) logout(); }}>退出</a></li>
+              </ul>
             </div>
           </div>
         </div>

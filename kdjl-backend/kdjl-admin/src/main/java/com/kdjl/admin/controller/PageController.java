@@ -32,4 +32,7 @@ public class PageController {
 
     @GetMapping("/online-rewards")
     public String onlineRewards() { return "online-rewards/list"; }
+
+    @GetMapping("/announcements")
+    public String announcements() { return "announcements/list"; }
 }

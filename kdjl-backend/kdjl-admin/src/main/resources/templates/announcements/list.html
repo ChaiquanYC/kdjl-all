@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>公告管理 - KDJL 后台管理</title>
+<link rel="stylesheet" href="/css/admin.css">
+<style>
+.modal { display:none; position:fixed; top:0;left:0;width:100%;height:100%; background:rgba(0,0,0,.4); z-index:1000; justify-content:center; align-items:center; }
+.modal.show { display:flex; }
+.modal-box { background:#fff; border-radius:8px; padding:24px; width:560px; max-height:85vh; overflow-y:auto; box-shadow:0 8px 32px rgba(0,0,0,.2); }
+.modal-box h3 { margin-top:0; font-size:15px; }
+.modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; }
+.btn { padding:8px 16px; border:none; border-radius:4px; cursor:pointer; font-size:13px; }
+.btn-primary { background:#4a90d9; color:#fff; }
+.btn-danger { background:#e74c3c; color:#fff; }
+.btn-success { background:#27ae60; color:#fff; }
+.btn-default { background:#eee; color:#333; }
+.btn-sm { padding:4px 10px; font-size:12px; }
+.search-bar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+.form-row { display:grid; grid-template-columns:110px 1fr; gap:6px 12px; align-items:center; margin-bottom:8px; }
+.form-row label { text-align:right; font-weight:500; color:#555; font-size:12px; }
+.form-row input, .form-row textarea, .form-row select { width:100%; padding:7px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; box-sizing:border-box; }
+.form-row textarea { min-height:60px; resize:vertical; }
+.form-hint { font-size:11px; color:#999; margin-top:2px; }
+.pagination { display:flex; align-items:center; gap:6px; margin-top:16px; font-size:13px; }
+.pagination button { padding:6px 12px; border:1px solid #ddd; border-radius:4px; background:#fff; cursor:pointer; font-size:13px; min-width:32px; }
+.pagination button.current { background:#4a90d9; color:#fff; border-color:#4a90d9; font-weight:600; }
+.pagination button:disabled { color:#ccc; cursor:not-allowed; background:#f5f5f5; }
+.pagination .page-info { color:#888; margin:0 8px; }
+.msg-cell { max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.href-cell a { color:#4a90d9; text-decoration:none; }
+.href-cell a:hover { text-decoration:underline; }
+.tag { display:inline-block; padding:2px 8px; border-radius:3px; font-size:11px; color:#fff; }
+.tag-on { background:#27ae60; }
+.tag-off { background:#999; }
+.tag-type1 { background:#4a90d9; }
+.tag-type2 { background:#e67e22; }
+.tag-type3 { background:#e74c3c; }
+</style>
+</head>
+<body>
+<div th:replace="fragments/sidebar :: sidebar('announcements')"></div>
+<div class="main">
+    <div th:replace="fragments/topbar :: topbar('公告管理')"></div>
+    <div class="content">
+        <div class="card">
+            <div class="search-bar">
+                <select id="status-filter" onchange="searchList(1)">
+                    <option value="">全部状态</option>
+                    <option value="1">启用</option>
+                    <option value="0">停用</option>
+                </select>
+                <input class="input" id="keyword" placeholder="搜索公告内容" onkeydown="if(event.key==='Enter')searchList(1)">
+                <button class="btn btn-primary" onclick="searchList(1)">搜索</button>
+                <button class="btn btn-default" onclick="clearFilter()">清除</button>
+                <button class="btn btn-success" onclick="openCreateModal()">+ 新建公告</button>
+            </div>
+            <table><thead><tr>
+                <th>ID</th><th>公告内容</th><th>链接</th><th>类型</th><th>状态</th><th>排序</th><th>生效时间</th><th>结束时间</th><th>广播间隔</th><th>创建时间</th><th>操作</th>
+            </tr></thead><tbody id="tbody"></tbody></table>
+            <div class="pagination" id="pager"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal" id="modal">
+    <div class="modal-box">
+        <h3 id="modal-title">编辑公告</h3>
+        <input type="hidden" id="f-id">
+        <div class="form-row"><label>公告内容</label><textarea id="f-msg" placeholder="公告文本"></textarea></div>
+        <div class="form-row"><label>链接地址</label><input id="f-href" placeholder="https://... 可留空"></div>
+        <div class="form-row">
+            <label>类型</label>
+            <select id="f-type"><option value="1">系统</option><option value="2">活动</option><option value="3">维护</option></select>
+        </div>
+        <div class="form-row">
+            <label>状态</label>
+            <select id="f-status"><option value="1">启用</option><option value="0">停用</option></select>
+        </div>
+        <div class="form-row"><label>排序权重</label>
+            <div><input id="f-sortOrder" type="number" value="0" placeholder="数值越小越靠前，默认0">
+            <div class="form-hint">数值越小排越前面。相同权重时按创建时间倒序。例：0=最优先，10=次之</div></div>
+        </div>
+        <div class="form-row"><label>生效开始时间</label><input id="f-startTime" type="datetime-local"></div>
+        <div class="form-row"><label>生效结束时间</label><input id="f-endTime" type="datetime-local"></div>
+        <div class="form-row">
+            <label>广播间隔(分)</label>
+            <input id="f-broadcastInterval" type="number" min="0" value="0" placeholder="0=不广播">
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-default" onclick="closeModal()">取消</button>
+            <button class="btn btn-primary" onclick="save()">保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+var curPage=1, curTotal=0, pageSize=20;
+var TYPE_NAMES={1:'系统',2:'活动',3:'维护'};
+
+function clearFilter() { document.getElementById('keyword').value=''; document.getElementById('status-filter').value=''; searchList(1); }
+
+function searchList(p) {
+    curPage=p||1;
+    var params='page='+curPage+'&size='+pageSize;
+    var kw=document.getElementById('keyword').value.trim();
+    if(kw) params+='&keyword='+encodeURIComponent(kw);
+    var st=document.getElementById('status-filter').value;
+    if(st!=='') params+='&status='+st;
+    fetch('/api/admin/announcements?'+params).then(r=>r.json()).then(d=>{
+        curTotal=d.total;
+        document.getElementById('tbody').innerHTML=d.list.map(a=>
+            '<tr><td>'+a.id+'</td>'
+            +'<td class="msg-cell" title="'+esc(a.msg||'')+'">'+esc(a.msg||'')+'</td>'
+            +'<td class="href-cell">'+(a.href?'<a href="'+esc(a.href)+'" target="_blank">链接</a>':'-')+'</td>'
+            +'<td><span class="tag tag-type'+(a.type||1)+'">'+TYPE_NAMES[a.type||1]+'</span></td>'
+            +'<td><span class="tag '+(a.status===1?'tag-on':'tag-off')+'">'+(a.status===1?'启用':'停用')+'</span></td>'
+            +'<td>'+(a.sortOrder!=null?a.sortOrder:0)+'</td>'
+            +'<td>'+(a.startTime||'不限')+'</td>'
+            +'<td>'+(a.endTime||'不限')+'</td>'
+            +'<td>'+(a.broadcastInterval>0?a.broadcastInterval+'分钟':'不广播')+'</td>'
+            +'<td>'+(a.createdAt||'-')+'</td>'
+            +'<td><button class="btn btn-primary btn-sm" onclick="openEditModal('+a.id+')">编辑</button> '
+            +'<button class="btn btn-danger btn-sm" onclick="del('+a.id+')">删除</button></td></tr>'
+        ).join('');
+        renderPager();
+    });
+}
+
+function renderPager() {
+    var pages=Math.ceil(curTotal/pageSize), pager=document.getElementById('pager');
+    if(pages<=1){ pager.innerHTML='<span class="page-info">共 '+curTotal+' 条</span>'; return; }
+    var h='<button onclick="searchList(1)" '+(curPage<=1?'disabled':'')+'>首页</button>';
+    h+='<button onclick="searchList('+(curPage-1)+')" '+(curPage<=1?'disabled':'')+'>上一页</button>';
+    var s=Math.max(1,curPage-2), e=Math.min(pages,curPage+2);
+    if(s>1){ h+='<button onclick="searchList(1)">1</button>'; if(s>2) h+='<span>...</span>'; }
+    for(var i=s;i<=e;i++) h+='<button onclick="searchList('+i+')" class="'+(i===curPage?'current':'')+'">'+i+'</button>';
+    if(e<pages){ if(e<pages-1) h+='<span>...</span>'; h+='<button onclick="searchList('+pages+')">'+pages+'</button>'; }
+    h+='<button onclick="searchList('+(curPage+1)+')" '+(curPage>=pages?'disabled':'')+'>下一页</button>';
+    h+='<button onclick="searchList('+pages+')" '+(curPage>=pages?'disabled':'')+'>末页</button>';
+    h+='<span class="page-info">第'+curPage+'/'+pages+'页，共'+curTotal+'条</span>';
+    pager.innerHTML=h;
+}
+
+function esc(s){ return (s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+
+function toLocalDatetime(s) { if(!s) return ''; return s.length>16?s.substring(0,16):s; }
+
+function openCreateModal() {
+    document.getElementById('modal-title').textContent='新建公告';
+    document.getElementById('f-id').value='';
+    document.getElementById('f-msg').value='';
+    document.getElementById('f-href').value='';
+    document.getElementById('f-type').value='1';
+    document.getElementById('f-status').value='1';
+    document.getElementById('f-sortOrder').value='0';
+    document.getElementById('f-startTime').value='';
+    document.getElementById('f-endTime').value='';
+    document.getElementById('f-broadcastInterval').value='0';
+    document.getElementById('modal').classList.add('show');
+}
+
+function openEditModal(id) {
+    fetch('/api/admin/announcements/'+id).then(r=>r.json()).then(a=>{
+        if(a.error){ alert(a.error); return; }
+        document.getElementById('modal-title').textContent='编辑公告 #'+a.id;
+        document.getElementById('f-id').value=a.id;
+        document.getElementById('f-msg').value=a.msg||'';
+        document.getElementById('f-href').value=a.href||'';
+        document.getElementById('f-type').value=a.type!=null?a.type:1;
+        document.getElementById('f-status').value=a.status!=null?a.status:1;
+        document.getElementById('f-sortOrder').value=a.sortOrder!=null?a.sortOrder:0;
+        document.getElementById('f-startTime').value=toLocalDatetime(a.startTime);
+        document.getElementById('f-endTime').value=toLocalDatetime(a.endTime);
+        document.getElementById('f-broadcastInterval').value=a.broadcastInterval!=null?a.broadcastInterval:0;
+        document.getElementById('modal').classList.add('show');
+    });
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('show'); }
+
+function save() {
+    var id=document.getElementById('f-id').value;
+    var data={
+        msg: document.getElementById('f-msg').value,
+        href: document.getElementById('f-href').value||null,
+        type: parseInt(document.getElementById('f-type').value),
+        status: parseInt(document.getElementById('f-status').value),
+        sortOrder: parseInt(document.getElementById('f-sortOrder').value)||0,
+        startTime: document.getElementById('f-startTime').value||null,
+        endTime: document.getElementById('f-endTime').value||null,
+        broadcastInterval: parseInt(document.getElementById('f-broadcastInterval').value)||0
+    };
+    if(!data.msg){ alert('公告内容不能为空'); return; }
+    var url = id ? '/api/admin/announcements/'+id : '/api/admin/announcements';
+    var method = id ? 'PUT' : 'POST';
+    fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(data)})
+    .then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        closeModal(); searchList(curPage);
+    });
+}
+
+function del(id) {
+    if(!confirm('确定删除公告 #'+id+'？')) return;
+    fetch('/api/admin/announcements/'+id, {method:'DELETE'}).then(r=>r.json()).then(d=>{
+        if(d.error){ alert(d.error); return; }
+        searchList(curPage);
+    });
+}
+
+searchList(1);
+</script>
+</body>
+</html>

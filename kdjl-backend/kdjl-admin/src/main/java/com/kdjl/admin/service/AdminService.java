@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,13 +24,15 @@ public class AdminService {
     private final AdminTaskDefRepository taskDefRepo;
     private final AdminTaskAcceptRepository taskAcceptRepo;
     private final AdminOnlineRewardConfigRepository rewardConfigRepo;
+    private final AdminAnnouncementRepository announcementRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
                         AdminPropsRepository propsRepo, AdminPetRepository petTemplateRepo,
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
                         AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
-                        AdminOnlineRewardConfigRepository rewardConfigRepo) {
+                        AdminOnlineRewardConfigRepository rewardConfigRepo,
+                        AdminAnnouncementRepository announcementRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -41,6 +44,7 @@ public class AdminService {
         this.taskDefRepo = taskDefRepo;
         this.taskAcceptRepo = taskAcceptRepo;
         this.rewardConfigRepo = rewardConfigRepo;
+        this.announcementRepo = announcementRepo;
     }
 
     // ---- Dashboard stats ----
@@ -639,5 +643,81 @@ public class AdminService {
             return hours + "小时" + (minutes > 0 ? minutes + "分钟" : "");
         }
         return (totalSeconds / 60) + "分钟";
+    }
+
+    // ======================== Announcement (公告) CRUD ========================
+
+    public List<Map<String, Object>> browseAnnouncements(String keyword, Integer status, int page, int size) {
+        String kw = keyword != null ? keyword : "";
+        return announcementRepo.search(kw, status, Pageable.ofSize(size).withPage(page - 1)).stream()
+            .map(this::announcementToMap)
+            .collect(Collectors.toList());
+    }
+
+    public long countAnnouncements(String keyword, Integer status) {
+        String kw = keyword != null ? keyword : "";
+        return announcementRepo.countByKeywordAndStatus(kw, status);
+    }
+
+    public Map<String, Object> getAnnouncement(Long id) {
+        Announcement a = announcementRepo.findById(id).orElse(null);
+        return a != null ? announcementToMap(a) : null;
+    }
+
+    @Transactional
+    public Map<String, Object> createAnnouncement(Map<String, Object> data) {
+        Announcement a = new Announcement();
+        applyAnnouncementData(a, data);
+        a = announcementRepo.save(a);
+        return Map.of("success", true, "announcement", announcementToMap(a));
+    }
+
+    @Transactional
+    public Map<String, Object> updateAnnouncement(Long id, Map<String, Object> data) {
+        Announcement a = announcementRepo.findById(id).orElse(null);
+        if (a == null) return Map.of("error", "公告不存在");
+        applyAnnouncementData(a, data);
+        a = announcementRepo.save(a);
+        return Map.of("success", true, "announcement", announcementToMap(a));
+    }
+
+    @Transactional
+    public Map<String, Object> deleteAnnouncement(Long id) {
+        if (!announcementRepo.existsById(id)) return Map.of("error", "公告不存在");
+        announcementRepo.deleteById(id);
+        return Map.of("success", true);
+    }
+
+    private Map<String, Object> announcementToMap(Announcement a) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("id", a.getId());
+        m.put("msg", a.getMsg());
+        m.put("href", a.getHref());
+        m.put("type", a.getType());
+        m.put("status", a.getStatus());
+        m.put("sortOrder", a.getSortOrder());
+        m.put("startTime", a.getStartTime() != null ? a.getStartTime().toString() : null);
+        m.put("endTime", a.getEndTime() != null ? a.getEndTime().toString() : null);
+        m.put("broadcastInterval", a.getBroadcastInterval());
+        m.put("createdAt", a.getCreatedAt() != null ? a.getCreatedAt().toString() : null);
+        m.put("updatedAt", a.getUpdatedAt() != null ? a.getUpdatedAt().toString() : null);
+        return m;
+    }
+
+    private void applyAnnouncementData(Announcement a, Map<String, Object> data) {
+        if (data.containsKey("msg")) a.setMsg(str(data.get("msg")));
+        if (data.containsKey("href")) a.setHref(str(data.get("href")));
+        if (data.containsKey("type")) a.setType(toInt(data.get("type")));
+        if (data.containsKey("status")) a.setStatus(toInt(data.get("status")));
+        if (data.containsKey("sortOrder")) a.setSortOrder(toInt(data.get("sortOrder")));
+        if (data.containsKey("startTime")) {
+            String s = str(data.get("startTime"));
+            a.setStartTime(s != null && !s.isBlank() ? LocalDateTime.parse(s) : null);
+        }
+        if (data.containsKey("endTime")) {
+            String s = str(data.get("endTime"));
+            a.setEndTime(s != null && !s.isBlank() ? LocalDateTime.parse(s) : null);
+        }
+        if (data.containsKey("broadcastInterval")) a.setBroadcastInterval(toInt(data.get("broadcastInterval")));
     }
 }

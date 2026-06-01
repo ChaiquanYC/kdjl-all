@@ -102,7 +102,8 @@ D:\code\kdjl\kdjl\kdjl\
 │           │   ├── BagController.java       # GET /api/bag, /api/bag/equipment
 │           │   ├── BattleController.java    # POST /api/battle/pve
 │           │   ├── MonsterController.java   # GET /api/monsters, /api/monsters/boss
-│           │   └── MapController.java       # GET /api/map/*
+│           │   ├── MapController.java       # GET /api/map/*
+│           │   └── AnnouncementController.java # GET /api/announcement
 │           ├── service/
 │           │   ├── AuthService.java
 │           │   ├── PlayerService.java       # 玩家信息 + @Cacheable
