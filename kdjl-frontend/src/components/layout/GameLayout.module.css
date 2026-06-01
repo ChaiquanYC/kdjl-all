@@ -27,7 +27,8 @@
 
 .tipR{width:290px;height:239px;flex-shrink:0;background:url('/images/ui/tip_bg.jpg') no-repeat;position:relative}
 .tipR .wiki{position:absolute;top:16px;left:12px;height:38px;padding:7px 0 0 77px;background:url('/images/ui/so_bg.gif') no-repeat}
-.tipR .wiki input{width:128px;height:17px;padding:2px 0 0 3px;border:none;background:none;font-size:12px;color:#333}
+.tipR .wiki input{float:left;width:128px;height:17px;padding:2px 0 0 3px;margin-right:5px;border:none;background:none;font-size:12px;color:#333;outline:none}
+.tipR .wiki button{float:left;width:46px;height:19px;border:none;background:url('/images/ui/so_btn.gif');cursor:pointer;font-size:0;color:transparent}
 .tipR .news{position:absolute;top:89px;left:53px;width:200px;height:66px;overflow:hidden}
 .tipR .newsItem{margin:4px 0 0 0;height:18px;overflow:hidden;font-size:11px;color:#ffe468;white-space:nowrap;text-overflow:ellipsis;display:block;text-decoration:none}
 a.newsItem:hover{color:#fff}

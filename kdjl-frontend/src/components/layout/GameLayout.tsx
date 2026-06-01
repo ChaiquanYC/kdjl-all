@@ -343,6 +343,7 @@ export default function GameLayout() {
           <div className={styles.tipR}>
             <div className={styles.wiki}>
               <input type="text" placeholder="口袋百科搜索..." />
+              <button>搜索</button>
             </div>
             <div className={styles.news}>
               {gonggaoList.length > 0 ? gonggaoList.map((g) => (
