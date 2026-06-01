@@ -333,7 +333,20 @@ export default function GameLayout() {
             </div>
           </div>
           <div className={styles.tipR}>
+            <div className={styles.wiki}>
+              <input type="text" placeholder="口袋百科搜索..." />
+            </div>
+            <div className={styles.news}>
+              <div className={styles.newsItem}>欢迎来到口袋精灵2！</div>
+              <div className={styles.newsItem}>新服开启，精彩活动等你来！</div>
+              <div className={styles.newsItem}>维护公告：服务器将于凌晨维护</div>
+            </div>
             <div className={styles.links}>
+              <a onClick={() => window.open('#', '_blank')}>帮助</a>
+              <a onClick={() => window.open('#', '_blank')}>官网</a>
+              <a onClick={() => window.open('#', '_blank')}>充值</a>
+              <a onClick={() => window.open('#', '_blank')}>客服</a>
+              <a onClick={() => window.open('#', '_blank')}>论坛</a>
               <a onClick={() => { if (confirm('确定退出登录？')) logout(); }}>退出</a>
             </div>
           </div>
