@@ -6,10 +6,10 @@ services:
     container_name: kdjl-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_ROOT_PASSWORD: Zyc1843565357
       MYSQL_DATABASE: kdjl
       MYSQL_USER: kdjl
-      MYSQL_PASSWORD: kdjl_pass
+      MYSQL_PASSWORD: Zyc1843565357
     ports:
       - "3306:3306"
     volumes:
@@ -20,6 +20,7 @@ services:
     image: redis:7-alpine
     container_name: kdjl-redis
     restart: unless-stopped
+    command: redis-server --requirepass Zyc1843565357
     ports:
       - "6379:6379"
 

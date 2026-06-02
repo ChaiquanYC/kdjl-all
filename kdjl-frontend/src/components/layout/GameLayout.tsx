@@ -328,6 +328,10 @@ export default function GameLayout() {
               {player?.dblExpFlag && player.dblExpFlag > 1 && (
                 <span className={styles.doubleExp} title="双倍经验生效中">
                   {player.dblExpFlag === 2 ? '1.5x' : player.dblExpFlag === 3 ? '2x' : player.dblExpFlag === 4 ? '2.5x' : '3x'}经验
+                  {(() => {
+                    const remaining = Math.max(0, (player.dblsTime || 0) + (player.maxDblExpTime || 0) - Math.floor(Date.now() / 1000));
+                    return remaining > 0 ? ` (${remaining}秒)` : '';
+                  })()}
                 </span>
               )}
               <img
