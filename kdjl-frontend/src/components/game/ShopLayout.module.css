@@ -8,7 +8,7 @@
 
 .rightBg{width:650px;height:319px;flex-shrink:0;background:url('/images/ui/cangku02.jpg') no-repeat;position:relative}
 
-.columns{display:flex;height:290px}
+.columns{display:flex;height:290px;gap:38px}
 .column{width:292px;padding-left:14px;display:flex;flex-direction:column}
 
 /* Standard item list (flex:1, scrollable, thead inside) */
