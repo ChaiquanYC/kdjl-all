@@ -6,7 +6,7 @@
 .topInfo img{width:20px;height:18px}
 
 /* Column header */
-.colHeader{display:flex;align-items:center;height:28px;gap:4px;padding-top:3px}
+.colHeader{display:flex;align-items:center;height:28px;gap:4px}
 .colIcon{width:65px;height:25px}
 .catLabel{color:#F00;font-weight:bold;font-size:12px;margin-left:auto}
 .catSelect{font-size:11px;border:1px solid #D9BD7A;background:#fff;color:#B06A01;padding:1px 2px}
@@ -15,6 +15,12 @@
 .thName{width:100px}.tdName{width:100px}
 .thPrice{width:60px}.tdPrice{width:60px}
 .thCount{}.tdCount{}
+
+/* Depot footer — left-aligned to match PHP box04 */
+.colFoot{justify-content:flex-start}
+
+/* Both item lists same height (290 - 28 header - 28 footer = 234) */
+.itemListH{height:234px;flex:none}
 
 /* Depot uses 15px height buttons (PHP cangku04.jpg area) */
 .btn{width:39px;height:15px;background:url('/images/ui/shop/gm13.gif');border:none;color:#2F291D;cursor:pointer;font-size:12px;line-height:15px}

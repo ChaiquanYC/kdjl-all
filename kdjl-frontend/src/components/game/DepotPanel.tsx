@@ -97,13 +97,15 @@ export default function DepotPanel() {
       onReturn={() => setGameView('city')}
       toast={msg}
       topArea={
-        <div className={styles.topBar}>
-          <div className={styles.topBtn} />
-          <ResourceBar className={styles.topInfo} items={[
+        <>
+          <div className={styles.topBar}>
+            <div className={styles.topBtn} />
+          </div>
+          <ResourceBar items={[
             { icon: '/images/ui/icon01.jpg', label: '元宝', value: player?.yb ?? 0 },
             { icon: '/images/ui/icon02.jpg', label: '金币', value: player?.money ?? 0 },
           ]} />
-        </div>
+        </>
       }
     >
       <div className={layoutStyles.column}>
@@ -111,7 +113,7 @@ export default function DepotPanel() {
           <img src="/images/ui/icon03.jpg" alt="仓库物品" className={styles.colIcon} />
           <CategorySelect value={depotCat} onChange={setDepotCat} showLabel />
         </div>
-        <div className={layoutStyles.itemList}>
+        <div className={`${layoutStyles.itemList} ${styles.itemListH}`}>
           <table className={layoutStyles.table}>
             <thead><tr><th className={layoutStyles.thIcon}></th><th className={styles.thName}>名称</th><th className={styles.thPrice}>价格</th><th className={styles.thCount}>数量</th></tr></thead>
             <tbody>
@@ -129,22 +131,20 @@ export default function DepotPanel() {
             </tbody>
           </table>
         </div>
-        <ShopFooter count={count} onCountChange={setCount}>
-          <span>仓库空间：{depotTotal}/{maxDepot}</span>
-          <FooterBtn disabled={!selDepot} onClick={handleWithdraw}>取出</FooterBtn>
-          <FooterBtn disabled>存放</FooterBtn>
-        </ShopFooter>
+        <div className={`${layoutStyles.colFoot} ${styles.colFoot}`}>
+          仓库空间：{depotTotal}/{maxDepot}
+          <ShopFooter count={count} onCountChange={setCount}>
+            <FooterBtn disabled={!selDepot} onClick={handleWithdraw}>取出</FooterBtn>
+            <FooterBtn disabled={!selBag} onClick={handleDeposit}>存放</FooterBtn>
+          </ShopFooter>
+        </div>
       </div>
 
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}
         extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} showLabel />}
-        footer={
-          <ShopFooter count={count} onCountChange={setCount}>
-            <span>背包空间：{bagTotal}/{maxBag}</span>
-            <FooterBtn disabled={!selBag} onClick={handleDeposit}>存放</FooterBtn>
-          </ShopFooter>
-        }
+        listClassName={styles.itemListH}
+        footer={<div className={`${layoutStyles.colFoot} ${styles.colFoot}`}>背包空间：{bagTotal}/{maxBag}</div>}
       />
     </ShopLayout>
   );
