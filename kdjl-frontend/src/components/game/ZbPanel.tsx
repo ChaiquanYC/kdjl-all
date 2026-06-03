@@ -5,33 +5,16 @@ import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
 import BagColumn from './BagColumn';
+import ResourceBar from './ResourceBar';
+import ShopFooter, { FooterBtn } from './ShopFooter';
+import CategorySelect from './CategorySelect';
+import { CATEGORIES } from './shopConstants';
+import { filterByCat } from './shopUtils';
+import type { ShopItem, BagItemMerged } from './ShopTypes';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ZbPanel.module.css';
 
-interface ShopItem {
-  id: number; name: string; buy: number; prestige: number;
-  img?: string; varyname?: number; requires?: string; postion?: number;
-}
-interface BagItem {
-  id: number; propId: number; count: number; sell: number;
-  name?: string; varyname?: number; category?: string; img?: string; effect?: string;
-  plusflag?: number; pluspid?: number; plusget?: string; plusTimesEffect?: string;
-}
-
-const CATEGORIES = [
-  { label: '全部道具', vary: [] },
-  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
-  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
-  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
-  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
-  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
-];
-
-function filterByCat<T extends { category?: string }>(items: T[], cat: number) {
-  if (cat === 0) return items;
-  const label = CATEGORIES[cat]?.label ?? '';
-  return items.filter(i => (i.category ?? '') === label);
-}
+type BagItem = BagItemMerged;
 
 const POS_FILTERS = [
   { label: '全部', pos: [] },
@@ -71,7 +54,6 @@ export default function ZbPanel() {
   const [msg, setMsg] = useState<string | null>(null);
   const [bagCat, setBagCat] = useState(0);
   const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
-  const maxBag = player?.maxBag ?? 30;
 
   // Strengthen state
   const [selEquip, setSelEquip] = useState<number | null>(null);
@@ -179,10 +161,9 @@ export default function ZbPanel() {
             <li className={tab === 2 ? styles.tabOn : ''} onClick={() => setTab(2)}><span className={styles.t2} /></li>
             <li className={tab === 3 ? styles.tabOn : ''} onClick={() => setTab(3)}><span className={styles.t3}>强化</span></li>
           </ul>
-          <div className={styles.resBar}>
-            {tab <= 2 ? <><img src="/images/ui/icon02.jpg" alt="" /> {tab === 1 ? '金币' : '威望'}：{tab === 1 ? (player?.money ?? 0) : (player?.prestige ?? 0)}</>
-              : <><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</>}
-          </div>
+          <ResourceBar items={[
+            { icon: '/images/ui/icon02.jpg', label: tab <= 2 ? (tab === 1 ? '金币' : '威望') : '金币', value: tab === 2 ? (player?.prestige ?? 0) : (player?.money ?? 0) },
+          ]} />
         </>
       }
     >
@@ -213,21 +194,16 @@ export default function ZbPanel() {
                 </tbody>
               </table>
             </div>
-            <div className={layoutStyles.colFoot}>
-              数量：<input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-              <button className={layoutStyles.btn} onClick={() => selShop ? handleBuy(displayItems.find(i => i.id === selShop)!, tab === 1 ? 'money' : 'prestige') : setMsg('请先选择装备')}>购买</button>
-              {tab === 1 && <button className={layoutStyles.btn} onClick={handleSell}>卖出</button>}
-            </div>
+            <ShopFooter count={count} onCountChange={setCount}>
+              <FooterBtn onClick={() => selShop ? handleBuy(displayItems.find(i => i.id === selShop)!, tab === 1 ? 'money' : 'prestige') : setMsg('请先选择装备')}>购买</FooterBtn>
+              {tab === 1 && <FooterBtn onClick={handleSell}>卖出</FooterBtn>}
+            </ShopFooter>
           </div>
 
-          <BagColumn items={filterByCat(bagItems, bagCat)} selId={selBag}
+          <BagColumn items={filterByCat(bagItems, bagCat, CATEGORIES)} selId={selBag}
             onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
             title={<span className={styles.colTitle}>我的背包</span>}
-            extraHeader={
-              <select className={styles.posFilter} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
-                {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
-              </select>
-            }
+            extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
           />
         </>
       ) : (

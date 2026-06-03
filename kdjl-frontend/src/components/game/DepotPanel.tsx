@@ -4,29 +4,32 @@ import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
 import BagColumn from './BagColumn';
+import ResourceBar from './ResourceBar';
+import ShopFooter, { FooterBtn } from './ShopFooter';
+import CategorySelect from './CategorySelect';
+import { CATEGORIES } from './shopConstants';
+import type { BagItemBase } from './ShopTypes';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './DepotPanel.module.css';
 
-interface ItemRawBase {
-  id: number; propId: number; count: number; sell: number; zbing?: number;
-}
-interface ItemRaw extends ItemRawBase {
+interface ItemRaw extends BagItemBase {
   varyname?: number; name?: string; img?: string; category?: string;
 }
 
-const CATEGORIES = [
-  { label: '全部道具', vary: [] },
-  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
-  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
-  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
-  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
-  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
-];
-
-function mergeItems(raw: ItemRawBase[], propsMap: Record<number, import('@/types').PropsItem>): ItemRaw[] {
+function mergeItems(raw: BagItemBase[], propsMap: Record<number, import('@/types').PropsItem>): ItemRaw[] {
   return raw.map(r => {
     const p = propsMap[r.propId];
     return { ...r, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
+  });
+}
+
+/** Depot uses fuzzy category matching */
+function filterByCatFuzzy(items: ItemRaw[], cat: number) {
+  if (cat === 0) return items;
+  const filterLabel = CATEGORIES[cat]?.label ?? '';
+  return items.filter(i => {
+    const itemCat = i.category ?? '';
+    return itemCat === filterLabel || filterLabel.startsWith(itemCat) || itemCat.startsWith(filterLabel);
   });
 }
 
@@ -35,8 +38,8 @@ export default function DepotPanel() {
   const setGameView = useGameStore((s) => s.setGameView);
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
   const propsMap = useGameStore((s) => s.propsMap);
-  const [rawBag, setRawBag] = useState<ItemRawBase[]>([]);
-  const [rawDepot, setRawDepot] = useState<ItemRawBase[]>([]);
+  const [rawBag, setRawBag] = useState<BagItemBase[]>([]);
+  const [rawDepot, setRawDepot] = useState<BagItemBase[]>([]);
   const [loading, setLoading] = useState(true);
 
   const bag: ItemRaw[] = useMemo(() => mergeItems(rawBag, propsMap), [rawBag, propsMap]);
@@ -53,9 +56,9 @@ export default function DepotPanel() {
 
   const fetchData = () => {
     setLoading(true);
-    apiGet<ItemRawBase[]>('/bag').then(bagRes => {
+    apiGet<BagItemBase[]>('/bag').then(bagRes => {
       if (bagRes.code === 0 && bagRes.data) setRawBag(bagRes.data);
-      return apiGet<ItemRawBase[]>('/depot');
+      return apiGet<BagItemBase[]>('/depot');
     }).then(depRes => {
       if (depRes.code === 0 && depRes.data) setRawDepot(depRes.data);
     }).catch(() => {}).finally(() => setLoading(false));
@@ -63,17 +66,8 @@ export default function DepotPanel() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filterByCat = (items: ItemRaw[], cat: number) => {
-    if (cat === 0) return items;
-    const filterLabel = CATEGORIES[cat]?.label ?? '';
-    return items.filter(i => {
-      const itemCat = i.category ?? '';
-      return itemCat === filterLabel || filterLabel.startsWith(itemCat) || itemCat.startsWith(filterLabel);
-    });
-  };
-
-  const filterBag = filterByCat(bag.filter(i => i.count > 0 && i.zbing !== 1), bagCat);
-  const filterDepot = filterByCat(depot.filter(i => i.count > 0), depotCat);
+  const filterBag = filterByCatFuzzy(bag.filter(i => i.count > 0 && i.zbing !== 1), bagCat);
+  const filterDepot = filterByCatFuzzy(depot.filter(i => i.count > 0), depotCat);
   const bagTotal = bag.filter(i => i.count > 0 && i.zbing !== 1).length;
   const depotTotal = depot.filter(i => i.count > 0).length;
 
@@ -105,20 +99,17 @@ export default function DepotPanel() {
       topArea={
         <div className={styles.topBar}>
           <div className={styles.topBtn} />
-          <div className={styles.topInfo}>
-            <span><img src="/images/ui/icon01.jpg" alt="" /> 元宝：{player?.yb ?? 0}</span>
-            <span><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</span>
-          </div>
+          <ResourceBar className={styles.topInfo} items={[
+            { icon: '/images/ui/icon01.jpg', label: '元宝', value: player?.yb ?? 0 },
+            { icon: '/images/ui/icon02.jpg', label: '金币', value: player?.money ?? 0 },
+          ]} />
         </div>
       }
     >
       <div className={layoutStyles.column}>
         <div className={styles.colHeader}>
           <img src="/images/ui/icon03.jpg" alt="仓库物品" className={styles.colIcon} />
-          <span className={styles.catLabel}>分类查看</span>
-          <select className={styles.catSelect} value={depotCat} onChange={e => setDepotCat(Number(e.target.value))}>
-            {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
-          </select>
+          <CategorySelect value={depotCat} onChange={setDepotCat} showLabel />
         </div>
         <div className={layoutStyles.itemList}>
           <table className={layoutStyles.table}>
@@ -138,28 +129,21 @@ export default function DepotPanel() {
             </tbody>
           </table>
         </div>
-        <div className={layoutStyles.colFoot}>
+        <ShopFooter count={count} onCountChange={setCount}>
           <span>仓库空间：{depotTotal}/{maxDepot}</span>
-          <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-          <button className={styles.btn} disabled={!selDepot} onClick={handleWithdraw}>取出</button>
-          <button className={styles.btn} disabled>存放</button>
-        </div>
+          <FooterBtn disabled={!selDepot} onClick={handleWithdraw}>取出</FooterBtn>
+          <FooterBtn disabled>存放</FooterBtn>
+        </ShopFooter>
       </div>
 
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}
-        extraHeader={
-          <><span className={styles.catLabel}>分类查看</span>
-          <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
-            {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
-          </select></>
-        }
+        extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} showLabel />}
         footer={
-          <div className={layoutStyles.colFoot}>
+          <ShopFooter count={count} onCountChange={setCount}>
             <span>背包空间：{bagTotal}/{maxBag}</span>
-            <input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-            <button className={styles.btn} disabled={!selBag} onClick={handleDeposit}>存放</button>
-          </div>
+            <FooterBtn disabled={!selBag} onClick={handleDeposit}>存放</FooterBtn>
+          </ShopFooter>
         }
       />
     </ShopLayout>

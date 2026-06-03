@@ -6,33 +6,32 @@ import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
 import ConfirmDialog from './ConfirmDialog';
 import BagColumn from './BagColumn';
+import ResourceBar from './ResourceBar';
+import ShopFooter, { FooterBtn } from './ShopFooter';
+import CategorySelect from './CategorySelect';
+import { CATEGORIES } from './shopConstants';
+import { filterByCat } from './shopUtils';
+import type { ShopItem, BagItemBase, BagItemMerged } from './ShopTypes';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './ShopPanel.module.css';
 
-interface ShopItem {
-  id: number; name: string; buy: number; yb: number; prestige: number;
-  img?: string; effect?: string; varyname?: number; category?: string;
-}
-interface BagItemBase {
-  id: number; propId: number; count: number; sell: number; zbing?: number; vary?: string;
-}
-interface BagItem extends BagItemBase {
-  name?: string; img?: string; varyname?: number; category?: string;
-}
-
-const CATEGORIES = [
-  { label: '全部道具', vary: [] },
-  { label: '辅助道具', vary: [1] }, { label: '增益道具', vary: [2] }, { label: '捕捉道具', vary: [3] },
-  { label: '收集道具', vary: [4] }, { label: '技能书',   vary: [5] }, { label: '卡片道具', vary: [6] },
-  { label: '进化道具', vary: [7] }, { label: '合体道具', vary: [8] }, { label: '装备道具', vary: [9] },
-  { label: '精练道具', vary: [10] },{ label: '宝箱道具', vary: [11] },{ label: '特殊道具', vary: [12] },
-  { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
-];
-
-function filterByCat<T extends { category?: string }>(items: T[], cat: number) {
-  if (cat === 0) return items;
-  const label = CATEGORIES[cat]?.label ?? '';
-  return items.filter(i => (i.category ?? '') === label);
+function mergeWithProps(base: BagItemBase, propsMap: Record<number, import('@/types').PropsItem>): BagItemMerged {
+  const p = propsMap[base.propId];
+  return {
+    ...base,
+    name: p?.name ?? `道具#${base.propId}`,
+    img: p?.img,
+    varyname: p?.varyname,
+    category: p?.category,
+    effect: p?.effect,
+    effectDesc: p?.effectDesc,
+    requires: p?.requires,
+    requiresDesc: p?.requiresDesc,
+    pluseffect: p?.pluseffect,
+    usages: p?.usages,
+    propsColor: p?.propscolor ? Number(p.propscolor) : undefined,
+    postion: p?.postion,
+  };
 }
 
 export default function ShopPanel() {
@@ -45,10 +44,7 @@ export default function ShopPanel() {
   const [loading, setLoading] = useState(true);
   const propsMap = useGameStore((s) => s.propsMap);
 
-  const bagItems: BagItem[] = useMemo(() => rawBagItems.map(b => {
-    const p = propsMap[b.propId];
-    return { ...b, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
-  }), [rawBagItems, propsMap]);
+  const bagItems: BagItemMerged[] = useMemo(() => rawBagItems.map(b => mergeWithProps(b, propsMap)), [rawBagItems, propsMap]);
   const [selShop, setSelShop] = useState<number | null>(null);
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
@@ -75,37 +71,33 @@ export default function ShopPanel() {
     apiPost('/shop/buy/' + item.id, { count, currency }).then((res: any) => {
       if (res.code === 0) {
         const d = res.data;
-        const msg = (d?.message as string) ?? `购买了${count}个 ${item.name}`;
-        setMsg(msg);
-        systips(msg);
+        const m = (d?.message as string) ?? `购买了${count}个 ${item.name}`;
+        setMsg(m); systips(m);
         apiGet<BagItemBase[]>('/bag').then(r => { if (r.code === 0 && r.data) setRawBagItems(r.data); });
         triggerRefresh();
       } else {
-        setMsg(res.message ?? '购买失败');
-        systips(res.message ?? '购买失败');
+        setMsg(res.message ?? '购买失败'); systips(res.message ?? '购买失败');
       }
       setTimeout(() => setMsg(null), 2000);
     });
   };
 
-  const doSell = (item: BagItem) => {
+  const doSell = (item: BagItemMerged) => {
     apiPost('/bag/sell/' + item.id, { count }).then((res: any) => {
       if (res.code === 0) {
-        const msg = `卖出成功，获得${res.data?.goldGained ?? 0}金币`;
-        setMsg(msg);
-        systips(msg);
+        const m = `卖出成功，获得${res.data?.goldGained ?? 0}金币`;
+        setMsg(m); systips(m);
         apiGet<BagItemBase[]>('/bag').then(r => { if (r.code === 0 && r.data) setRawBagItems(r.data); });
         triggerRefresh();
       } else {
-        setMsg(res.message ?? '卖出失败');
-        systips(res.message ?? '卖出失败');
+        setMsg(res.message ?? '卖出失败'); systips(res.message ?? '卖出失败');
       }
       setTimeout(() => setMsg(null), 2000);
     });
   };
 
   const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
-    const cost = (currency === 'money' ? item.buy : item.prestige) * count;
+    const cost = (currency === 'money' ? item.buy : (item.prestige ?? 0)) * count;
     setConfirmDialog({
       message: `确定购买 ${count}个 ${item.name}？共${cost}${currency === 'money' ? '金币' : '威望'}`,
       onConfirm: () => { doBuy(item, currency); setConfirmDialog(null); },
@@ -124,9 +116,9 @@ export default function ShopPanel() {
 
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
 
-  const displayItems = filterByCat(tab === 1 ? goldItems : prestigeItems, shopCat);
+  const displayItems = filterByCat(tab === 1 ? goldItems : prestigeItems, shopCat, CATEGORIES);
   const curLabel = tab === 1 ? '金币商店' : '威望商店';
-  const filterBag = filterByCat(bagItems, bagCat);
+  const filterBag = filterByCat(bagItems, bagCat, CATEGORIES);
 
   return (
     <>
@@ -140,22 +132,16 @@ export default function ShopPanel() {
             <li className={tab === 1 ? styles.tabOn : ''} onClick={() => setTab(1)}><span className={styles.t1} /></li>
             <li className={tab === 2 ? styles.tabOn : ''} onClick={() => setTab(2)}><span className={styles.t2} /></li>
           </ul>
-          <div className={styles.resBar}>
-            {tab === 1 ? (
-              <><img src="/images/ui/icon02.jpg" alt="" /> 金币：{player?.money ?? 0}</>
-            ) : (
-              <><img src="/images/ui/icon02.jpg" alt="" /> 威望：{player?.prestige ?? 0}</>
-            )}
-          </div>
+          <ResourceBar items={[
+            { icon: '/images/ui/icon02.jpg', label: tab === 1 ? '金币' : '威望', value: tab === 1 ? (player?.money ?? 0) : (player?.prestige ?? 0) },
+          ]} />
         </>
       }
     >
       <div className={layoutStyles.column}>
         <div className={styles.colTitle}>
           <img src="/images/ui/shop03.jpg" alt={curLabel} />
-          <select className={styles.catSelect} value={shopCat} onChange={e => setShopCat(Number(e.target.value))}>
-            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
-          </select>
+          <CategorySelect value={shopCat} onChange={setShopCat} />
         </div>
         <div className={layoutStyles.itemList}>
           <table className={layoutStyles.table}>
@@ -175,20 +161,15 @@ export default function ShopPanel() {
             </tbody>
           </table>
         </div>
-        <div className={layoutStyles.colFoot}>
-          数量：<input className={layoutStyles.numInput} type="text" value={count} onChange={e => setCount(Number(e.target.value) || 1)} />
-          <button className={layoutStyles.btn} onClick={() => selShop ? handleBuy(displayItems.find(i => i.id === selShop)!, tab === 1 ? 'money' : 'prestige') : setMsg('请先选择商品')}>购买</button>
-          {tab === 1 && <button className={layoutStyles.btn} onClick={handleSell}>卖出</button>}
-        </div>
+        <ShopFooter count={count} onCountChange={setCount}>
+          <FooterBtn onClick={() => { const item = displayItems.find(i => i.id === selShop); item ? handleBuy(item, tab === 1 ? 'money' : 'prestige') : setMsg('请先选择商品'); }}>购买</FooterBtn>
+          {tab === 1 && <FooterBtn onClick={handleSell}>卖出</FooterBtn>}
+        </ShopFooter>
       </div>
 
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelShop(null); }}
-        extraHeader={
-          <select className={styles.catSelect} value={bagCat} onChange={e => setBagCat(Number(e.target.value))}>
-            {CATEGORIES.map((c, i) => <option key={i} value={i}>{c.label}</option>)}
-          </select>
-        }
+        extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
       />
     </ShopLayout>
       <ConfirmDialog

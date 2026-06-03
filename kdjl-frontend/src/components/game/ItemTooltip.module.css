@@ -1,0 +1,33 @@
+.tooltip {
+  position: fixed;
+  z-index: 999;
+  font-size: 12px;
+  line-height: 20px;
+  pointer-events: none;
+  border-collapse: collapse;
+}
+.tipBorderTd {
+  background: #1F1F30;
+  opacity: 0.9;
+  padding: 5px 8px;
+  min-width: 180px;
+  max-width: 240px;
+}
+.tipCorner {
+  width: 5px;
+  height: 5px;
+}
+.tipCorner img {
+  display: block;
+}
+.tipEdge {
+  height: 5px;
+}
+.tipEdgeL {
+  width: 5px;
+}
+.tipName {
+  font-size: 13px;
+  margin-bottom: 2px;
+  line-height: 22px;
+}

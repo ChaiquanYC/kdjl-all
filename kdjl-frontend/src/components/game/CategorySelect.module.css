@@ -1,0 +1,16 @@
+.wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.label {
+  font-size: 11px;
+  color: #693600;
+}
+.select {
+  font-size: 11px;
+  border: 1px solid #D9BD7A;
+  background: #fff;
+  color: #693600;
+  padding: 1px 2px;
+}

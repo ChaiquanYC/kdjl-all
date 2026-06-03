@@ -1,0 +1,33 @@
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #BF7D1A;
+}
+.numInput {
+  width: 40px;
+  border: 1px solid #D9BD7A;
+  text-align: center;
+  font-size: 11px;
+  padding: 1px;
+}
+.btn {
+  width: 39px;
+  height: 17px;
+  background: url('/images/ui/shop/gm13.gif');
+  border: none;
+  color: #2F291D;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 17px;
+}
+.btn:hover {
+  filter: brightness(1.1);
+}
+.btn:disabled {
+  filter: grayscale(100%);
+  cursor: default;
+}
