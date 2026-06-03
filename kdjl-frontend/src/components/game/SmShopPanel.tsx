@@ -167,7 +167,7 @@ export default function SmShopPanel() {
       {/* Right column — bag */}
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
-        listVariant="fixed" listClassName={styles.itemListSize} className={styles.column2}
+        listVariant="fixed" listClassName={styles.itemListSize}
         extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
       />
     </ShopLayout>
