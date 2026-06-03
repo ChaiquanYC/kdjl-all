@@ -94,7 +94,7 @@ export default function RegisterPage() {
           inMap: 0, openMap: '', fightTop: 0, maxBag: 30, sex: sexText,
           headImg, onlineTime: 0, newGuideStep: 0,
         } as any);
-        await fetchPlayer();
+        await fetchPlayer(true);
         navigate('/', { replace: true });
       } else {
         setRegError(res.message || '注册失败');

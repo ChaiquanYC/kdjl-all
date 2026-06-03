@@ -1,22 +1,73 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
-import type { ApiResponse } from '@/types';
+import type { ApiResponse, PropsItem } from '@/types';
 import styles from './BagPanel.module.css';
 
-interface BagItemRaw {
-  id: number; propId: number; count: number; vary: string; varyname: number;
+/** Lightweight bag item from API (UserBag fields only) */
+interface BagItemBase {
+  id: number; propId: number; count: number; vary: string;
   equipPetId: number | null; zbing: number; sell: number;
+  cantrade?: number; holeInfo?: string; plusTimesEffect?: string; stime?: number;
+}
+
+/** Merged bag item with props data for display */
+interface BagItemMerged extends BagItemBase {
   name?: string; img?: string; propsColor?: number; category?: string;
   requires?: string; effect?: string; buy?: number; yb?: number;
-  usages?: string; cantrade?: number; propslock?: number; expire?: string;
+  usages?: string; propslock?: number; expire?: string;
   series?: string; serieseffect?: string; pluseffect?: string; prestige?: number;
   plusflag?: number; pluspid?: number; plusget?: string; plusnum?: number;
-  postion?: number; holeInfo?: string; holeInfoDesc?: string;
+  postion?: number; varyname?: number;
   effectDesc?: string; requiresDesc?: string; usagesDesc?: string;
-  serieseffectDesc?: string; pluseffectDesc?: string;
+  serieseffectDesc?: string; pluseffectDesc?: string; holeInfoDesc?: string;
+}
+
+function mergeWithProps(base: BagItemBase, propsMap: Record<number, PropsItem>): BagItemMerged {
+  const p = propsMap[base.propId];
+  if (!p) return { ...base, name: `道具#${base.propId}` };
+  const m: BagItemMerged = { ...base };
+  m.name = p.name;
+  m.img = p.img;
+  m.varyname = p.varyname;
+  m.propsColor = p.propscolor ? Number(p.propscolor) : undefined;
+  m.effect = p.effect;
+  m.effectDesc = p.effectDesc;
+  m.requires = p.requires;
+  m.requiresDesc = p.requiresDesc;
+  m.buy = p.buy;
+  m.yb = p.yb;
+  m.usages = p.usages;
+  m.usagesDesc = p.usagesDesc;
+  m.propslock = p.propslock;
+  m.series = p.series;
+  m.serieseffect = p.serieseffect;
+  m.serieseffectDesc = p.serieseffectDesc;
+  m.pluseffect = p.pluseffect;
+  m.pluseffectDesc = p.pluseffectDesc;
+  m.prestige = p.prestige;
+  m.plusflag = p.plusflag;
+  m.pluspid = p.pluspid;
+  m.plusget = p.plusget;
+  m.plusnum = p.plusnum;
+  m.postion = p.postion;
+  m.category = p.category;
+  // Compute expire
+  if (p.endtime && p.endtime > 0) {
+    const expireEnd = (base.stime ?? 0) + p.endtime;
+    m.expire = expireEnd > Date.now() / 1000
+      ? `到期时间:${new Date(expireEnd * 1000).toLocaleString()}`
+      : '过期';
+  } else {
+    m.expire = '永久';
+  }
+  // Resolve holeInfoDesc
+  if (base.holeInfo) {
+    m.holeInfoDesc = base.holeInfo; // simplified; full resolution stays on backend for equip actions
+  }
+  return m;
 }
 
 const PROPS_COLORS: Record<number, string> = {
@@ -25,7 +76,7 @@ const PROPS_COLORS: Record<number, string> = {
 
 const SLOT_NAMES = ['武器','衣服','头盔','鞋子','项链','戒指左','戒指右','护腕','腰带','特殊','翅膀'];
 
-function getTradeStatus(item: BagItemRaw) {
+function getTradeStatus(item: BagItemMerged) {
   if (item.cantrade === 0) return item.propslock === 1 ? '可交易' : '不可交易';
   if (item.cantrade === 1) return '可交易';
   return '不可交易';
@@ -53,7 +104,7 @@ const CATEGORIES: { label: string; vary: number[] }[] = [
 ];
 
 // PHP equipment.v1.php — per-varyname tooltip templates
-function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number }) {
+function TooltipContent({ item, x, y }: { item: BagItemMerged; x: number; y: number }) {
   const vn = item.varyname;
   const nameColor = PROPS_COLORS[item.propsColor ?? 1] ?? '#FEFDFA';
   const usageText = item.usagesDesc || item.usages;
@@ -73,41 +124,28 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
   let body: ReactNode;
 
   if (vn === 9) {
-    // 装备类 — PHP zhuangbei()
     const slotName = item.postion != null ? SLOT_NAMES[item.postion] ?? '未知' : null;
     const requiresLines = requiresText ? requiresText.split('，') : [];
     const holeLines = item.holeInfoDesc ? item.holeInfoDesc.split('\n') : [];
     body = (
       <>
         {slotName && <div className={styles.tipRow}><span className={styles.tipLabel}>位置：</span>{slotName}装备{item.plusflag === 1 ? '(可强化)' : '(不可强化)'}</div>}
-        {renderRows([
-          { label: '效果', value: effectText, color: '#FEFDFA' },
-        ])}
+        {renderRows([{ label: '效果', value: effectText, color: '#FEFDFA' }])}
         {requiresLines.length > 0 && (
           <>
             <div className={styles.tipRow}><span className={styles.tipLabel}>需求：</span></div>
-            {requiresLines.map((line, i) => (
-              <div key={i} className={styles.tipRow} style={{ paddingLeft: 12 }}>{line}</div>
-            ))}
+            {requiresLines.map((line, i) => (<div key={i} className={styles.tipRow} style={{ paddingLeft: 12 }}>{line}</div>))}
           </>
         )}
-        {renderRows([
-          { label: '强化', value: item.plusget },
-        ])}
-        {item.plusnum != null && item.plusnum > 0 && (
-          <div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>
-        )}
+        {renderRows([{ label: '强化', value: item.plusget }])}
+        {item.plusnum != null && item.plusnum > 0 && (<div className={styles.tipRow}><span className={styles.tipLabel}>镶嵌孔：</span>{item.plusnum}</div>)}
         {holeLines.length > 0 && (
           <>
             <div className={styles.tipRow}><span className={styles.tipLabel}>已镶嵌：</span></div>
-            {holeLines.map((line, i) => (
-              <div key={i} className={styles.tipRow} style={{ paddingLeft: 12, color: '#14FD10' }}>{line}</div>
-            ))}
+            {holeLines.map((line, i) => (<div key={i} className={styles.tipRow} style={{ paddingLeft: 12, color: '#14FD10' }}>{line}</div>))}
           </>
         )}
-        {renderRows([
-          { label: '附加', value: plusText, color: '#9833DC' },
-        ])}
+        {renderRows([{ label: '附加', value: plusText, color: '#9833DC' }])}
         {item.series && (
           <div className={styles.tipRow}>
             <span className={styles.tipLabel}>套装：</span>
@@ -115,41 +153,30 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
           </div>
         )}
         {usageText && <div className={styles.tipUsage}>{usageText}</div>}
-        {item.prestige != null && item.prestige > 0 && (
-          <div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{item.prestige}</div>
-        )}
+        {item.prestige != null && item.prestige > 0 && (<div className={styles.tipRow}><span className={styles.tipLabel}>威望：</span>{item.prestige}</div>)}
       </>
     );
   } else if (vn === 5) {
-    // 技能书类 — PHP jineng()
     body = (
       <>
-        {renderRows([
-          { label: '效果', value: effectText, color: '#FEFDFA' },
-          { label: '附加', value: plusText, color: '#9833DC' },
-        ])}
+        {renderRows([{ label: '效果', value: effectText, color: '#FEFDFA' }, { label: '附加', value: plusText, color: '#9833DC' }])}
         {usageText && <div className={styles.tipUsage}>{usageText}</div>}
       </>
     );
   } else if (vn === 25) {
-    // 宝石类 — PHP gam()
     body = (
       <>
-        {renderRows([
-          { label: '镶嵌条件', value: requiresText },
-        ])}
+        {renderRows([{ label: '镶嵌条件', value: requiresText }])}
         {usageText && <div className={styles.tipUsage}>{usageText}</div>}
       </>
     );
   } else if (vn === 22) {
-    // 魔法石 — PHP inline text
     body = (
       <div className={styles.tipUsage}>
         神秘的魔法石，<span style={{ cursor: 'pointer', color: '#14FD10' }}>魔法屋的芙蕾娅</span>可以帮你使用它哦。
       </div>
     );
   } else {
-    // 通用道具 — PHP daoju() (varyname 1-4,6-8,10-19,23-24,26-32)
     body = (
       <>
         {usageText ? (
@@ -164,9 +191,7 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
   return (
     <div className={styles.tooltip} style={{ left: x + 12, top: Math.max(0, y - 120) }}>
       <div className={styles.tipFrame}>
-        <div className={styles.tipName} style={{ color: nameColor }}>
-          <b>{item.name}</b>
-        </div>
+        <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
         <div className={styles.tipTrade}>{getTradeStatus(item)}</div>
         <div className={styles.tipExpire}>{item.expire ?? '永久'}</div>
         {body}
@@ -179,50 +204,59 @@ function TooltipContent({ item, x, y }: { item: BagItemRaw; x: number; y: number
 }
 
 export default function BagPanel() {
-  const [items, setItems] = useState<BagItemRaw[]>([]);
+  const [baseItems, setBaseItems] = useState<BagItemBase[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [maxBag, setMaxBag] = useState(30);
-  const [tooltip, setTooltip] = useState<{ item: BagItemRaw; x: number; y: number } | null>(null);
+  const player = useAuthStore((s) => s.player);
+  const maxBag = player?.maxBag ?? 30;
+  const [tooltip, setTooltip] = useState<{ item: BagItemMerged; x: number; y: number } | null>(null);
+  const propsMap = useGameStore((s) => s.propsMap);
   const setBag = useGameStore((s) => s.setBag);
   const setGamePets = useGameStore((s) => s.setPets);
-  const fetchPlayer = useGameStore((s) => s.triggerRefresh);
+  const triggerRefresh = useGameStore((s) => s.triggerRefresh);
+  const fetchPlayerAuth = useAuthStore((s) => s.fetchPlayer);
   const closePanel = useGameStore((s) => s.setActivePanel);
 
+  // Merge base items with cached props
+  const items: BagItemMerged[] = useMemo(
+    () => baseItems.map(b => mergeWithProps(b, propsMap)),
+    [baseItems, propsMap]
+  );
+
   const fetchItems = () => {
-    apiGet<BagItemRaw[]>('/bag').then((res: ApiResponse<BagItemRaw[]>) => {
+    apiGet<BagItemBase[]>('/bag').then((res: ApiResponse<BagItemBase[]>) => {
       if (res.code === 0 && res.data) {
-        setItems(res.data);
-        setBag(res.data.map((item) => ({
-          id: item.id, name: item.name ?? `道具#${item.propId}`,
-          count: item.count, type: item.vary === 'equipment' ? 2 : 1, description: '',
-        })));
+        setBaseItems(res.data);
+        setBag(res.data.map((item) => {
+          const p = propsMap[item.propId];
+          return {
+            id: item.id, name: p?.name ?? `道具#${item.propId}`,
+            count: item.count, type: item.vary === 'equipment' ? 2 : 1, description: '',
+          };
+        }));
       }
     });
   };
 
   useEffect(() => {
-    Promise.all([
-      apiGet<BagItemRaw[]>('/bag'),
-      apiGet<{ maxBag?: number }>('/player/me'),
-    ]).then(([bagRes, playerRes]) => {
+    apiGet<BagItemBase[]>('/bag').then((bagRes) => {
       if (bagRes.code === 0 && bagRes.data) {
-        setItems(bagRes.data);
-        setBag(bagRes.data.map((item) => ({
-          id: item.id, name: item.name ?? `道具#${item.propId}`,
-          count: item.count, type: item.vary === 'equipment' ? 2 : 1, description: '',
-        })));
+        setBaseItems(bagRes.data);
+        setBag(bagRes.data.map((item) => {
+          const p = propsMap[item.propId];
+          return {
+            id: item.id, name: p?.name ?? `道具#${item.propId}`,
+            count: item.count, type: item.vary === 'equipment' ? 2 : 1, description: '',
+          };
+        }));
       }
-      if (playerRes.code === 0 && playerRes.data?.maxBag) setMaxBag(playerRes.data.maxBag);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const filtered = items.filter(i => {
     if (i.count <= 0 || i.zbing === 1) return false;
     if (category === 0) return true;
-    // Match by category name from API (backend-computed)
     const itemCat = i.category ?? '';
     const filterCat = CATEGORIES[category]?.label ?? '';
     if (!itemCat || !filterCat) return false;
@@ -231,144 +265,108 @@ export default function BagPanel() {
 
   const usedCells = items.filter(i => i.count > 0 && i.zbing !== 1).length;
 
-  const getCatLabel = (item: BagItemRaw) => {
+  const getCatLabel = (item: BagItemMerged) => {
     if (!item.category) return '道具';
     const c = CATEGORIES.find(c => c.vary.length > 0 && c.label.startsWith(item.category!));
     return c?.label ?? item.category;
   };
   const selectedItem = items.find(i => i.id === selectedId);
 
-  // PHP: only healing (hp/mp) and permanent pet stat boosts need a pet target.
-  // Equipment (varyname==9) is handled by equipItem separately.
-  // Chests, currency, double-exp, auto-fight scrolls, openpet are player-only.
   const PET_STAT_KEYS = ['hp:','mp:','addexp','addczl','addac','addmc','addhp','addmp','addspeed','addhits','addmiss'];
-  const needsPet = (item: BagItemRaw) => {
-    if (item.varyname === 9) return false; // equipment uses equipItem
+  const needsPet = (item: BagItemMerged) => {
+    if (item.varyname === 9) return false;
     const eff = item.effect || '';
     return PET_STAT_KEYS.some(k => eff.includes(k));
   };
 
   const mainPetId = useAuthStore((s) => s.player?.mbid);
   const selectedPetId = useGameStore((s) => s.selectedPetId);
-  // Default to selected pet, fallback to main pet
   const activePetId = selectedPetId ?? mainPetId;
 
-  const handleUse = (item: BagItemRaw) => {
+  const handleUse = (item: BagItemMerged) => {
     if (needsPet(item)) {
-      // Equipment always goes to main pet
       const targetPetId = item.varyname === 9 ? (mainPetId ?? activePetId) : activePetId;
       if (!targetPetId) { alert('请先在牧场设置主战宠物！'); return; }
       doUse(item, targetPetId);
     } else {
-      // Player-only: chests, currency, double-exp, auto-fight, openpet, expand, etc.
       doUse(item, 0);
     }
   };
 
-  const doUse = (item: BagItemRaw, petId: number) => {
-    // Optimistic update: immediately decrement count
-    setItems(prev => prev.map(i => i.id === item.id ? { ...i, count: i.count - 1 } : i));
+  const doUse = (item: BagItemMerged, petId: number) => {
+    setBaseItems(prev => prev.map(i => i.id === item.id ? { ...i, count: i.count - 1 } : i));
     apiPost<Record<string, unknown>>(`/bag/use/${item.id}`, { petId }).then((res: ApiResponse<Record<string, unknown>>) => {
       if (res.code === 0 && res.data) {
         const d = res.data;
         const err = d.error as string;
         const msg = d.message as string;
-        if (err) {
-          systips(err);
-          fetchItems();
-          return;
-        }
-        if (d.equipped) {
-          systips(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
-        } else if (d.unequipped) {
-          systips(`已卸下装备`);
-        } else if (d.type === 'healHP') systips(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
+        if (err) { systips(err); fetchItems(); return; }
+        if (d.equipped) systips(`装备成功！${d.propName} 穿戴到 ${d.slotName}${d.replaced ? '(替换旧装备)' : ''}`);
+        else if (d.unequipped) systips(`已卸下装备`);
+        else if (d.type === 'healHP') systips(`${item.name} 为宠物恢复了 ${d.healedHP} 点HP`);
         else if (d.type === 'healMP') systips(`${item.name} 为宠物恢复了 ${d.healedMP} 点MP`);
         else if (d.type === 'exp' && d.levelUp) systips(`${item.name} 使宠物升级到 Lv.${d.newLevel}！`);
         else if (d.type === 'bagExpand' || d.type === 'depotExpand') {
           systips(msg ?? `扩容成功`);
-          if (d.type === 'bagExpand' && d.newMaxBag) setMaxBag(d.newMaxBag as number);
+          if (d.type === 'bagExpand' && d.newMaxBag) fetchPlayerAuth(true);
         } else if (d.type === 'yuanbao') systips(msg ?? `获得${d.ybGained}元宝`);
         else if (d.type === 'crystal') systips(msg ?? `获得水晶`);
         else if (d.type === 'openMap') systips(msg ?? '地图已解锁');
         else if (d.type === 'openPet') systips(msg ?? `恭喜获得宠物：${d.petName}！`);
         else if (msg) systips(msg);
         else systips(`使用了 ${item.name}`);
-        // Refresh from server to sync
         fetchItems();
         apiGet<PetBrief[]>('/pets').then((r) => {
           if (r.code === 0 && r.data) {
             setGamePets(r.data.map((p: PetBrief) => ({ ...p, hp: 0, mp: 0, atk: 0, def: 0, speed: 0, element: '金' as const, quality: 0, exp: 0 })));
           }
         });
-        // Clear selection if item gone
         if (item.count <= 1) setSelectedId(null);
       } else {
         systips(res.message ?? '使用失败');
-        // Revert optimistic update on failure
         fetchItems();
       }
     }).catch((err: any) => {
-      // 400 errors from backend (e.g. equipment conditions not met)
       const msg = err?.response?.data?.message;
       systips(msg || '使用失败');
-      fetchItems(); // Revert optimistic update
+      fetchItems();
     });
   };
 
-  const handleSell = (item: BagItemRaw) => {
+  const handleSell = (item: BagItemMerged) => {
     apiPost<Record<string, unknown>>('/bag/sell/' + item.id, { count: 1 }).then((res) => {
       if (res.code === 0 && res.data) {
         const d = res.data;
         systips(`出售 ${d.sold} x${d.count}，获得 ${d.goldGained} 金币`);
-      } else {
-        systips(res.message ?? '出售失败');
-      }
-      fetchItems();
-      fetchPlayer();
-    }).catch((err: any) => {
-      systips(err?.response?.data?.message || '出售失败');
-    });
+      } else { systips(res.message ?? '出售失败'); }
+      fetchItems(); triggerRefresh();
+    }).catch((err: any) => { systips(err?.response?.data?.message || '出售失败'); });
   };
 
-  const handleDrop = (item: BagItemRaw) => {
+  const handleDrop = (item: BagItemMerged) => {
     if (!confirm(`确定丢弃 ${item.name} 吗？`)) return;
     apiPost<Record<string, unknown>>('/bag/drop/' + item.id, {}).then((res) => {
-      if (res.code === 0) {
-        systips(`已丢弃 ${item.name}`);
-      } else {
-        systips(res.message ?? '丢弃失败');
-      }
-      fetchItems();
-      setSelectedId(null);
-    }).catch((err: any) => {
-      systips(err?.response?.data?.message || '丢弃失败');
-    });
+      if (res.code === 0) systips(`已丢弃 ${item.name}`);
+      else systips(res.message ?? '丢弃失败');
+      fetchItems(); setSelectedId(null);
+    }).catch((err: any) => { systips(err?.response?.data?.message || '丢弃失败'); });
   };
 
   if (loading) return <div className={styles.loading}>加载中...</div>;
 
   return (
     <div className={styles.container}>
-
-      {/* Close button — PHP .close_btn */}
       <button className={styles.closeBtn} onClick={() => closePanel(null)} />
-
-      {/* Bag space + category filter — PHP absolute positioned */}
       <span className={styles.space}>当前背包空间：{usedCells}/{maxBag}</span>
       <select className={styles.filter} value={category} onChange={(e) => setCategory(Number(e.target.value))}>
         {CATEGORIES.map((c, i) => (<option key={i} value={i}>{c.label}</option>))}
       </select>
-
-      {/* Column header — PHP absolute positioned */}
       <div className={styles.colHeader}>
         <span className={styles.colIcon}>图标</span>
         <span className={styles.colName}>物品名称</span>
         <span className={styles.colType}>类型</span>
         <span className={styles.colCount}>数量</span>
       </div>
-
-      {/* Item list — PHP absolute positioned */}
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <tbody>
@@ -398,8 +396,6 @@ export default function BagPanel() {
           </tbody>
         </table>
       </div>
-
-      {/* Action buttons — PHP absolute positioned */}
       <div className={styles.actions}>
         <button className={styles.btn} disabled={!selectedItem}
           onClick={() => selectedItem && handleUse(selectedItem)}>使用</button>
@@ -407,11 +403,9 @@ export default function BagPanel() {
           onClick={() => selectedItem && handleSell(selectedItem)}>出售</button>
         <button className={styles.btn} disabled={!selectedItem}
           onClick={() => selectedItem && handleDrop(selectedItem)}>丢弃</button>
-<button className={styles.btnDepot} disabled={!selectedItem}
+        <button className={styles.btnDepot} disabled={!selectedItem}
           onClick={() => selectedItem && alert('放入仓库功能开发中')}>放入仓库</button>
       </div>
-
-      {/* Tooltip — matches PHP equipment.div() templates per varyname */}
       {tooltip && <TooltipContent item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
     </div>
   );

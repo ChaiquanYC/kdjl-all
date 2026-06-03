@@ -5,9 +5,9 @@ spring:
   application:
     name: kdjl-admin
   datasource:
-    url: jdbc:mysql://localhost:3306/kdjl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai
-    username: kdjl
-    password: kdjl_pass
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:3306/kdjl?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&tcpKeepAlive=true&autoReconnect=true
+    username: ${MYSQL_USER:kdjl}
+    password: ${MYSQL_PASSWORD:kdjl_pass}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

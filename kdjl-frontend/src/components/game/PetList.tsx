@@ -120,7 +120,7 @@ export default function PetList() {
 
   const handleSetMain = (petId: number) => {
     apiPost('/pets/set-main/' + petId, {}).then(() => {
-      fetchPlayer().then(() => {
+      fetchPlayer(true).then(() => {
         systips('已设为主战宠物'); triggerRefresh();
         setSelectedId(petId);
       });

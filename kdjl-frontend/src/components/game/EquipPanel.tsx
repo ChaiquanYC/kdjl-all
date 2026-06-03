@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { formatEffectText, parseEffects } from '@/utils/equipEffect';
 import styles from './EquipPanel.module.css';
 
-interface EquipItem { id: number; propId: number; equipPetId: number | null; zbing: number;
-  holeInfo: string | null; name?: string; img?: string; effect?: string; }
+interface EquipItemBase { id: number; propId: number; equipPetId: number | null; zbing: number;
+  holeInfo: string | null; plusTimesEffect?: string; }
+interface EquipItem extends EquipItemBase { name?: string; img?: string; effect?: string; }
 interface PetBrief { id: number; name: string; level: number; img?: string; }
 
 const SLOTS = [
@@ -18,20 +19,26 @@ const SLOTS = [
 ];
 
 export default function EquipPanel() {
-  const [equipment, setEquipment] = useState<EquipItem[]>([]);
+  const [baseEquip, setBaseEquip] = useState<EquipItemBase[]>([]);
   const [pets, setPets] = useState<PetBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPet, setSelectedPet] = useState<PetBrief | null>(null);
   const [zbStr, setZbStr] = useState<string>('');
   const [msg, setMsg] = useState<string | null>(null);
+  const propsMap = useGameStore((s) => s.propsMap);
   const setBag = useGameStore((s) => s.setBag);
+
+  const equipment: EquipItem[] = useMemo(() => baseEquip.map(e => {
+    const p = propsMap[e.propId];
+    return { ...e, name: p?.name, img: p?.img, effect: p?.effect };
+  }), [baseEquip, propsMap]);
 
   const fetchData = () => {
     Promise.all([
-      apiGet<EquipItem[]>('/bag/equipment'),
+      apiGet<EquipItemBase[]>('/bag/equipment'),
       apiGet<PetBrief[]>('/pets'),
     ]).then(([eqRes, petRes]) => {
-      if (eqRes.code === 0 && eqRes.data) setEquipment(eqRes.data);
+      if (eqRes.code === 0 && eqRes.data) setBaseEquip(eqRes.data);
       if (petRes.code === 0 && petRes.data) {
         setPets(petRes.data);
         if (petRes.data.length > 0) {
@@ -80,9 +87,9 @@ export default function EquipPanel() {
   };
 
   const refreshBag = () => {
-    apiGet<unknown[]>('/bag').then((r: any) => {
-      if (r.code === 0 && r.data) setBag(r.data.map((item: any) => ({
-        id: item.id, name: item.name ?? '道具', count: item.count,
+    apiGet<{id: number; propId: number; count: number; vary: string}[]>('/bag').then((r) => {
+      if (r.code === 0 && r.data) setBag(r.data.map((item) => ({
+        id: item.id, name: propsMap[item.propId]?.name ?? '道具', count: item.count,
         type: item.vary === 'equipment' ? 2 : 1, description: '' })));
     });
   };

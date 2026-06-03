@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -7,10 +7,11 @@ import BagColumn from './BagColumn';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './DepotPanel.module.css';
 
-interface ItemRaw {
-  id: number; propId: number; count: number; varyname: number;
-  sell: number; name?: string; img?: string; zbing?: number;
-  category?: string;
+interface ItemRawBase {
+  id: number; propId: number; count: number; sell: number; zbing?: number;
+}
+interface ItemRaw extends ItemRawBase {
+  varyname?: number; name?: string; img?: string; category?: string;
 }
 
 const CATEGORIES = [
@@ -22,13 +23,24 @@ const CATEGORIES = [
   { label: '功能道具', vary: [13] },{ label: '宠物卵',   vary: [14] },{ label: '合成道具', vary: [15] },
 ];
 
+function mergeItems(raw: ItemRawBase[], propsMap: Record<number, import('@/types').PropsItem>): ItemRaw[] {
+  return raw.map(r => {
+    const p = propsMap[r.propId];
+    return { ...r, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
+  });
+}
+
 export default function DepotPanel() {
   const player = useAuthStore((s) => s.player);
   const setGameView = useGameStore((s) => s.setGameView);
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
-  const [bag, setBag] = useState<ItemRaw[]>([]);
-  const [depot, setDepot] = useState<ItemRaw[]>([]);
+  const propsMap = useGameStore((s) => s.propsMap);
+  const [rawBag, setRawBag] = useState<ItemRawBase[]>([]);
+  const [rawDepot, setRawDepot] = useState<ItemRawBase[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const bag: ItemRaw[] = useMemo(() => mergeItems(rawBag, propsMap), [rawBag, propsMap]);
+  const depot: ItemRaw[] = useMemo(() => mergeItems(rawDepot, propsMap), [rawDepot, propsMap]);
   const [bagCat, setBagCat] = useState(0);
   const [depotCat, setDepotCat] = useState(0);
   const [selBag, setSelBag] = useState<number | null>(null);
@@ -41,11 +53,11 @@ export default function DepotPanel() {
 
   const fetchData = () => {
     setLoading(true);
-    apiGet<ItemRaw[]>('/bag').then(bagRes => {
-      if (bagRes.code === 0 && bagRes.data) setBag(bagRes.data);
-      return apiGet<ItemRaw[]>('/depot');
+    apiGet<ItemRawBase[]>('/bag').then(bagRes => {
+      if (bagRes.code === 0 && bagRes.data) setRawBag(bagRes.data);
+      return apiGet<ItemRawBase[]>('/depot');
     }).then(depRes => {
-      if (depRes.code === 0 && depRes.data) setDepot(depRes.data);
+      if (depRes.code === 0 && depRes.data) setRawDepot(depRes.data);
     }).catch(() => {}).finally(() => setLoading(false));
   };
 

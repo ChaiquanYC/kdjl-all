@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { Player } from '@/types';
 import { apiGet, apiPost } from '@/api/client';
 import { connectWs, disconnectWs } from '@/api/websocket';
+import { useGameStore } from './gameStore';
 
 interface AuthState {
   player: Player | null;
@@ -11,12 +12,14 @@ interface AuthState {
   error: string | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
-  fetchPlayer: () => Promise<void>;
+  fetchPlayer: (force?: boolean) => Promise<void>;
   hydrate: () => Promise<boolean>;
   setAuth: (token: string, player: Player) => void;
 }
 
 const storedToken = localStorage.getItem('token');
+let _lastFetchAt = 0;
+const FETCH_TTL_MS = 30_000;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   player: null,
@@ -35,6 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (res.code === 0 && res.data) {
         localStorage.setItem('token', res.data.token);
         try { connectWs(res.data.token); } catch { /* ws optional */ }
+        useGameStore.getState().loadProps();
         set({
           token: res.data.token,
           player: {
@@ -73,6 +77,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setAuth: (token: string, player: Player) => {
     localStorage.setItem('token', token);
     try { connectWs(token); } catch { /* ws optional */ }
+    useGameStore.getState().loadProps();
     set({ token, player, hydrated: true });
   },
 
@@ -83,9 +88,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
     try {
+      _lastFetchAt = Date.now();
       const res = await apiGet<Player>('/player/me');
       if (res.code === 0 && res.data) {
         set({ player: res.data, hydrated: true });
+        useGameStore.getState().loadProps();
         return true;
       }
     } catch {
@@ -97,9 +104,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return false;
   },
 
-  fetchPlayer: async () => {
+  fetchPlayer: async (force?: boolean) => {
     const token = get().token;
     if (!token) return;
+    if (!force && Date.now() - _lastFetchAt < FETCH_TTL_MS) return;
+    _lastFetchAt = Date.now();
     try {
       const res = await apiGet<Player>('/player/me');
       if (res.code === 0 && res.data) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,9 +13,11 @@ interface PetInfo {
   remakeName?: string; remakePName?: string;
 }
 
-interface BagItem {
-  id: number; propId: number; name?: string; sums: number;
-  effect?: string; vary?: number; varyname?: number; usages?: string;
+interface BagItemBase {
+  id: number; propId: number; count: number; vary?: string;
+}
+interface BagItem extends BagItemBase {
+  name?: string; effect?: string; varyname?: number; usages?: string;
 }
 
 interface RebirthTarget {
@@ -55,7 +57,12 @@ export default function SdPanel() {
   const [extractItem2, setExtractItem2] = useState<number | null>(null);
   const [convertValue, setConvertValue] = useState('');
   // Tab 4 bag items for dropdowns
-  const [bagItems, setBagItems] = useState<BagItem[]>([]);
+  const propsMap = useGameStore((s) => s.propsMap);
+  const [rawBagItems, setRawBagItems] = useState<BagItemBase[]>([]);
+  const bagItems: BagItem[] = useMemo(() => rawBagItems.map(b => {
+    const p = propsMap[b.propId];
+    return { ...b, name: p?.name, effect: p?.effect, varyname: p?.varyname, usages: p?.usages };
+  }), [rawBagItems, propsMap]);
 
   // Tab 5 state
   const [rebirthTargets, setRebirthTargets] = useState<RebirthTarget[]>([]);
@@ -75,8 +82,8 @@ export default function SdPanel() {
   useEffect(() => {
     refreshPets().then(() => setLoading(false));
     // Load bag for Tab 4
-    apiGet<BagItem[]>('/bag').then((res) => {
-      if (res.code === 0 && res.data) setBagItems(res.data);
+    apiGet<BagItemBase[]>('/bag').then((res) => {
+      if (res.code === 0 && res.data) setRawBagItems(res.data);
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -46,49 +46,50 @@ public class PlayerService {
     }
 
     public Map<String, Object> getPlayerInfo(Integer playerId) {
-        Player p = getPlayer(playerId);
-        PlayerExt ext = getPlayerExt(playerId);
+        Object[] row = playerRepo.findPlayerInfoById(playerId).get(0);
         var m = new LinkedHashMap<String, Object>();
-        m.put("id", p.getId());
-        m.put("username", p.getUsername());
-        m.put("nickname", p.getNickname());
-        m.put("vip", p.getVip() != null ? p.getVip() : 0);
-        m.put("money", p.getMoney() != null ? p.getMoney() : 0);
-        m.put("yb", p.getYb() != null ? p.getYb() : 0);
-        m.put("score", p.getScore() != null ? p.getScore() : 0);
-        m.put("prestige", p.getPrestige() != null ? p.getPrestige() : 0);
-        m.put("jPrestige", p.getJPrestige() != null ? p.getJPrestige() : 0);
-        m.put("activeScore", p.getActiveScore() != null ? p.getActiveScore() : 0);
-        m.put("vipLast", p.getVipLast() != null ? p.getVipLast() : 0);
-        m.put("inMap", p.getInMap() != null ? p.getInMap() : 0);
-        m.put("openMap", p.getOpenMap());
-        m.put("fightTop", p.getFightTop() != null ? p.getFightTop() : 0);
-        m.put("maxBag", p.getMaxBag() != null ? p.getMaxBag() : 30);
-        m.put("sex", p.getSex());
-        m.put("onlineTime", ext != null && ext.getOnlineTime() != null ? ext.getOnlineTime() : 0);
-        m.put("newGuideStep", ext != null && ext.getNewGuideStep() != null ? ext.getNewGuideStep() : 0);
-        m.put("mbid", p.getMbid());
-        m.put("fightbb", p.getFightBb());
-        m.put("sj", ext != null && ext.getSj() != null ? ext.getSj() : 0);
-        m.put("paimoney", p.getPaiMoney() != null ? p.getPaiMoney() : 0);
-        m.put("paisj", ext != null && ext.getPaisj() != null ? ext.getPaisj() : 0);
-        m.put("paiyb", ext != null && ext.getPaiyb() != null ? ext.getPaiyb() : 0);
-        m.put("merge", ext != null && ext.getMerge() != null ? ext.getMerge() : 0);
-        m.put("mergeCount", ext != null && ext.getMergeCount() != null ? ext.getMergeCount() : 0);
-        m.put("maxMc", p.getMaxMc() != null ? p.getMaxMc() : 10);
-        m.put("headImg", p.getHeadImg() != null ? p.getHeadImg() : 0);
-        m.put("dblExpFlag", p.getDblExpFlag() != null ? p.getDblExpFlag() : 0);
-        m.put("dblsTime", p.getDblsTime());
-        m.put("maxDblExpTime", p.getMaxDblExpTime());
-        m.put("sysAutoSum", p.getSysAutoSum() != null ? p.getSysAutoSum() : 0);
-        m.put("maxAutoFitSum", p.getMaxAutoFitSum() != null ? p.getMaxAutoFitSum() : 0);
-        m.put("friendList", p.getFriendList());
-        m.put("teamAutoTimes", ext != null && ext.getTeamAutoTimes() != null ? ext.getTeamAutoTimes() : 0);
-        m.put("tiaozhan", ext != null && ext.getTiaozhan() != null ? ext.getTiaozhan() : 1);
-        // Pet count
-        long petCount = userPetRepo.findByPlayerId(playerId.longValue()).size();
-        m.put("petCount", (int) petCount);
+        m.put("id", row[0]);
+        m.put("username", row[1]);
+        m.put("nickname", row[2]);
+        m.put("vip", orZero(row[3]));
+        m.put("money", orZero(row[4]));
+        m.put("yb", orZero(row[5]));
+        m.put("score", orZero(row[6]));
+        m.put("prestige", orZero(row[7]));
+        m.put("jPrestige", orZero(row[8]));
+        m.put("activeScore", orZero(row[9]));
+        m.put("vipLast", orZero(row[10]));
+        m.put("inMap", orZero(row[11]));
+        m.put("openMap", row[12]);
+        m.put("fightTop", orZero(row[13]));
+        m.put("maxBag", row[14] != null ? row[14] : 30);
+        m.put("sex", row[15]);
+        m.put("mbid", row[16]);
+        m.put("fightbb", row[17]);
+        m.put("paimoney", orZero(row[18]));
+        m.put("headImg", orZero(row[19]));
+        m.put("dblExpFlag", orZero(row[20]));
+        m.put("dblsTime", row[21]);
+        m.put("maxDblExpTime", row[22]);
+        m.put("sysAutoSum", orZero(row[23]));
+        m.put("maxAutoFitSum", orZero(row[24]));
+        m.put("friendList", row[25]);
+        m.put("maxMc", row[26] != null ? row[26] : 10);
+        m.put("onlineTime", orZero(row[27]));
+        m.put("newGuideStep", orZero(row[28]));
+        m.put("sj", orZero(row[29]));
+        m.put("paisj", orZero(row[30]));
+        m.put("paiyb", orZero(row[31]));
+        m.put("merge", orZero(row[32]));
+        m.put("mergeCount", orZero(row[33]));
+        m.put("teamAutoTimes", orZero(row[34]));
+        m.put("tiaozhan", row[35] != null ? row[35] : 1);
+        m.put("petCount", row[36] != null ? ((Number) row[36]).intValue() : 0);
         return m;
+    }
+
+    private static int orZero(Object v) {
+        return v != null ? ((Number) v).intValue() : 0;
     }
 
     public long getOnlineCount() {

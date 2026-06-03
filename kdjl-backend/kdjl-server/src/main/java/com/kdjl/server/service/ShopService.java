@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Collection;
 
 @Service
 public class ShopService {
@@ -29,7 +30,7 @@ public class ShopService {
 
     /** PHP shop types: props(金币道具), equip(金币装备), prestige(威望道具), zprestige(威望装备), yb(元宝), sj(灵石), vip */
     public List<Map<String, Object>> listShopItems(String shopType) {
-        List<Props> all = propsRepo.findAll();
+        Collection<Props> all = BagService.getAllCachedProps();
         return all.stream()
             .filter(p -> {
                 if (p.getId() == null || p.getId() <= 0) return false;

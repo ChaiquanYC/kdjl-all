@@ -126,8 +126,7 @@ public class AuthService {
         nickname = nickname.trim();
         if (nickname.length() < 4 || nickname.length() > 21) return ApiResponse.error("角色名长度需为4-21字符");
         if (containsBadWord(username) || containsBadWord(nickname)) return ApiResponse.error("名称中包含禁止使用的词");
-        if (playerRepository.existsByUsername(username)) return ApiResponse.error("用户名已存在");
-        if (playerRepository.existsByNickname(nickname)) return ApiResponse.error("角色名已存在");
+        if (playerRepository.existsByUsernameOrNickname(username, nickname)) return ApiResponse.error("用户名或角色名已存在");
 
         // --- 创建 Player ---
         String md5Hash = md5(password);
@@ -151,18 +150,15 @@ public class AuthService {
         player = playerRepository.save(player);
 
         // --- 创建 PlayerExt ---
-        PlayerExt ext = extRepo.findById(player.getId()).orElse(null);
-        if (ext == null) {
-            ext = new PlayerExt();
-            ext.setPlayerId(player.getId());
-            ext.setSj(0);
-            ext.setPaisj(0);
-            ext.setPaiyb(0);
-            ext.setMerge(0);
-            ext.setRequestMerge(0);
-            ext.setRequest(0);
-            extRepo.save(ext);
-        }
+        PlayerExt ext = new PlayerExt();
+        ext.setPlayerId(player.getId());
+        ext.setSj(0);
+        ext.setPaisj(0);
+        ext.setPaiyb(0);
+        ext.setMerge(0);
+        ext.setRequestMerge(0);
+        ext.setRequest(0);
+        extRepo.save(ext);
 
         // --- 初始宠物 (PHP: 1→bb#1, 2→bb#13, 3→bb#23, 4→bb#32, 5→bb#42) ---
         Long[] starterPets = {1L, 13L, 23L, 32L, 42L};
@@ -273,15 +269,14 @@ public class AuthService {
 
     private void addStarterItems(int playerId) {
         long now = System.currentTimeMillis() / 1000;
-        // 治疗药水(小) x5
-        addItem(playerId, 1L, 1, 5, now);
-        // 魔法药水(小) x5
-        addItem(playerId, 4L, 1, 5, now);
-        // 金波姆·精灵球 x3
-        addItem(playerId, 149L, 1, 3, now);
+        List<UserBag> items = new ArrayList<>();
+        items.add(makeItem(playerId, 1L, 1, 5, now));   // 治疗药水(小) x5
+        items.add(makeItem(playerId, 4L, 1, 5, now));   // 魔法药水(小) x5
+        items.add(makeItem(playerId, 149L, 1, 3, now)); // 金波姆·精灵球 x3
+        bagRepo.saveAll(items);
     }
 
-    private void addItem(int playerId, Long propId, int vary, int sums, long stime) {
+    private UserBag makeItem(int playerId, Long propId, int vary, int sums, long stime) {
         UserBag item = new UserBag();
         item.setPlayerId((long) playerId);
         item.setPropId(propId);
@@ -290,7 +285,7 @@ public class AuthService {
         item.setSell(1);
         item.setStime(stime);
         item.setCantrade(0);
-        bagRepo.save(item);
+        return item;
     }
 
     private static String md5(String input) {

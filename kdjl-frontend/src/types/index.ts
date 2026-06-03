@@ -68,6 +68,41 @@ export interface Item {
   description: string;
 }
 
+export interface PropsItem {
+  id: number;
+  name: string;
+  img?: string;
+  varyname?: number;
+  vary?: number;
+  effect?: string;
+  requires?: string;
+  usages?: string;
+  sell?: number;
+  buy?: number;
+  yb?: number;
+  sj?: number;
+  postion?: number;
+  propscolor?: string;
+  propslock?: number;
+  prestige?: number;
+  pluseffect?: string;
+  plusflag?: number;
+  pluspid?: number;
+  plusget?: string;
+  plusnum?: number;
+  series?: string;
+  serieseffect?: string;
+  merge?: number;
+  stime?: number;
+  endtime?: number;
+  effectDesc?: string;
+  requiresDesc?: string;
+  usagesDesc?: string;
+  serieseffectDesc?: string;
+  pluseffectDesc?: string;
+  category?: string;
+}
+
 export interface ChatMessage {
   id: string;
   senderId: number;

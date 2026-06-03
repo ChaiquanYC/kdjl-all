@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
@@ -13,8 +13,10 @@ interface ShopItem {
   id: number; name: string; buy: number; yb: number; prestige: number;
   img?: string; effect?: string; varyname?: number; category?: string;
 }
-interface BagItem {
-  id: number; propId: number; count: number; sell: number; zbing?: number;
+interface BagItemBase {
+  id: number; propId: number; count: number; sell: number; zbing?: number; vary?: string;
+}
+interface BagItem extends BagItemBase {
   name?: string; img?: string; varyname?: number; category?: string;
 }
 
@@ -39,8 +41,14 @@ export default function ShopPanel() {
   const triggerRefresh = useGameStore((s) => s.triggerRefresh);
   const [tab, setTab] = useState(1);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
-  const [bagItems, setBagItems] = useState<BagItem[]>([]);
+  const [rawBagItems, setRawBagItems] = useState<BagItemBase[]>([]);
   const [loading, setLoading] = useState(true);
+  const propsMap = useGameStore((s) => s.propsMap);
+
+  const bagItems: BagItem[] = useMemo(() => rawBagItems.map(b => {
+    const p = propsMap[b.propId];
+    return { ...b, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
+  }), [rawBagItems, propsMap]);
   const [selShop, setSelShop] = useState<number | null>(null);
   const [selBag, setSelBag] = useState<number | null>(null);
   const [count, setCount] = useState(1);
@@ -52,10 +60,10 @@ export default function ShopPanel() {
   useEffect(() => {
     Promise.all([
       apiGet<ShopItem[]>('/shop/list?type=props'),
-      apiGet<BagItem[]>('/bag'),
+      apiGet<BagItemBase[]>('/bag'),
     ]).then(([s, b]) => {
       if (s.code === 0 && s.data) setShopItems(s.data);
-      if (b.code === 0 && b.data) setBagItems(b.data);
+      if (b.code === 0 && b.data) setRawBagItems(b.data);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -70,7 +78,7 @@ export default function ShopPanel() {
         const msg = (d?.message as string) ?? `购买了${count}个 ${item.name}`;
         setMsg(msg);
         systips(msg);
-        apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); });
+        apiGet<BagItemBase[]>('/bag').then(r => { if (r.code === 0 && r.data) setRawBagItems(r.data); });
         triggerRefresh();
       } else {
         setMsg(res.message ?? '购买失败');
@@ -86,7 +94,7 @@ export default function ShopPanel() {
         const msg = `卖出成功，获得${res.data?.goldGained ?? 0}金币`;
         setMsg(msg);
         systips(msg);
-        apiGet<BagItem[]>('/bag').then(r => { if (r.code === 0 && r.data) setBagItems(r.data); });
+        apiGet<BagItemBase[]>('/bag').then(r => { if (r.code === 0 && r.data) setRawBagItems(r.data); });
         triggerRefresh();
       } else {
         setMsg(res.message ?? '卖出失败');

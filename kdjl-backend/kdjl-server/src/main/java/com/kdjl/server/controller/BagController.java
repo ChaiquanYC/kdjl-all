@@ -18,6 +18,11 @@ public class BagController {
         this.bagService = bagService;
     }
 
+    @GetMapping("/props/all")
+    public ApiResponse<List<Map<String, Object>>> getAllProps() {
+        return ApiResponse.success(bagService.getAllPropsForClient());
+    }
+
     @GetMapping
     public ApiResponse<List<Map<String, Object>>> listBag(Authentication auth) {
         Long uid = (Long) auth.getPrincipal();

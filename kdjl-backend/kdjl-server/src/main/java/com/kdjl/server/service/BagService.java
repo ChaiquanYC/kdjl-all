@@ -2,15 +2,24 @@ package com.kdjl.server.service;
 
 import com.kdjl.common.entity.*;
 import com.kdjl.server.repository.*;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
 public class BagService {
+
+    private static final Logger log = LoggerFactory.getLogger(BagService.class);
+
+    // Props cache — loaded once at startup (~4600 entries, ~2MB memory)
+    private static final Map<Long, Props> PROPS_CACHE = new ConcurrentHashMap<>();
 
     private final UserBagRepository bagRepo;
     private final PropsRepository propsRepo;
@@ -101,6 +110,66 @@ public class BagService {
         this.entityManager = entityManager;
     }
 
+    @PostConstruct
+    public void init() {
+        List<Props> all = propsRepo.findAll();
+        for (Props p : all) {
+            PROPS_CACHE.put(p.getId(), p);
+        }
+        log.info("Props cache loaded: {} entries", PROPS_CACHE.size());
+    }
+
+    public Props getPropsCached(Long propId) {
+        return PROPS_CACHE.get(propId);
+    }
+
+    public static Collection<Props> getAllCachedProps() {
+        return PROPS_CACHE.values();
+    }
+
+    public List<Map<String, Object>> getAllPropsForClient() {
+        List<Map<String, Object>> result = new ArrayList<>(PROPS_CACHE.size());
+        for (Props p : PROPS_CACHE.values()) {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", p.getId());
+            m.put("name", p.getName());
+            m.put("img", p.getImg());
+            m.put("varyname", p.getVaryname());
+            m.put("vary", p.getVary());
+            m.put("effect", p.getEffect());
+            m.put("requires", p.getRequires());
+            m.put("usages", p.getUsages());
+            m.put("sell", p.getSell());
+            m.put("buy", p.getBuy());
+            m.put("yb", p.getYb());
+            m.put("sj", p.getSj());
+            m.put("postion", p.getPostion());
+            m.put("propscolor", p.getPropscolor());
+            m.put("propslock", p.getPropslock());
+            m.put("prestige", p.getPrestige());
+            m.put("pluseffect", p.getPluseffect());
+            m.put("plusflag", p.getPlusflag());
+            m.put("pluspid", p.getPlusPropId());
+            m.put("plusget", p.getPlusget());
+            m.put("plusnum", p.getPlusnum());
+            m.put("series", p.getSeries());
+            m.put("serieseffect", p.getSerieseffect());
+            m.put("merge", p.getMerge());
+            m.put("stime", p.getStime());
+            m.put("endtime", p.getEndtime());
+            // Pre-resolved descriptions (computed once, cached for all clients)
+            m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
+            m.put("requiresDesc", resolveRequires(p.getRequires(), p.getVaryname()));
+            m.put("usagesDesc", resolveUsages(p.getUsages()));
+            m.put("serieseffectDesc", resolveAttribList(p.getSerieseffect()));
+            m.put("pluseffectDesc", resolvePlusEffect(p.getPluseffect()));
+            int cat = p.getVaryname() != null ? p.getVaryname() : 0;
+            m.put("category", CATEGORIES.getOrDefault(cat, "其他" + cat));
+            result.add(m);
+        }
+        return result;
+    }
+
     public List<Map<String, Object>> getPlayerBag(Long playerId) {
         List<UserBag> items = bagRepo.findByPlayerId(playerId);
         return items.stream().map(i -> {
@@ -113,100 +182,24 @@ public class BagService {
             m.put("equipPetId", i.getEquipPetId());
             m.put("zbing", i.getZbing());
             m.put("sell", i.getSell());
-            Props p = propsRepo.findById(i.getPropId() != null ? i.getPropId().longValue() : 0).orElse(null);
-            if (p != null) {
-                m.put("name", p.getName());
-                m.put("img", p.getImg());
-                m.put("propsColor", p.getPropscolor());
-                m.put("varyname", p.getVaryname());
-                m.put("effect", p.getEffect());
-                m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
-                m.put("requires", p.getRequires());
-                m.put("requiresDesc", resolveRequires(p.getRequires(), p.getVaryname()));
-                m.put("buy", p.getBuy());
-                m.put("yb", p.getYb());
-                m.put("usages", p.getUsages());
-                m.put("usagesDesc", resolveUsages(p.getUsages()));
-                m.put("cantrade", i.getCantrade());
-                m.put("propslock", p.getPropslock() != null ? p.getPropslock() : 0);
-                // series format: "套装名:ID1|ID2|ID3" — parse and get piece names
-                String seriesRaw = p.getSeries();
-                if (seriesRaw != null && !seriesRaw.isEmpty() && !"0".equals(seriesRaw)) {
-                    int colonIdx = seriesRaw.indexOf(":");
-                    String seriesName = colonIdx > 0 ? seriesRaw.substring(0, colonIdx) : seriesRaw;
-                    m.put("series", seriesName);
-                    // Parse piece IDs and get their names
-                    if (colonIdx > 0 && colonIdx < seriesRaw.length() - 1) {
-                        String[] pieceIds = seriesRaw.substring(colonIdx + 1).split("\\|");
-                        List<Map<String, Object>> pieces = new ArrayList<>();
-                        for (String pieceIdStr : pieceIds) {
-                            try {
-                                Long pieceId = Long.parseLong(pieceIdStr.trim());
-                                Props pieceProps = propsRepo.findById(pieceId).orElse(null);
-                                if (pieceProps != null) {
-                                    Map<String, Object> piece = new LinkedHashMap<>();
-                                    piece.put("id", pieceId);
-                                    piece.put("name", pieceProps.getName());
-                                    pieces.add(piece);
-                                }
-                            } catch (NumberFormatException ignored) {}
-                        }
-                        m.put("seriesPieces", pieces);
-                        m.put("seriesTotalPieces", pieceIds.length);
-                    }
-                    // Add set bonus config for this series
-                    Map<Integer, Map<Integer, Double>> bonusConfig = SET_BONUS_CONFIG.get(seriesName);
-                    if (bonusConfig != null) {
-                        m.put("seriesBonusConfig", bonusConfig);
-                    }
-                }
-                m.put("serieseffect", p.getSerieseffect());
-                m.put("serieseffectDesc", resolveAttribList(p.getSerieseffect()));
-                m.put("pluseffect", p.getPluseffect());
-                m.put("pluseffectDesc", resolvePlusEffect(p.getPluseffect()));
-                m.put("plusflag", p.getPlusflag());
-                m.put("pluspid", p.getPlusPropId());
-                m.put("plusget", p.getPlusget());
-                m.put("plusnum", p.getPlusnum());
-                m.put("plusTimesEffect", i.getPlusTimesEffect());
-                m.put("holeInfo", i.getHoleInfo());
-                m.put("holeInfoDesc", resolveHoleInfo(i.getHoleInfo()));
-                m.put("prestige", p.getPrestige());
-                m.put("postion", p.getPostion());
-                String expire;
-                if (p.getEndtime() != null && p.getEndtime() > 0) {
-                    long expireEnd = (i.getStime() != null ? i.getStime() : 0) + p.getEndtime();
-                    expire = expireEnd > System.currentTimeMillis() / 1000
-                        ? "到期时间:" + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm").format(new java.util.Date(expireEnd * 1000))
-                        : "过期";
-                } else {
-                    expire = "永久";
-                }
-                m.put("expire", expire);
-            }
-            int cat = p != null && p.getVaryname() != null ? p.getVaryname() : 0;
-            m.put("category", CATEGORIES.getOrDefault(cat, "其他" + cat));
+            m.put("cantrade", i.getCantrade());
+            m.put("holeInfo", i.getHoleInfo());
+            m.put("plusTimesEffect", i.getPlusTimesEffect());
+            m.put("stime", i.getStime());
             return m;
         }).collect(Collectors.toList());
     }
 
     public List<Map<String, Object>> getEquipment(Long playerId) {
-        return bagRepo.findByPlayerIdAndVary(playerId, 2).stream().map(i -> {
+        List<UserBag> items = bagRepo.findByPlayerIdAndVary(playerId, 2);
+        return items.stream().map(i -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", i.getId());
             m.put("propId", i.getPropId());
             m.put("equipPetId", i.getEquipPetId());
             m.put("zbing", i.getZbing()); // 1=equipped
             m.put("holeInfo", i.getHoleInfo());
-            if (i.getPropId() != null) {
-                Props p = propsRepo.findById(i.getPropId().longValue()).orElse(null);
-                if (p != null) {
-                    m.put("name", p.getName());
-                    m.put("img", p.getImg());
-                    m.put("effect", p.getEffect());
-                    m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
-                }
-            }
+            m.put("plusTimesEffect", i.getPlusTimesEffect());
             return m;
         }).collect(Collectors.toList());
     }
@@ -227,8 +220,8 @@ public class BagService {
             throw new IllegalArgumentException("不是你的物品");
         }
 
-        Props props = propsRepo.findById(bagItem.getPropId().longValue())
-            .orElseThrow(() -> new IllegalArgumentException("道具定义不存在"));
+        Props props = getPropsCached(bagItem.getPropId().longValue());
+        if (props == null) throw new IllegalArgumentException("道具定义不存在");
 
         // PHP usedProps.php:862 — magic stones must be used in divination house
         if (props.getVaryname() != null && props.getVaryname() == 22 && !isJs) {
@@ -1204,7 +1197,7 @@ public class BagService {
                     for (int i = 0; i < rewardCount; i++) {
                         addItemToBag(playerId, rewardPid, 1);
                     }
-                    Props rewardProp = propsRepo.findById(rewardPid).orElse(null);
+                    Props rewardProp = getPropsCached(rewardPid);
                     givenItems.add(Map.of("propId", rewardPid, "count", rewardCount,
                         "name", rewardProp != null ? rewardProp.getName() : "道具#" + rewardPid));
                 } catch (NumberFormatException ignored) {}
@@ -1246,7 +1239,7 @@ public class BagService {
                 return result;
             }
 
-            Props sacrificeProp = propsRepo.findById(sacrificeItem.getPropId().longValue()).orElse(null);
+            Props sacrificeProp = getPropsCached(sacrificeItem.getPropId().longValue());
 
             // Consume the blueprint (重铸卷轴)
             decrementOrRemove(bagItem);
@@ -1279,7 +1272,7 @@ public class BagService {
 
             if (rewardPid != null) {
                 addItemToBag(playerId, rewardPid, 1);
-                Props rp = propsRepo.findById(rewardPid).orElse(null);
+                Props rp = getPropsCached(rewardPid);
                 String rewardName = rp != null ? rp.getName() : "道具#" + rewardPid;
                 String sacrificeName = sacrificeProp != null ? sacrificeProp.getName() : "道具";
                 result.put("type", "reforge");
@@ -1353,7 +1346,7 @@ public class BagService {
 
                     int rand = (int)(Math.random() * 101);
                     if (rand <= probability) {
-                        Props gainProp = propsRepo.findById(gainPid).orElse(null);
+                        Props gainProp = getPropsCached(gainPid);
                         if (gainProp == null) {
                             result.put("error", "获得物品设定第" + idx + "条错误,物品" + gainPid + "不存在!");
                             return result;
@@ -1400,7 +1393,7 @@ public class BagService {
 
     private void openChestRecursive(Long playerId, long propId, int count, List<Map<String, Object>> givenItems, int recursionDepth) {
         if (recursionDepth >= 20) return;
-        Props prop = propsRepo.findById(propId).orElse(null);
+        Props prop = getPropsCached(propId);
         if (prop == null || prop.getEffect() == null) return;
         String eff = prop.getEffect();
         if (!eff.startsWith("giveitems:") && !eff.startsWith("randitem:")) return;
@@ -1446,7 +1439,7 @@ public class BagService {
 
     /** PHP getBagOfVary.php — get all magic stone types (varyname=22) */
     public List<Map<String, Object>> getMagicStoneTypes() {
-        return propsRepo.findAll().stream()
+        return PROPS_CACHE.values().stream()
             .filter(p -> p.getVaryname() != null && p.getVaryname() == 22)
             .map(s -> {
                 Map<String, Object> m = new LinkedHashMap<>();
@@ -1469,7 +1462,7 @@ public class BagService {
             bag.setPropId(propId);
             bag.setSums(count);
             // Equipment items (varyname=9) should have vary=2, others vary=1
-            Props p = propsRepo.findById(propId).orElse(null);
+            Props p = getPropsCached(propId);
             bag.setVary(p != null && p.getVaryname() != null && p.getVaryname() == 9 ? 2 : 1);
             bag.setStime(System.currentTimeMillis() / 1000);
             bagRepo.save(bag);
@@ -1515,7 +1508,7 @@ public class BagService {
         if (!pet.getPlayerId().equals(playerId))
             throw new IllegalArgumentException("不是你的宠物");
 
-        Props props = propsRepo.findById(bagItem.getPropId().longValue()).orElse(null);
+        Props props = getPropsCached(bagItem.getPropId().longValue());
         if (props == null) throw new IllegalArgumentException("道具定义不存在");
 
         // varyname=9 means equipment; other varyname (5=skill book etc.) are not
@@ -1650,7 +1643,7 @@ public class BagService {
         for (Long bagId : zbMap.values()) {
             UserBag item = bagRepo.findById(bagId).orElse(null);
             if (item == null || item.getPropId() == null) continue;
-            Props props = propsRepo.findById(item.getPropId().longValue()).orElse(null);
+            Props props = getPropsCached(item.getPropId().longValue());
             if (props == null || props.getEffect() == null) continue;
             for (String part : props.getEffect().split(",")) {
                 String[] kv = part.split(":");
@@ -1700,7 +1693,7 @@ public class BagService {
 
         int current = item.getSums() != null ? item.getSums() : 0;
         int toSell = Math.min(count, current);
-        Props props = propsRepo.findById(item.getPropId().longValue()).orElse(null);
+        Props props = getPropsCached(item.getPropId().longValue());
         int sellPrice = props != null && props.getSell() != null ? props.getSell() : 0;
         int totalGold = sellPrice * toSell;
 
@@ -1738,7 +1731,7 @@ public class BagService {
             throw new IllegalArgumentException("该物品已上锁，不能丢弃");
         }
 
-        Props props = propsRepo.findById(item.getPropId() != null ? item.getPropId().longValue() : 0).orElse(null);
+        Props props = getPropsCached(item.getPropId() != null ? item.getPropId().longValue() : 0);
         item.setSums(0);
         bagRepo.save(item);
 
@@ -1750,7 +1743,7 @@ public class BagService {
 
     /** Apply(+) or remove(-) equipment stats to a pet */
     private void applyEquipmentStats(UserPet pet, Long propId, boolean apply) {
-        Props props = propsRepo.findById(propId).orElse(null);
+        Props props = getPropsCached(propId);
         if (props == null || props.getEffect() == null || props.getEffect().isEmpty()) return;
         long sign = apply ? 1 : -1;
         for (String part : props.getEffect().split(",")) {

@@ -342,7 +342,7 @@ export default function GameLayout() {
                   if (!rewardStatus?.canClaim) { alert('还没有到领取时间！'); return; }
                   apiPost('/daily/online-reward', {}).then((r: any) => {
                     alert(r.data?.message || (r.code === 0 ? '领取成功!' : r.message));
-                    fetchPlayer(); checkReward();
+                    fetchPlayer(true); checkReward();
                   });
                 }}
                 title={rewardStatus ? `在线奖励 (${rewardStatus.currentStep}/${rewardStatus.totalSteps}) ${rewardStatus.canClaim ? '可领取' : formatRemaining(rewardStatus.remainingSeconds)}` : '在线奖励'}

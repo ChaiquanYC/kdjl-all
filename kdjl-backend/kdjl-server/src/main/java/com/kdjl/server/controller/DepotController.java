@@ -43,14 +43,6 @@ public class DepotController {
             m.put("propId", i.getPropId());
             m.put("count", i.getBsum());
             m.put("sell", i.getSell());
-            Props p = i.getPropId() != null ? propsRepo.findById(i.getPropId().longValue()).orElse(null) : null;
-            if (p != null) {
-                m.put("name", p.getName());
-                m.put("img", p.getImg());
-                m.put("varyname", p.getVaryname());
-                int cat = p.getVaryname() != null ? p.getVaryname() : 0;
-                m.put("category", CATEGORY_NAMES.getOrDefault(cat, "其他" + cat));
-            }
             result.add(m);
         }
         return ApiResponse.success(result);

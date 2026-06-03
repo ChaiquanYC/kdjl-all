@@ -11,7 +11,12 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+
+import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.ScanOptions;
 
 @Service
 public class OnlineTimeService {
@@ -89,8 +94,8 @@ public class OnlineTimeService {
 
     @Scheduled(fixedRate = 300_000)
     public void flushAll() {
-        Set<String> keys = redis.keys("online:*:sec");
-        if (keys == null || keys.isEmpty()) return;
+        List<String> keys = scanKeys("online:*:sec");
+        if (keys.isEmpty()) return;
 
         for (String key : keys) {
             try {
@@ -141,5 +146,15 @@ public class OnlineTimeService {
         } catch (NumberFormatException e) {
             return 0;
         }
+    }
+
+    private List<String> scanKeys(String pattern) {
+        List<String> result = new ArrayList<>();
+        try (Cursor<String> cursor = redis.scan(ScanOptions.scanOptions().match(pattern).count(100).build())) {
+            while (cursor.hasNext()) {
+                result.add(cursor.next());
+            }
+        }
+        return result;
     }
 }
