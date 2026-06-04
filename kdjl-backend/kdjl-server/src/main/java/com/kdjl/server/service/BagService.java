@@ -82,6 +82,8 @@ public class BagService {
     private final WelcomeRepository welcomeRepo;
     private final LevelUpService levelUpService;
     private final EntityManager entityManager;
+    private final MergeRepository mergeRepo;
+    private final CardToTitleRepository cardToTitleRepo;
 
     public BagService(UserBagRepository bagRepo, PropsRepository propsRepo,
                       UserPetRepository userPetRepo, PlayerRepository playerRepo,
@@ -92,7 +94,9 @@ public class BagService {
                       BattlefieldUserRepository battlefieldUserRepo,
                       WelcomeRepository welcomeRepo,
                       LevelUpService levelUpService,
-                      EntityManager entityManager) {
+                      EntityManager entityManager,
+                      MergeRepository mergeRepo,
+                      CardToTitleRepository cardToTitleRepo) {
         this.bagRepo = bagRepo;
         this.propsRepo = propsRepo;
         this.userPetRepo = userPetRepo;
@@ -108,6 +112,8 @@ public class BagService {
         this.welcomeRepo = welcomeRepo;
         this.levelUpService = levelUpService;
         this.entityManager = entityManager;
+        this.mergeRepo = mergeRepo;
+        this.cardToTitleRepo = cardToTitleRepo;
     }
 
     @PostConstruct
@@ -234,6 +240,21 @@ public class BagService {
         // PHP usedProps.php:1322 — crafting/blueprint (varyname==16)
         if (props.getVaryname() != null && props.getVaryname() == 16) {
             return handleCraft(playerId, bagItem, props);
+        }
+
+        // PHP usedProps.php:1171-1321 — card/title system (varyname==24)
+        if (props.getVaryname() != null && props.getVaryname() == 24) {
+            return handleCard(playerId, bagItem, props);
+        }
+
+        // PHP challenge_props.php — challenge full heal (varyname==18)
+        if (props.getVaryname() != null && props.getVaryname() == 18) {
+            return handleChallengeHeal(playerId, bagItem, props, petId);
+        }
+
+        // PHP usedProps.php:169-251 — lottery/scratch card (varyname==28)
+        if (props.getVaryname() != null && props.getVaryname() == 28) {
+            return handleLottery(playerId, bagItem, props);
         }
 
         // Equipment (varyname==9): auto-equip to main battle pet
@@ -1386,6 +1407,1541 @@ public class BagService {
         return result;
     }
 
+    /** PHP usedProps.php:1171-1321 — card/title system (varyname==24) */
+    private Map<String, Object> handleCard(Long playerId, UserBag bagItem, Props props) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("usedItemId", bagItem.getId());
+        result.put("propName", props.getName());
+
+        String cardName = props.getName();
+        if (cardName == null || cardName.isEmpty()) {
+            result.put("error", "卡片名称无效");
+            return result;
+        }
+
+        // Get or create player_ext record
+        PlayerExt ext = playerExtRepo.findById(playerId.intValue()).orElse(null);
+        if (ext == null) {
+            ext = new PlayerExt();
+            ext.setPlayerId(playerId.intValue());
+            ext.setPetShow(5);
+            ext.setUserCardInfo(cardName + ":1");
+            playerExtRepo.save(ext);
+            decrementOrRemove(bagItem);
+            result.put("type", "card");
+            result.put("message", "恭喜您第一次使用卡片成功");
+            checkTitleCompletion(playerId, ext, result);
+            return result;
+        }
+
+        // Parse existing card info: "cardName1:count1,cardName2:count2,..."
+        String cardInfo = ext.getUserCardInfo();
+        if (cardInfo == null || cardInfo.isEmpty()) {
+            ext.setUserCardInfo(cardName + ":1");
+            playerExtRepo.save(ext);
+            decrementOrRemove(bagItem);
+            result.put("type", "card");
+            result.put("message", "恭喜您第一次使用卡片成功");
+            checkTitleCompletion(playerId, ext, result);
+            return result;
+        }
+
+        // Parse cards into map
+        Map<String, Integer> cardMap = new LinkedHashMap<>();
+        String[] cardEntries = cardInfo.split(",");
+        boolean found = false;
+        for (String entry : cardEntries) {
+            String[] parts = entry.split(":");
+            if (parts.length == 2) {
+                String name = parts[0].trim();
+                int count = Integer.parseInt(parts[1].trim());
+                if (name.equals(cardName)) {
+                    count++;
+                    found = true;
+                }
+                cardMap.put(name, count);
+            }
+        }
+
+        if (!found) {
+            cardMap.put(cardName, 1);
+        }
+
+        // Rebuild card info string
+        StringBuilder sb = new StringBuilder();
+        for (Map.Entry<String, Integer> e : cardMap.entrySet()) {
+            if (sb.length() > 0) sb.append(",");
+            sb.append(e.getKey()).append(":").append(e.getValue());
+        }
+        ext.setUserCardInfo(sb.toString());
+        playerExtRepo.save(ext);
+
+        decrementOrRemove(bagItem);
+        result.put("type", "card");
+        result.put("message", found ? "使用过的卡片使用成功" : "恭喜您使用新卡片成功");
+
+        // Check title completion
+        checkTitleCompletion(playerId, ext, result);
+        return result;
+    }
+
+    /** Check if player has completed any title requirements */
+    private void checkTitleCompletion(Long playerId, PlayerExt ext, Map<String, Object> result) {
+        String cardInfo = ext.getUserCardInfo();
+        if (cardInfo == null || cardInfo.isEmpty()) return;
+
+        // Parse player's cards into a set of names
+        Set<String> playerCards = new HashSet<>();
+        for (String entry : cardInfo.split(",")) {
+            String[] parts = entry.split(":");
+            if (parts.length >= 1) {
+                playerCards.add(parts[0].trim());
+            }
+        }
+
+        // Get all title requirements
+        List<CardToTitle> allTitles = cardToTitleRepo.findAll();
+        String currentTitles = ext.getHasTitle();
+        Set<String> titleSet = new HashSet<>();
+        if (currentTitles != null && !currentTitles.isEmpty()) {
+            titleSet.addAll(Arrays.asList(currentTitles.split(",")));
+        }
+
+        List<String> newTitles = new ArrayList<>();
+
+        for (CardToTitle title : allTitles) {
+            // Skip if already has this title
+            if (titleSet.contains(String.valueOf(title.getId()))) continue;
+
+            // Check required cards
+            String mustCard = title.getMustCard();
+            if (mustCard == null || mustCard.isEmpty()) continue;
+
+            String[] requiredCards = mustCard.split(",");
+            boolean hasAll = true;
+            for (String reqCard : requiredCards) {
+                if (!playerCards.contains(reqCard.trim())) {
+                    hasAll = false;
+                    break;
+                }
+            }
+
+            if (hasAll) {
+                // Grant title
+                titleSet.add(String.valueOf(title.getId()));
+                newTitles.add(title.getTitleChinese());
+            }
+        }
+
+        if (!newTitles.isEmpty()) {
+            // Save updated titles
+            StringBuilder sb = new StringBuilder();
+            for (String t : titleSet) {
+                if (sb.length() > 0) sb.append(",");
+                sb.append(t);
+            }
+            ext.setHasTitle(sb.toString());
+            playerExtRepo.save(ext);
+
+            result.put("newTitles", newTitles);
+            result.put("announce", true);
+            result.put("message", "获得了新的称号-----" + String.join(", ", newTitles));
+        }
+    }
+
+    /** PHP challenge_props.php — challenge full heal (varyname=18) */
+    private Map<String, Object> handleChallengeHeal(Long playerId, UserBag bagItem,
+                                                     Props props, Long petId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("usedItemId", bagItem.getId());
+        result.put("propName", props.getName());
+
+        // Check effect is "addhp:full"
+        String effect = props.getEffect();
+        if (effect == null || !effect.contains("addhp:full")) {
+            result.put("error", "道具效果无效");
+            return result;
+        }
+
+        // Get target pet (use main battle pet if petId not specified)
+        if (petId == null || petId <= 0) {
+            Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+            if (player != null && player.getMbid() != null) {
+                petId = player.getMbid().longValue();
+            }
+        }
+
+        if (petId == null || petId <= 0) {
+            result.put("error", "没有出战宠物");
+            return result;
+        }
+
+        UserPet pet = userPetRepo.findById(petId).orElse(null);
+        if (pet == null || !pet.getPlayerId().equals(playerId)) {
+            result.put("error", "宠物不存在");
+            return result;
+        }
+
+        // Full heal HP and MP
+        long maxHp = (pet.getSrchp() != null ? pet.getSrchp() : 0)
+            + (pet.getAddhp() != null ? pet.getAddhp() : 0);
+        long maxMp = (pet.getSrcmp() != null ? pet.getSrcmp() : 0)
+            + (pet.getAddmp() != null ? pet.getAddmp() : 0);
+
+        pet.setHp(maxHp);
+        pet.setMp(maxMp);
+        userPetRepo.save(pet);
+
+        result.put("type", "challengeHeal");
+        result.put("petHP", maxHp);
+        result.put("petMP", maxMp);
+        result.put("message", "HP/MP已完全恢复！");
+        return result;
+    }
+
+    /** PHP usedProps.php:169-251 — lottery/scratch card (varyname=28) */
+    private Map<String, Object> handleLottery(Long playerId, UserBag bagItem, Props props) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("usedItemId", bagItem.getId());
+        result.put("propName", props.getName());
+
+        // Check bag space for prize
+        Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        if (player != null) {
+            int maxBag = player.getMaxBag() != null ? player.getMaxBag() : 30;
+            long currentItems = bagRepo.findByPlayerId(playerId).stream()
+                .filter(b -> b.getSums() != null && b.getSums() > 0 && (b.getZbing() == null || b.getZbing() == 0))
+                .count();
+            if (currentItems >= maxBag) {
+                result.put("error", "您的包裹已满，请先清理包裹！");
+                return result;
+            }
+        }
+
+        // Parse lottery prizes from effect field
+        // Format: "prize1:propId1:count1:prob1|prize2:propId2:count2:prob2|..."
+        String effect = props.getEffect();
+        if (effect == null || effect.isEmpty()) {
+            result.put("error", "抽奖配置无效");
+            return result;
+        }
+
+        // Parse prizes
+        String[] prizeEntries = effect.split("\\|");
+        List<int[]> prizes = new ArrayList<>(); // [propId, count, probability]
+        for (String entry : prizeEntries) {
+            String[] parts = entry.split(":");
+            if (parts.length >= 4) {
+                try {
+                    int propId = Integer.parseInt(parts[1]);
+                    int count = Integer.parseInt(parts[2]);
+                    int prob = Integer.parseInt(parts[3]);
+                    prizes.add(new int[]{propId, count, prob});
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        if (prizes.isEmpty()) {
+            result.put("error", "抽奖配置无效");
+            return result;
+        }
+
+        // Roll for prize
+        int roll = (int)(Math.random() * 100) + 1;
+        int cumulative = 0;
+        int[] wonPrize = null;
+
+        for (int[] prize : prizes) {
+            cumulative += prize[2];
+            if (roll <= cumulative) {
+                wonPrize = prize;
+                break;
+            }
+        }
+
+        // If no prize won (shouldn't happen if probs sum to 100), give last prize
+        if (wonPrize == null) {
+            wonPrize = prizes.get(prizes.size() - 1);
+        }
+
+        int wonPropId = wonPrize[0];
+        int wonCount = wonPrize[1];
+
+        // Add prize to bag
+        List<UserBag> playerItems = bagRepo.findByPlayerId(playerId);
+        UserBag existingPrize = playerItems.stream()
+            .filter(b -> b.getPropId() != null && b.getPropId() == wonPropId
+                && (b.getZbing() == null || b.getZbing() == 0))
+            .findFirst().orElse(null);
+
+        if (existingPrize != null) {
+            existingPrize.setSums((existingPrize.getSums() != null ? existingPrize.getSums() : 0) + wonCount);
+            bagRepo.save(existingPrize);
+        } else {
+            UserBag newBag = new UserBag();
+            newBag.setPlayerId(playerId);
+            newBag.setPropId((long) wonPropId);
+            newBag.setSums(wonCount);
+            newBag.setVary(1);
+            newBag.setStime(System.currentTimeMillis() / 1000);
+            bagRepo.save(newBag);
+        }
+
+        // Get prize name for display
+        Props prizeProps = getPropsCached((long) wonPropId);
+        String prizeName = prizeProps != null ? prizeProps.getName() : "未知物品";
+
+        result.put("type", "lottery");
+        result.put("prizePropId", wonPropId);
+        result.put("prizeName", prizeName);
+        result.put("prizeCount", wonCount);
+        result.put("message", "抽奖成功，获得" + prizeName + " x" + wonCount);
+        return result;
+    }
+
+    /** PHP ext_ml.php — Crystal gift system (varyname=17) */
+    @Transactional
+    public Map<String, Object> handleCrystalGift(Long playerId, String targetNickname,
+                                                  Long crystalBagId, int count) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Validate count
+        if (count < 1) {
+            result.put("error", "数量无效");
+            return result;
+        }
+
+        // Find target player by nickname
+        Player target = playerRepo.findByNickname(targetNickname).orElse(null);
+        if (target == null) {
+            result.put("error", "用户填写不正确");
+            return result;
+        }
+
+        // Cannot gift to self
+        if (target.getId().equals(playerId.intValue())) {
+            result.put("error", "不能赠送给自己");
+            return result;
+        }
+
+        // Get crystal item from bag
+        UserBag crystalBag = bagRepo.findById(crystalBagId).orElse(null);
+        if (crystalBag == null || !crystalBag.getPlayerId().equals(playerId)) {
+            result.put("error", "道具不存在");
+            return result;
+        }
+
+        // Check quantity
+        int currentCount = crystalBag.getSums() != null ? crystalBag.getSums() : 0;
+        if (currentCount < count) {
+            result.put("error", "数量不够");
+            return result;
+        }
+
+        // Verify it's a crystal (varyname=17)
+        Props crystalProps = getPropsCached(crystalBag.getPropId().longValue());
+        if (crystalProps == null || crystalProps.getVaryname() == null || crystalProps.getVaryname() != 17) {
+            result.put("error", "该道具不是水晶");
+            return result;
+        }
+
+        // Parse charm value from effect (format: "ml:value")
+        int charmPerUnit = 0;
+        String effect = crystalProps.getEffect();
+        if (effect != null && effect.contains(":")) {
+            String[] parts = effect.split(":");
+            if (parts.length >= 2 && "ml".equals(parts[0])) {
+                try {
+                    charmPerUnit = Integer.parseInt(parts[1]);
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+
+        if (charmPerUnit <= 0) {
+            result.put("error", "水晶效果无效");
+            return result;
+        }
+
+        // Deduct crystal items
+        int newCount = currentCount - count;
+        if (newCount <= 0) {
+            bagRepo.delete(crystalBag);
+        } else {
+            crystalBag.setSums(newCount);
+            bagRepo.save(crystalBag);
+        }
+
+        // Calculate total charm
+        int totalCharm = charmPerUnit * count;
+
+        // Update target's charm value
+        PlayerExt targetExt = playerExtRepo.findById(target.getId()).orElse(null);
+        if (targetExt == null) {
+            targetExt = new PlayerExt();
+            targetExt.setPlayerId(target.getId());
+            targetExt.setPetShow(5);
+            targetExt.setMl(totalCharm);
+        } else {
+            int currentMl = targetExt.getMl() != null ? targetExt.getMl() : 0;
+            targetExt.setMl(currentMl + totalCharm);
+        }
+        playerExtRepo.save(targetExt);
+
+        result.put("type", "crystalGift");
+        result.put("charmGiven", totalCharm);
+        result.put("targetNickname", targetNickname);
+        result.put("message", "成功赠送" + totalCharm + "点魅力给" + targetNickname);
+        return result;
+    }
+
+    /**
+     * PHP jhGate.php — Pet evolution (varyname=7)
+     * @param playerId player ID
+     * @param petId pet to evolve
+     * @param style evolution style: 1=normal, 2=advanced
+     * @param materialPropId material prop ID (from bag)
+     * @param protectionItemId optional protection item bag ID (keepczl effect)
+     */
+    @Transactional
+    public Map<String, Object> handleEvolution(Long playerId, Long petId, int style,
+                                                Long materialPropId, Long protectionItemId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Validate style
+        if (style != 1 && style != 2) {
+            result.put("error", "进化方式无效");
+            return result;
+        }
+
+        // Get pet
+        UserPet pet = userPetRepo.findById(petId).orElse(null);
+        if (pet == null || !pet.getPlayerId().equals(playerId)) {
+            result.put("error", "宠物不存在");
+            return result;
+        }
+
+        // Check extracted growth (chouqu_chongwu)
+        PlayerExt ext = playerExtRepo.findById(playerId.intValue()).orElse(null);
+        if (ext != null && ext.getChouquChongwu() != null) {
+            String chouqu = ext.getChouquChongwu();
+            if (chouqu.contains("," + petId + ",") || chouqu.startsWith(petId + ",") || chouqu.endsWith("," + petId)) {
+                result.put("error", "该宠物抽取过成长,不能进行进化!");
+                return result;
+            }
+        }
+
+        // Check money >= 1000
+        Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        if (player == null) {
+            result.put("error", "玩家不存在");
+            return result;
+        }
+        if (player.getMoney() == null || player.getMoney() < 1000) {
+            result.put("error", "金币不足1000");
+            return result;
+        }
+
+        // Get pet template (bb) - find by pet name to match evolution source
+        // The pet's current remakelevel/remakeid/remakepid fields store evolution config
+        String petRemakeid = pet.getRemakeid();
+        String petRemakepid = pet.getRemakepid();
+        String petRemakelevel = pet.getRemakelevel();
+
+        if (petRemakeid == null || petRemakeid.equals("0,0") || petRemakeid.equals("0")) {
+            result.put("error", "该宠物无法进化");
+            return result;
+        }
+
+        // Parse evolution config: "id1,id2" for style 1 and 2
+        String[] remakeIds = petRemakeid.split(",");
+        String[] remakePids = petRemakepid.split(",");
+        String[] remakeLevels = petRemakelevel != null ? petRemakelevel.split(",") : new String[]{"0,0"};
+
+        int idx = style - 1;
+        if (idx >= remakeIds.length || idx >= remakePids.length) {
+            result.put("error", "进化配置错误");
+            return result;
+        }
+
+        int targetBbId = Integer.parseInt(remakeIds[idx].trim());
+        String materialPidStr = remakePids[idx].trim();
+        int requiredLevel = idx < remakeLevels.length ? Integer.parseInt(remakeLevels[idx].trim()) : 0;
+
+        // Check evolution target exists
+        Pet targetTemplate = petRepo.findById((long) targetBbId).orElse(null);
+        if (targetTemplate == null) {
+            result.put("error", "进化目标不存在");
+            return result;
+        }
+
+        // Check material in bag (materialPidStr can be "pid1|pid2|pid3" for multiple options)
+        String[] materialOptions = materialPidStr.split("\\|");
+        UserBag materialItem = null;
+        Long usedMaterialPid = null;
+        for (String midStr : materialOptions) {
+            try {
+                long mid = Long.parseLong(midStr.trim());
+                UserBag found = bagRepo.findByPlayerId(playerId).stream()
+                    .filter(b -> b.getPropId() != null && b.getPropId().intValue() == (int) mid
+                        && b.getSums() != null && b.getSums() > 0)
+                    .findFirst().orElse(null);
+                if (found != null) {
+                    materialItem = found;
+                    usedMaterialPid = mid;
+                    break;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+        if (materialItem == null) {
+            result.put("error", "缺少进化材料");
+            return result;
+        }
+
+        // Check level
+        if (pet.getLevel() != null && pet.getLevel() < requiredLevel) {
+            result.put("error", "等级不足，需要" + requiredLevel + "级");
+            return result;
+        }
+
+        // Check wx <= 6 (sacred pets can't normal evolve)
+        if (pet.getWx() != null && pet.getWx() > 6) {
+            result.put("error", "五行属于：金、木、水、火、土、神的才可以进行此操作！");
+            return result;
+        }
+
+        // Check remaketimes < 10
+        int currentTimes = pet.getRemaketimes() != null ? pet.getRemaketimes() : 0;
+        if (currentTimes >= 10) {
+            result.put("error", "已达最大进化次数");
+            return result;
+        }
+
+        // Check protection item (keepczl effect)
+        double bhEffect = 0;
+        UserBag protectItem = null;
+        if (protectionItemId != null && protectionItemId > 0) {
+            protectItem = bagRepo.findById(protectionItemId).orElse(null);
+            if (protectItem != null && protectItem.getSums() != null && protectItem.getSums() > 0) {
+                Props protectProps = getPropsCached(protectItem.getPropId().longValue());
+                if (protectProps != null && protectProps.getEffect() != null
+                    && protectProps.getEffect().startsWith("keepczl:")) {
+                    try {
+                        bhEffect = Double.parseDouble(protectProps.getEffect().substring(8));
+                        if (bhEffect < 150) bhEffect = 0; // Only valid if >= 150
+                    } catch (NumberFormatException ignored) {}
+                }
+            }
+        }
+
+        // Calculate new growth rate (czl)
+        double currentCzl = 1.0;
+        try {
+            currentCzl = Double.parseDouble(pet.getCzl() != null ? pet.getCzl() : "1.0");
+        } catch (NumberFormatException ignored) {}
+
+        double newCzl;
+        if (usedMaterialPid == 1221) {
+            // Special material: +0.1~0.3
+            newCzl = currentCzl + (1 + (int)(Math.random() * 3)) / 10.0;
+        } else if (usedMaterialPid == 1222) {
+            // Special material: +0.3~0.6
+            newCzl = currentCzl + (3 + (int)(Math.random() * 4)) / 10.0;
+        } else if (style == 1) {
+            // Normal evolution
+            if (currentCzl < 50) {
+                newCzl = currentCzl + (1 + (int)(Math.random() * 5)) / 10.0
+                    + Math.round(((pet.getLevel() - requiredLevel) / 200.0) * 10) / 10.0;
+            } else if (currentCzl < 80) {
+                newCzl = currentCzl + (1 + (int)(Math.random() * 3)) / 10.0;
+            } else {
+                newCzl = currentCzl + 0.1;
+            }
+        } else {
+            // Advanced evolution (style == 2)
+            if (currentCzl < 50) {
+                newCzl = currentCzl + (5 + (int)(Math.random() * 6)) / 10.0
+                    + Math.round(((pet.getLevel() - requiredLevel) / 200.0) * 10) / 10.0;
+            } else if (currentCzl < 70) {
+                newCzl = currentCzl + (4 + (int)(Math.random() * 4)) / 10.0;
+            } else if (currentCzl < 80) {
+                newCzl = currentCzl + (3 + (int)(Math.random() * 3)) / 10.0;
+            } else if (currentCzl < 90) {
+                newCzl = currentCzl + (2 + (int)(Math.random() * 2)) / 10.0;
+            } else {
+                newCzl = currentCzl + (1 + (int)(Math.random() * 3)) / 10.0;
+            }
+        }
+
+        // Cap at 150 (or protection item limit)
+        if (newCzl >= 150.0) {
+            if (bhEffect > 0 && newCzl > bhEffect) {
+                newCzl = bhEffect;
+                // Consume protection item
+                if (protectItem != null) {
+                    decrementOrRemove(protectItem);
+                }
+            } else {
+                newCzl = 150.0;
+            }
+        }
+
+        // Round to 1 decimal
+        newCzl = Math.round(newCzl * 10) / 10.0;
+
+        // Update pet
+        pet.setName(targetTemplate.getName());
+        pet.setImgstand(targetTemplate.getImgstand());
+        pet.setImgack(targetTemplate.getImgack());
+        pet.setImgdie(targetTemplate.getImgdie());
+        pet.setCardimg(targetTemplate.getCardimg());
+        pet.setEffectimg(targetTemplate.getEffectimg());
+        pet.setCzl(String.valueOf(newCzl));
+        pet.setRemakelevel(targetTemplate.getRemakeLevel() != null ? targetTemplate.getRemakeLevel() : "0,0");
+        pet.setRemakeid(targetTemplate.getRemakeId() != null ? targetTemplate.getRemakeId() : "0,0");
+        pet.setRemakepid(targetTemplate.getRemakePid() != null ? targetTemplate.getRemakePid() : "0,0");
+        pet.setRemaketimes(currentTimes + 1);
+        userPetRepo.save(pet);
+
+        // Deduct material
+        decrementOrRemove(materialItem);
+
+        // Deduct 1000 money
+        player.setMoney(player.getMoney() - 1000);
+        playerRepo.save(player);
+
+        result.put("type", "evolution");
+        result.put("petId", petId);
+        result.put("petName", pet.getName());
+        result.put("oldCzl", currentCzl);
+        result.put("newCzl", newCzl);
+        result.put("style", style);
+        result.put("remaketimes", currentTimes + 1);
+        result.put("message", "进化成功！" + pet.getName() + " 成长率 " + currentCzl + " → " + newCzl);
+
+        return result;
+    }
+
+    /**
+     * PHP cmpGate.php — Pet merge/合成 (varyname=8)
+     * @param playerId player ID
+     * @param mainPetId main pet (userbb.id)
+     * @param subPetId secondary pet (userbb.id)
+     * @param item1Id item 1 bag ID (userbag.id, optional)
+     * @param item2Id item 2 bag ID (userbag.id, optional)
+     */
+    @Transactional
+    public Map<String, Object> handleMerge(Long playerId, Long mainPetId, Long subPetId,
+                                            Long item1Id, Long item2Id) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Get pets
+        UserPet mainPet = userPetRepo.findById(mainPetId).orElse(null);
+        UserPet subPet = userPetRepo.findById(subPetId).orElse(null);
+        if (mainPet == null || !mainPet.getPlayerId().equals(playerId)
+            || subPet == null || !subPet.getPlayerId().equals(playerId)) {
+            result.put("error", "宠物不存在");
+            return result;
+        }
+
+        // Cannot merge same pet
+        if (mainPetId.equals(subPetId)) {
+            result.put("error", "不能与自己合成");
+            return result;
+        }
+
+        // Check level >= 40
+        if (mainPet.getLevel() == null || mainPet.getLevel() < 40) {
+            result.put("error", "主宠等级不足40级");
+            return result;
+        }
+        if (subPet.getLevel() == null || subPet.getLevel() < 40) {
+            result.put("error", "副宠等级不足40级");
+            return result;
+        }
+
+        // Check extracted growth (chouqu_chongwu)
+        PlayerExt ext = playerExtRepo.findById(playerId.intValue()).orElse(null);
+        if (ext != null && ext.getChouquChongwu() != null) {
+            String chouqu = ext.getChouquChongwu();
+            if (chouqu.contains("," + mainPetId + ",") || chouqu.contains("," + subPetId + ",")) {
+                result.put("error", "某个宠物抽取过成长,不能进行合成!");
+                return result;
+            }
+        }
+
+        // Check equipment
+        if (mainPet.getZb() != null && !mainPet.getZb().isEmpty()) {
+            result.put("error", "主宠有装备未卸下");
+            return result;
+        }
+        if (subPet.getZb() != null && !subPet.getZb().isEmpty()) {
+            result.put("error", "副宠有装备未卸下");
+            return result;
+        }
+
+        // Check money >= 50000
+        Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        if (player == null || player.getMoney() == null || player.getMoney() < 50000) {
+            result.put("error", "金币不足50000");
+            return result;
+        }
+
+        // Get merge formula from merge table
+        // Need to find bb IDs from pet names
+        Pet mainTemplate = findPetTemplateByName(mainPet.getName());
+        Pet subTemplate = findPetTemplateByName(subPet.getName());
+        if (mainTemplate == null || subTemplate == null) {
+            result.put("error", "宠物模板不存在");
+            return result;
+        }
+
+        List<Merge> mergeList = mergeRepo.findByAidAndBid(mainTemplate.getId().intValue(), subTemplate.getId().intValue());
+        if (mergeList.isEmpty()) {
+            result.put("error", "不能合成");
+            return result;
+        }
+        Merge mergeFormula = mergeList.get(0);
+
+        // Check growth limits
+        double mainCzl = 1.0;
+        double subCzl = 1.0;
+        try {
+            mainCzl = Double.parseDouble(mainPet.getCzl() != null ? mainPet.getCzl() : "1.0");
+            subCzl = Double.parseDouble(subPet.getCzl() != null ? subPet.getCzl() : "1.0");
+        } catch (NumberFormatException ignored) {}
+
+        double maxCzl = 0;
+        if (mergeFormula.getLimits() != null && !mergeFormula.getLimits().isEmpty()) {
+            String[] limitsArr = mergeFormula.getLimits().split("\\|");
+            if (limitsArr.length > 0 && !limitsArr[0].isEmpty()) {
+                double limitMain = Double.parseDouble(limitsArr[0]);
+                if (mainCzl < limitMain) {
+                    result.put("error", "主宠成长率不足");
+                    return result;
+                }
+            }
+            if (limitsArr.length > 1 && !limitsArr[1].isEmpty()) {
+                double limitSub = Double.parseDouble(limitsArr[1]);
+                if (subCzl < limitSub) {
+                    result.put("error", "副宠成长率不足");
+                    return result;
+                }
+            }
+            if (limitsArr.length > 2 && !limitsArr[2].isEmpty()) {
+                maxCzl = Double.parseDouble(limitsArr[2]);
+            }
+        }
+
+        // Parse items (varyname=8)
+        UserBag item1 = null;
+        UserBag item2 = null;
+        if (item1Id != null && item1Id > 0) {
+            item1 = bagRepo.findById(item1Id).orElse(null);
+            if (item1 != null && (item1.getSums() == null || item1.getSums() < 1)) item1 = null;
+        }
+        if (item2Id != null && item2Id > 0) {
+            item2 = bagRepo.findById(item2Id).orElse(null);
+            if (item2 != null && (item2.getSums() == null || item2.getSums() < 1)) item2 = null;
+        }
+
+        // Parse item effects
+        double itemBonusCzl = 0;
+        double itemBonusAc = 0;
+        double itemBonusMc = 0;
+        double itemBonusHit = 0;
+        double itemBonusMiss = 0;
+        double itemBonusSpeed = 0;
+        double itemBonusHp = 0;
+        double itemBonusMp = 0;
+        double itemBonusB = 0;
+        boolean hasProtection = false;
+
+        if (item1 != null) {
+            Props itemProps = getPropsCached(item1.getPropId().longValue());
+            if (itemProps != null && itemProps.getEffect() != null) {
+                double[] effects = parseMergeItemEffects(itemProps.getEffect());
+                itemBonusCzl += effects[0];
+                itemBonusAc += effects[1];
+                itemBonusMc += effects[2];
+                itemBonusHit += effects[3];
+                itemBonusMiss += effects[4];
+                itemBonusSpeed += effects[5];
+                itemBonusHp += effects[6];
+                itemBonusMp += effects[7];
+                itemBonusB += effects[8];
+                if (effects[9] > 0) hasProtection = true;
+            }
+        }
+        if (item2 != null) {
+            Props itemProps = getPropsCached(item2.getPropId().longValue());
+            if (itemProps != null && itemProps.getEffect() != null) {
+                double[] effects = parseMergeItemEffects(itemProps.getEffect());
+                itemBonusCzl += effects[0];
+                itemBonusAc += effects[1];
+                itemBonusMc += effects[2];
+                itemBonusHit += effects[3];
+                itemBonusMiss += effects[4];
+                itemBonusSpeed += effects[5];
+                itemBonusHp += effects[6];
+                itemBonusMp += effects[7];
+                itemBonusB += effects[8];
+                if (effects[9] > 0) hasProtection = true;
+            }
+        }
+
+        // Calculate success rate
+        int mergeCount = ext != null && ext.getMergeCount() != null ? ext.getMergeCount() : 0;
+        double successRate = (mergeCount / (mainCzl * 2))
+            + ((mainPet.getLevel() + subPet.getLevel()) / 15.0) * 0.01
+            + itemBonusB + (1 + (int)(Math.random() * 5)) * 0.01;
+
+        // 100% if mergeCount == 10 or mainCzl <= 5
+        if (mergeCount == 10 || mainCzl <= 5) {
+            successRate = 1.0;
+        }
+
+        double randomValue = (1 + (int)(Math.random() * 100)) / 100.0;
+        boolean success = randomValue <= successRate;
+
+        if (success) {
+            // Determine result: A (maid) or B (mbid)
+            double bChance = 0.05 + itemBonusB;
+            double bRandom = (1 + (int)(Math.random() * 100)) / 100.0;
+            int resultBbId = bRandom <= bChance ? mergeFormula.getMbid() : mergeFormula.getMaid();
+
+            Pet resultTemplate = petRepo.findById((long) resultBbId).orElse(null);
+            if (resultTemplate == null) {
+                result.put("error", "合成结果模板不存在");
+                return result;
+            }
+
+            // Calculate new growth rate
+            double newCzl = calculateMergeCzl(mainCzl, subCzl, mainPet.getLevel(), subPet.getLevel(), itemBonusCzl);
+            if (maxCzl > 0 && newCzl > maxCzl) newCzl = maxCzl;
+            if (resultTemplate.getWx() == 6 && newCzl > 60) newCzl = 60;
+            else if (resultTemplate.getWx() != 6 && newCzl > 150) newCzl = 150;
+
+            // Calculate new attributes
+            long newAc = calculateMergeAttr(resultTemplate.getAc(), mainPet.getAc(), subPet.getAc(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusAc);
+            long newMc = calculateMergeAttr(resultTemplate.getMc(), mainPet.getMc(), subPet.getMc(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusMc);
+            long newHits = calculateMergeAttr(resultTemplate.getHits().longValue(), mainPet.getHits(), subPet.getHits(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusHit);
+            long newMiss = calculateMergeAttr(resultTemplate.getMiss().longValue(), mainPet.getMiss(), subPet.getMiss(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusMiss);
+            long newSpeed = calculateMergeAttr(resultTemplate.getSpeed().longValue(), mainPet.getSpeed(), subPet.getSpeed(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusSpeed);
+            long newHp = calculateMergeAttr(resultTemplate.getHp(), mainPet.getSrchp(), subPet.getSrchp(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusHp);
+            long newMp = calculateMergeAttr(resultTemplate.getMp(), mainPet.getSrcmp(), subPet.getSrcmp(),
+                mainPet.getLevel(), subPet.getLevel(), itemBonusMp);
+
+            // Create new pet
+            UserPet newPet = new UserPet();
+            newPet.setPlayerId(playerId);
+            newPet.setName(resultTemplate.getName());
+            newPet.setLevel(1);
+            newPet.setWx(resultTemplate.getWx());
+            newPet.setAc(newAc);
+            newPet.setMc(newMc);
+            newPet.setSrchp(newHp);
+            newPet.setHp(newHp);
+            newPet.setSrcmp(newMp);
+            newPet.setMp(newMp);
+            newPet.setHits(newHits);
+            newPet.setMiss(newMiss);
+            newPet.setSpeed(newSpeed);
+            newPet.setNowexp(0L);
+            newPet.setLexp(100L);
+            newPet.setImgstand(resultTemplate.getImgstand());
+            newPet.setImgack(resultTemplate.getImgack());
+            newPet.setImgdie(resultTemplate.getImgdie());
+            newPet.setCardimg(resultTemplate.getCardimg());
+            newPet.setEffectimg(resultTemplate.getEffectimg());
+            newPet.setHeadimg(resultTemplate.getHeadimg());
+            newPet.setMuchang(0);
+            newPet.setKx(resultTemplate.getKx());
+            newPet.setSkillList(resultTemplate.getSkillList());
+            newPet.setRemakelevel(resultTemplate.getRemakeLevel());
+            newPet.setRemakeid(resultTemplate.getRemakeId());
+            newPet.setRemakepid(resultTemplate.getRemakePid());
+            newPet.setCzl(String.valueOf(newCzl));
+            newPet.setStime(System.currentTimeMillis() / 1000);
+            newPet = userPetRepo.save(newPet);
+
+            // Delete old pets and their skills
+            deletePetAndSkills(mainPet);
+            deletePetAndSkills(subPet);
+
+            // Reset mergeCount
+            if (ext != null) {
+                ext.setMergeCount(0);
+                playerExtRepo.save(ext);
+            }
+
+            // Set as main pet
+            player.setMbid(newPet.getId().intValue());
+            playerRepo.save(player);
+
+            result.put("type", "merge");
+            result.put("success", true);
+            result.put("petId", newPet.getId());
+            result.put("petName", newPet.getName());
+            result.put("czl", newCzl);
+            result.put("isRare", bRandom <= bChance);
+            result.put("message", "合成成功！获得 " + newPet.getName());
+        } else {
+            // Merge failed
+            if (ext != null) {
+                ext.setMergeCount((ext.getMergeCount() != null ? ext.getMergeCount() : 0) + 1);
+                playerExtRepo.save(ext);
+            }
+
+            // Delete sub pet (unless protection)
+            if (!hasProtection) {
+                deletePetAndSkills(subPet);
+            }
+
+            result.put("type", "merge");
+            result.put("success", false);
+            result.put("message", "合成失败！" + (hasProtection ? "副宠被保护" : "副宠消失"));
+        }
+
+        // Deduct money
+        player.setMoney(player.getMoney() - 50000);
+        playerRepo.save(player);
+
+        // Deduct items
+        if (item1 != null) decrementOrRemove(item1);
+        if (item2 != null) decrementOrRemove(item2);
+
+        return result;
+    }
+
+    private Pet findPetTemplateByName(String name) {
+        return petRepo.findAll().stream()
+            .filter(p -> p.getName().equals(name))
+            .findFirst().orElse(null);
+    }
+
+    private double calculateMergeCzl(double mainCzl, double subCzl, int mainLevel, int subLevel, double itemBonus) {
+        double czl;
+        if (mainCzl < 51.0) {
+            czl = mainCzl + (mainLevel / (mainCzl + 10) + subLevel * subCzl / 200) * (1 + itemBonus);
+        } else if (mainCzl < 70.0) {
+            czl = mainCzl + (mainLevel / mainCzl + subLevel * subCzl / 350) * (1 + itemBonus);
+        } else if (mainCzl < 90.0) {
+            czl = mainCzl + (mainLevel / mainCzl + subLevel * subCzl / 500) * (1 + itemBonus);
+        } else if (mainCzl < 100.0) {
+            czl = mainCzl + (mainLevel / mainCzl + subLevel * subCzl / 700) * (1 + itemBonus);
+        } else {
+            czl = mainCzl + (mainLevel / mainCzl + subLevel * subCzl / 900) * (1 + itemBonus);
+        }
+        return Math.round(czl * 10) / 10.0;
+    }
+
+    private long calculateMergeAttr(long templateAttr, Long mainAttr, Long subAttr,
+                                     int mainLevel, int subLevel, double itemBonus) {
+        long a = mainAttr != null ? mainAttr : 0;
+        long b = subAttr != null ? subAttr : 0;
+        double bonus = itemBonus > 0 ? 1 + itemBonus : 1;
+        return (long) ((templateAttr + (a * mainLevel / 400) + (b * subLevel / 800)) * bonus);
+    }
+
+    /**
+     * Parse merge item effects and return as array:
+     * [0]=czl, [1]=ac, [2]=mc, [3]=hit, [4]=miss, [5]=speed, [6]=hp, [7]=mp, [8]=bBonus, [9]=protection(1/0)
+     */
+    private double[] parseMergeItemEffects(String effect) {
+        double[] result = new double[10]; // czl, ac, mc, hit, miss, speed, hp, mp, bBonus, protection
+        if (effect == null || effect.isEmpty()) return result;
+
+        String[] parts = effect.split("\\|");
+        for (String part : parts) {
+            part = part.trim();
+            if (part.startsWith("addczl:")) {
+                try { result[0] += Double.parseDouble(part.substring(7).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addac:")) {
+                try { result[1] += Double.parseDouble(part.substring(6).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addmc:")) {
+                try { result[2] += Double.parseDouble(part.substring(6).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addhit:")) {
+                try { result[3] += Double.parseDouble(part.substring(7).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addmiss:")) {
+                try { result[4] += Double.parseDouble(part.substring(8).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addspeed:")) {
+                try { result[5] += Double.parseDouble(part.substring(9).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addhp:")) {
+                try { result[6] += Double.parseDouble(part.substring(6).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("addmp:")) {
+                try { result[7] += Double.parseDouble(part.substring(6).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.startsWith("B:")) {
+                try { result[8] += Double.parseDouble(part.substring(2).replace("%", "")) / 100; } catch (NumberFormatException ignored) {}
+            } else if (part.equals("shbb")) {
+                result[9] = 1.0;
+            }
+        }
+        return result;
+    }
+
+    private void deletePetAndSkills(UserPet pet) {
+        // Delete skills
+        List<Skill> skills = skillRepo.findByPetId(pet.getId());
+        skillRepo.deleteAll(skills);
+        // Delete pet
+        userPetRepo.delete(pet);
+    }
+
+    /**
+     * PHP ext_zbstrength.php — Equipment strengthening (varyname=10/11)
+     * @param playerId player ID
+     * @param equipBagId equipment bag ID (userbag.id)
+     * @param materialBagId strengthening material bag ID (varyname=10, optional)
+     * @param auxiliaryBagId auxiliary item bag ID (varyname=11, optional)
+     */
+    @Transactional
+    public Map<String, Object> handleStrengthen(Long playerId, Long equipBagId,
+                                                 Long materialBagId, Long auxiliaryBagId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Get equipment
+        UserBag equip = bagRepo.findById(equipBagId).orElse(null);
+        if (equip == null || !equip.getPlayerId().equals(playerId)) {
+            result.put("error", "装备不存在");
+            return result;
+        }
+
+        // Check equipment can be strengthened (plusflag=1)
+        Props equipProps = getPropsCached(equip.getPropId().longValue());
+        if (equipProps == null || equipProps.getPlusflag() == null || equipProps.getPlusflag() != 1) {
+            result.put("error", "该装备不可强化");
+            return result;
+        }
+
+        // Get current strengthening level
+        int currentLevel = 0;
+        String plusTmsEft = equip.getPlusTimesEffect();
+        if (plusTmsEft != null && !plusTmsEft.isEmpty()) {
+            try {
+                String[] parts = plusTmsEft.split(",");
+                currentLevel = Integer.parseInt(parts[0]);
+            } catch (NumberFormatException ignored) {}
+        }
+
+        // Check max level (15)
+        if (currentLevel >= 15) {
+            result.put("error", "已达最大强化等级");
+            return result;
+        }
+
+        // Get strengthening material (pluspid)
+        long materialPropId = equipProps.getPlusPropId() != null ? equipProps.getPlusPropId() : 0;
+        if (materialPropId == 0) {
+            result.put("error", "装备没有强化材料配置");
+            return result;
+        }
+
+        // Check material in bag
+        UserBag material = bagRepo.findByPlayerId(playerId).stream()
+            .filter(b -> b.getPropId() != null && b.getPropId() == materialPropId
+                && b.getSums() != null && b.getSums() > 0)
+            .findFirst().orElse(null);
+        if (material == null) {
+            result.put("error", "缺少强化材料");
+            return result;
+        }
+
+        // Get harden config: "successRate,cost" for each level
+        // Level 0-14: "6,100","6,300","6,600","5,1000","5,1500","5,2000","4,3000","4,3500","4,5000","3,7000","3,10000","3,15000","2,20000","2,30000","1,50000"
+        int[] successRates = {6, 6, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 1};
+        int[] costs = {100, 300, 600, 1000, 1500, 2000, 3000, 3500, 5000, 7000, 10000, 15000, 20000, 30000, 50000};
+
+        int baseSuccessRate = successRates[currentLevel];
+        int cost = costs[currentLevel];
+
+        // Check money
+        Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+        if (player == null || player.getMoney() == null || player.getMoney() < cost) {
+            result.put("error", "金币不足" + cost);
+            return result;
+        }
+
+        // Parse auxiliary item effects (varyname=11)
+        int bonusSuccess = 0;
+        boolean hundredSuc = false;
+        int hundredSucLevel = 0;
+        boolean baodi = false; // protect from level loss
+        boolean baodeng = false; // protect equipment
+
+        if (auxiliaryBagId != null && auxiliaryBagId > 0) {
+            UserBag auxiliary = bagRepo.findById(auxiliaryBagId).orElse(null);
+            if (auxiliary != null && auxiliary.getSums() != null && auxiliary.getSums() > 0) {
+                Props auxProps = getPropsCached(auxiliary.getPropId().longValue());
+                if (auxProps != null && auxProps.getEffect() != null) {
+                    String effect = auxProps.getEffect();
+                    if (effect.startsWith("suc:")) {
+                        try {
+                            bonusSuccess = Integer.parseInt(effect.substring(4));
+                        } catch (NumberFormatException ignored) {}
+                    } else if (effect.startsWith("100suc:")) {
+                        try {
+                            String[] parts = effect.substring(7).split(",");
+                            hundredSucLevel = Integer.parseInt(parts[parts.length > 1 ? 1 : 0]);
+                            if (currentLevel < hundredSucLevel) {
+                                hundredSuc = true;
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    } else if (effect.equals("baodi")) {
+                        baodi = true;
+                    } else if (effect.equals("baodeng")) {
+                        baodeng = true;
+                    }
+                }
+            }
+        }
+
+        // Calculate final success rate
+        int finalSuccessRate = hundredSuc ? 10 : baseSuccessRate + bonusSuccess;
+
+        // Random check
+        int random = 1 + (int)(Math.random() * 10);
+        boolean success = random <= finalSuccessRate;
+
+        if (success) {
+            // Strengthening succeeded
+            int newLevel = currentLevel + 1;
+
+            // Get attribute bonus from plusget
+            String plusget = equipProps.getPlusget();
+            String bonusValue = "0";
+            if (plusget != null && !plusget.isEmpty()) {
+                String[] plusArr = plusget.split(",");
+                if (newLevel <= plusArr.length) {
+                    bonusValue = plusArr[newLevel - 1];
+                }
+            }
+
+            // Update equipment
+            equip.setPlusTimesEffect(newLevel + "," + bonusValue);
+            bagRepo.save(equip);
+
+            // Deduct money
+            player.setMoney(player.getMoney() - cost);
+            playerRepo.save(player);
+
+            // Deduct material
+            decrementOrRemove(material);
+
+            // Deduct auxiliary
+            if (auxiliaryBagId != null && auxiliaryBagId > 0) {
+                UserBag auxiliary = bagRepo.findById(auxiliaryBagId).orElse(null);
+                if (auxiliary != null) decrementOrRemove(auxiliary);
+            }
+
+            result.put("type", "strengthen");
+            result.put("success", true);
+            result.put("newLevel", newLevel);
+            result.put("bonusValue", bonusValue);
+            result.put("message", "强化成功！装备强化至+" + newLevel);
+        } else {
+            // Strengthening failed
+            if (baodi) {
+                // Lose 2 levels
+                int newLevel = Math.max(0, currentLevel - 2);
+                if (newLevel == 0) {
+                    equip.setPlusTimesEffect(null);
+                } else {
+                    String plusget = equipProps.getPlusget();
+                    String bonusValue = "0";
+                    if (plusget != null && !plusget.isEmpty()) {
+                        String[] plusArr = plusget.split(",");
+                        if (newLevel <= plusArr.length) {
+                            bonusValue = plusArr[newLevel - 1];
+                        }
+                    }
+                    equip.setPlusTimesEffect(newLevel + "," + bonusValue);
+                }
+                bagRepo.save(equip);
+                result.put("message", "强化失败！装备降级至+" + newLevel);
+            } else if (!baodeng) {
+                // Equipment destroyed
+                bagRepo.delete(equip);
+                result.put("message", "强化失败！装备已销毁");
+            } else {
+                result.put("message", "强化失败！装备被保护");
+            }
+
+            // Deduct money
+            player.setMoney(player.getMoney() - cost);
+            playerRepo.save(player);
+
+            // Deduct material
+            decrementOrRemove(material);
+
+            // Deduct auxiliary
+            if (auxiliaryBagId != null && auxiliaryBagId > 0) {
+                UserBag auxiliary = bagRepo.findById(auxiliaryBagId).orElse(null);
+                if (auxiliary != null) decrementOrRemove(auxiliary);
+            }
+
+            result.put("type", "strengthen");
+            result.put("success", false);
+        }
+
+        return result;
+    }
+
+    /**
+     * PHP xqhcGate.php — Gem synthesis (varyname=25 + varyname=25)
+     * @param playerId player ID
+     * @param gem1BagId gem 1 bag ID
+     * @param gem2BagId gem 2 bag ID
+     * @param protectionBagId protection stone bag ID (varyname=27, optional)
+     */
+    @Transactional
+    public Map<String, Object> handleGemSynthesis(Long playerId, Long gem1BagId,
+                                                   Long gem2BagId, Long protectionBagId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Get gems
+        UserBag gem1 = bagRepo.findById(gem1BagId).orElse(null);
+        UserBag gem2 = bagRepo.findById(gem2BagId).orElse(null);
+        if (gem1 == null || !gem1.getPlayerId().equals(playerId)
+            || gem2 == null || !gem2.getPlayerId().equals(playerId)) {
+            result.put("error", "宝石不存在");
+            return result;
+        }
+
+        // Check both are gems (varyname=25)
+        Props gem1Props = getPropsCached(gem1.getPropId().longValue());
+        Props gem2Props = getPropsCached(gem2.getPropId().longValue());
+        if (gem1Props == null || gem1Props.getVaryname() == null || gem1Props.getVaryname() != 25
+            || gem2Props == null || gem2Props.getVaryname() == null || gem2Props.getVaryname() != 25) {
+            result.put("error", "只能合成宝石");
+            return result;
+        }
+
+        // Check same type
+        if (!gem1.getPropId().equals(gem2.getPropId())) {
+            result.put("error", "只能合成同种宝石");
+            return result;
+        }
+
+        // Check enough quantity
+        if (gem1BagId.equals(gem2BagId)) {
+            if (gem1.getSums() == null || gem1.getSums() < 2) {
+                result.put("error", "宝石数量不足");
+                return result;
+            }
+        } else {
+            if (gem1.getSums() == null || gem1.getSums() < 1
+                || gem2.getSums() == null || gem2.getSums() < 1) {
+                result.put("error", "宝石数量不足");
+                return result;
+            }
+        }
+
+        // Parse gem effect: "成功率%,产物ID" (e.g., "80%,123")
+        String effect = gem1Props.getEffect();
+        if (effect == null || effect.isEmpty()) {
+            result.put("error", "宝石配置错误");
+            return result;
+        }
+
+        // Check if gem is full level (effect starts with "full")
+        if (effect.startsWith("full")) {
+            result.put("error", "已达最高级");
+            return result;
+        }
+
+        String[] parts = effect.split(",");
+        if (parts.length < 2) {
+            result.put("error", "宝石配置错误");
+            return result;
+        }
+
+        // Parse success rate (remove % sign)
+        int successRate = 0;
+        try {
+            successRate = Integer.parseInt(parts[0].replace("%", "").trim());
+        } catch (NumberFormatException ignored) {}
+
+        // Parse result gem prop ID
+        long resultGemPropId = 0;
+        try {
+            resultGemPropId = Long.parseLong(parts[1].trim());
+        } catch (NumberFormatException ignored) {}
+
+        if (successRate == 0 || resultGemPropId == 0) {
+            result.put("error", "宝石配置错误");
+            return result;
+        }
+
+        // Check protection stone
+        boolean hasProtection = false;
+        if (protectionBagId != null && protectionBagId > 0) {
+            UserBag protection = bagRepo.findById(protectionBagId).orElse(null);
+            if (protection != null && protection.getSums() != null && protection.getSums() > 0) {
+                Props protectProps = getPropsCached(protection.getPropId().longValue());
+                if (protectProps != null && protectProps.getVaryname() != null && protectProps.getVaryname() == 27) {
+                    hasProtection = true;
+                }
+            }
+        }
+
+        // Random check
+        int random = 1 + (int)(Math.random() * 100);
+        boolean success = random <= successRate;
+
+        if (success) {
+            // Synthesis succeeded
+            // Deduct gems
+            if (gem1BagId.equals(gem2BagId)) {
+                gem1.setSums(gem1.getSums() - 2);
+                if (gem1.getSums() <= 0) {
+                    bagRepo.delete(gem1);
+                } else {
+                    bagRepo.save(gem1);
+                }
+            } else {
+                decrementOrRemove(gem1);
+                decrementOrRemove(gem2);
+            }
+
+            // Add result gem
+            addItemToBag(playerId, resultGemPropId, 1);
+
+            // Get result gem info for response
+            Props resultProps = getPropsCached(resultGemPropId);
+
+            result.put("type", "gemSynthesis");
+            result.put("success", true);
+            result.put("resultPropId", resultGemPropId);
+            result.put("resultName", resultProps != null ? resultProps.getName() : "宝石");
+            result.put("message", "合成成功！获得 " + (resultProps != null ? resultProps.getName() : "宝石"));
+        } else {
+            // Synthesis failed
+            if (hasProtection) {
+                // With protection: only lose 1 gem
+                decrementOrRemove(gem2);
+                // Deduct protection stone
+                UserBag protection = bagRepo.findById(protectionBagId).orElse(null);
+                if (protection != null) decrementOrRemove(protection);
+
+                result.put("message", "合成失败！宝石被保护");
+            } else {
+                // Without protection: lose both gems
+                if (gem1BagId.equals(gem2BagId)) {
+                    gem1.setSums(gem1.getSums() - 2);
+                    if (gem1.getSums() <= 0) {
+                        bagRepo.delete(gem1);
+                    } else {
+                        bagRepo.save(gem1);
+                    }
+                } else {
+                    decrementOrRemove(gem1);
+                    decrementOrRemove(gem2);
+                }
+
+                result.put("message", "合成失败！宝石已销毁");
+            }
+
+            result.put("type", "gemSynthesis");
+            result.put("success", false);
+        }
+
+        return result;
+    }
+
+    /**
+     * PHP xqhcGate.php — Gem embedding (varyname=25 + varyname=9)
+     * @param playerId player ID
+     * @param gemBagId gem bag ID
+     * @param equipBagId equipment bag ID
+     */
+    @Transactional
+    public Map<String, Object> handleGemEmbed(Long playerId, Long gemBagId, Long equipBagId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Get gem and equipment
+        UserBag gem = bagRepo.findById(gemBagId).orElse(null);
+        UserBag equip = bagRepo.findById(equipBagId).orElse(null);
+        if (gem == null || !gem.getPlayerId().equals(playerId)
+            || equip == null || !equip.getPlayerId().equals(playerId)) {
+            result.put("error", "物品不存在");
+            return result;
+        }
+
+        // Check gem (varyname=25)
+        Props gemProps = getPropsCached(gem.getPropId().longValue());
+        if (gemProps == null || gemProps.getVaryname() == null || gemProps.getVaryname() != 25) {
+            result.put("error", "只能镶嵌宝石");
+            return result;
+        }
+
+        // Check equipment (varyname=9)
+        Props equipProps = getPropsCached(equip.getPropId().longValue());
+        if (equipProps == null || equipProps.getVaryname() == null || equipProps.getVaryname() != 9) {
+            result.put("error", "只能镶嵌到装备上");
+            return result;
+        }
+
+        // Check if equipment already has gem
+        if (equip.getHoleInfo() != null && !equip.getHoleInfo().isEmpty()) {
+            result.put("error", "该装备已有宝石");
+            return result;
+        }
+
+        // Parse gem effect: "xq:属性名_属性值_概率范围|属性名_属性值_概率范围"
+        String effect = gemProps.getEffect();
+        if (effect == null || effect.isEmpty()) {
+            result.put("error", "宝石配置错误");
+            return result;
+        }
+
+        String[] parts = effect.split(",");
+        if (parts.length < 2) {
+            result.put("error", "碎片不能镶嵌");
+            return result;
+        }
+
+        // Parse xq part
+        String xqPart = parts[1];
+        if (!xqPart.startsWith("xq:")) {
+            result.put("error", "宝石配置错误");
+            return result;
+        }
+
+        // Parse attribute options: "属性名_属性值_概率范围|属性名_属性值_概率范围"
+        String[] options = xqPart.substring(3).split("\\|");
+        int random = 1 + (int)(Math.random() * 100);
+
+        String attrName = null;
+        String attrValue = null;
+
+        for (String option : options) {
+            String[] optionParts = option.split("_");
+            if (optionParts.length < 3) continue;
+
+            String name = optionParts[0];
+            String value = optionParts[1];
+            String[] range = optionParts[2].split("-");
+
+            try {
+                int min = Integer.parseInt(range[0]);
+                int max = Integer.parseInt(range[1]);
+                if (random >= min && random <= max) {
+                    attrName = name;
+                    attrValue = value;
+                    break;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        if (attrName == null || attrValue == null) {
+            result.put("error", "宝石镶嵌失败");
+            return result;
+        }
+
+        // Update equipment hole info
+        String holeInfo = attrName + ":" + attrValue;
+        equip.setHoleInfo(holeInfo);
+        bagRepo.save(equip);
+
+        // Deduct gem
+        decrementOrRemove(gem);
+
+        // Build response message
+        String message = buildGemMessage(attrName, attrValue);
+
+        result.put("type", "gemEmbed");
+        result.put("success", true);
+        result.put("attrName", attrName);
+        result.put("attrValue", attrValue);
+        result.put("message", "镶嵌成功！" + message);
+
+        return result;
+    }
+
+    /**
+     * PHP zbxlGate.php — Gem washing (varyname=26)
+     * @param playerId player ID
+     * @param equipBagId equipment bag ID
+     * @param washStoneBagId wash stone bag ID (varyname=26)
+     */
+    @Transactional
+    public Map<String, Object> handleGemWash(Long playerId, Long equipBagId, Long washStoneBagId) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // Get equipment
+        UserBag equip = bagRepo.findById(equipBagId).orElse(null);
+        if (equip == null || !equip.getPlayerId().equals(playerId)) {
+            result.put("error", "装备不存在");
+            return result;
+        }
+
+        // Check equipment (varyname=9)
+        Props equipProps = getPropsCached(equip.getPropId().longValue());
+        if (equipProps == null || equipProps.getVaryname() == null || equipProps.getVaryname() != 9) {
+            result.put("error", "只能洗练装备");
+            return result;
+        }
+
+        // Check if equipment has gem
+        if (equip.getHoleInfo() == null || equip.getHoleInfo().isEmpty()) {
+            result.put("error", "该装备没有宝石");
+            return result;
+        }
+
+        // Check wash stone
+        UserBag washStone = bagRepo.findById(washStoneBagId).orElse(null);
+        if (washStone == null || !washStone.getPlayerId().equals(playerId)
+            || washStone.getSums() == null || washStone.getSums() < 1) {
+            result.put("error", "缺少洗练石");
+            return result;
+        }
+
+        Props washProps = getPropsCached(washStone.getPropId().longValue());
+        if (washProps == null || washProps.getVaryname() == null || washProps.getVaryname() != 26) {
+            result.put("error", "只能使用洗练石");
+            return result;
+        }
+
+        // Clear gem hole
+        equip.setHoleInfo(null);
+        bagRepo.save(equip);
+
+        // Deduct wash stone
+        decrementOrRemove(washStone);
+
+        result.put("type", "gemWash");
+        result.put("success", true);
+        result.put("message", "洗练成功！宝石效果已清除");
+
+        return result;
+    }
+
+    private String buildGemMessage(String attrName, String attrValue) {
+        switch (attrName) {
+            case "ac": return "攻击增加:" + attrValue;
+            case "mc": return "防御增加:" + attrValue;
+            case "hp": return "HP上限增加:" + attrValue;
+            case "mp": return "MP上限增加:" + attrValue;
+            case "hits": return "命中增加:" + attrValue;
+            case "miss": return "闪避增加:" + attrValue;
+            case "speed": return "攻击速度:" + attrValue;
+            case "crit": return "会心一击发动几率增加:" + attrValue;
+            case "shjs": return "伤害加深:" + attrValue;
+            case "dxsh": return "伤害抵消:" + attrValue;
+            case "hitshp": return "命中吸取伤害的" + attrValue + "转化为自身HP";
+            case "hitsmp": return "命中吸取伤害的" + attrValue + "转化为自身MP";
+            case "sdmp": return "伤害的" + attrValue + "以mp抵消";
+            case "szmp": return "伤害的" + attrValue + "转化为mp";
+            default: return attrName + ":" + attrValue;
+        }
+    }
+
     /** PHP usedProps.php: recursive chest opening — if given item is a chest, open it too */
     private void openChestRecursive(Long playerId, long propId, int count, List<Map<String, Object>> givenItems) {
         openChestRecursive(playerId, propId, count, givenItems, 0);
@@ -1481,13 +3037,16 @@ public class BagService {
 
     /** 12 equipment slot names matching PHP position 0-11 (props.postion) */
     private static final String[] SLOT_NAMES = {"翅膀","头部","身体","脚部","武器","项链","戒指","翅膀","手镯","宝石","道具","特殊"};
-    /** Item category names by varyname */
+    /** Item category names by varyname — matches PHP config.props.php authoritative definitions */
     public static final Map<Integer, String> CATEGORIES = Map.ofEntries(
-        Map.entry(0, "普通"), Map.entry(1, "辅助"), Map.entry(2, "增益"), Map.entry(3, "捕捉"),
-        Map.entry(4, "收集"), Map.entry(5, "技能书"), Map.entry(6, "卡片"), Map.entry(7, "进化"),
-        Map.entry(8, "合体"), Map.entry(9, "装备"), Map.entry(10, "精练"),
-        Map.entry(11, "宝箱"), Map.entry(12, "特殊"), Map.entry(13, "功能"),
-        Map.entry(14, "宠物卵"), Map.entry(15, "合成"), Map.entry(20, "传承")
+        Map.entry(0, "普通"), Map.entry(1, "辅助类"), Map.entry(2, "增益类"), Map.entry(3, "捕捉类"),
+        Map.entry(4, "收集类"), Map.entry(5, "技能书类"), Map.entry(6, "卡片类"), Map.entry(7, "进化类"),
+        Map.entry(8, "合体类"), Map.entry(9, "装备类"), Map.entry(10, "精炼类"),
+        Map.entry(11, "精炼辅助类"), Map.entry(12, "礼包类"), Map.entry(13, "特殊类"),
+        Map.entry(14, "功能类"), Map.entry(15, "宠物卵"), Map.entry(16, "合成类"),
+        Map.entry(20, "传承"), Map.entry(24, "卡片类"), Map.entry(25, "宝石类"),
+        Map.entry(26, "洗练石"), Map.entry(28, "刮刮卡类"),
+        Map.entry(55, "魔塔洗点类"), Map.entry(57, "魔塔出战卷"), Map.entry(58, "魔塔增益类")
     );
 
     /**

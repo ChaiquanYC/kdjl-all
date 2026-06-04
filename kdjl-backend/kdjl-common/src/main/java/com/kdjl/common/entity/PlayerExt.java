@@ -106,6 +106,12 @@ public class PlayerExt {
     @Column(name = "chouqu_chongwu", columnDefinition = "TEXT")
     private String chouquChongwu;
 
+    @Column(name = "F_User_Card_Info", length = 255)
+    private String userCardInfo;
+
+    @Column(name = "F_Has_Title", length = 255)
+    private String hasTitle;
+
     public Integer getPlayerId() { return playerId; }
     public Integer getPetShow() { return petShow; }
     public Integer getMergeCount() { return mergeCount; }
@@ -163,4 +169,8 @@ public class PlayerExt {
 
     public String getChouquChongwu() { return chouquChongwu; }
     public void setChouquChongwu(String chouquChongwu) { this.chouquChongwu = chouquChongwu; }
+    public String getUserCardInfo() { return userCardInfo; }
+    public void setUserCardInfo(String userCardInfo) { this.userCardInfo = userCardInfo; }
+    public String getHasTitle() { return hasTitle; }
+    public void setHasTitle(String hasTitle) { this.hasTitle = hasTitle; }
 }

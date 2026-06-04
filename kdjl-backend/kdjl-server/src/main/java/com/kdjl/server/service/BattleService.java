@@ -733,6 +733,10 @@ public class BattleService {
                     result.put("newLevel", updated.getLevel());
                 }
             }
+
+            // PHP ChallengeGate.php:523-530 — auto-recovery if player has varyname=21 items
+            checkAutoRecovery(playerId, session.getUserPetId());
+
             sessionMgr.remove(session.getSessionId());
             return result;
         }
@@ -1292,5 +1296,33 @@ public class BattleService {
         fuben.setGwId(nextIdx);
         fubenRepo.save(fuben);
         log.info("advanceDungeonProgress: gwid {} -> {} uid={} mapId={}", currentGwId, nextIdx, uid, mapId);
+    }
+
+    /**
+     * PHP ChallengeGate.php:523-530 — auto-recovery after battle.
+     * If player has any varyname=21 item in bag, auto-heal pet to full HP/MP.
+     */
+    private void checkAutoRecovery(Long playerId, Long petId) {
+        // Check if player has any varyname=21 items
+        List<UserBag> playerItems = bagRepo.findByPlayerId(playerId);
+        boolean hasAutoRecover = playerItems.stream().anyMatch(item -> {
+            if (item.getSums() == null || item.getSums() <= 0) return false;
+            Props props = bagService.getPropsCached(item.getPropId().longValue());
+            return props != null && props.getVaryname() != null && props.getVaryname() == 21;
+        });
+
+        if (hasAutoRecover) {
+            UserPet pet = userPetRepo.findById(petId).orElse(null);
+            if (pet != null) {
+                long maxHp = (pet.getSrchp() != null ? pet.getSrchp() : 0)
+                    + (pet.getAddhp() != null ? pet.getAddhp() : 0);
+                long maxMp = (pet.getSrcmp() != null ? pet.getSrcmp() : 0)
+                    + (pet.getAddmp() != null ? pet.getAddmp() : 0);
+                pet.setHp(maxHp);
+                pet.setMp(maxMp);
+                userPetRepo.save(pet);
+                log.info("Auto-recovery triggered for player={}, pet={}", playerId, petId);
+            }
+        }
     }
 }
