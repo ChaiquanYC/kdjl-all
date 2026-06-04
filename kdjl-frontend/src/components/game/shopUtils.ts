@@ -1,10 +1,13 @@
 import { ATTR_KEYS, WX_NAMES } from './shopConstants';
 
-/** Filter items by category label */
+/** Filter items by category label (uses startsWith to handle backend/frontend label differences) */
 export function filterByCat<T extends { category?: string }>(items: T[], cat: number, categories: { label: string }[]) {
   if (cat === 0) return items;
   const label = categories[cat]?.label ?? '';
-  return items.filter(i => (i.category ?? '') === label);
+  return items.filter(i => {
+    const c = i.category ?? '';
+    return label.startsWith(c) || c.startsWith(label);
+  });
 }
 
 /** Parse effect string like "ac,100|mc,50" into readable text */

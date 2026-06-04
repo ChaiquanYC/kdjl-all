@@ -2,6 +2,7 @@ package com.kdjl.server.repository;
 
 import com.kdjl.common.entity.Player;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -38,6 +39,10 @@ public interface PlayerRepository extends JpaRepository<Player, Integer> {
 
     @Query("SELECT COUNT(p) FROM Player p WHERE p.lastVisitTime > :since")
     long countOnlineSince(int since);
+
+    @Modifying
+    @Query("UPDATE Player p SET p.lastVisitTime = :now WHERE p.id = :id")
+    void updateLastVisitTime(int id, int now);
 
     List<Player> findByInMapAndLastVisitTimeGreaterThan(Integer inMap, int lastVisitTime);
 }

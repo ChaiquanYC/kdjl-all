@@ -52,6 +52,7 @@ public class PlayerController {
     public ApiResponse<Void> heartbeat(Authentication auth) {
         Integer uid = ((Long) auth.getPrincipal()).intValue();
         onlineTimeService.onHeartbeat(uid);
+        playerService.updateLastVisitTime(uid);
         return ApiResponse.success(null);
     }
 

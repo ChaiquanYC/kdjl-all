@@ -8,6 +8,7 @@ import ResourceBar from './ResourceBar';
 import ShopFooter, { FooterBtn } from './ShopFooter';
 import CategorySelect from './CategorySelect';
 import { CATEGORIES } from './shopConstants';
+import { filterByCat } from './shopUtils';
 import type { BagItemBase } from './ShopTypes';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './DepotPanel.module.css';
@@ -20,16 +21,6 @@ function mergeItems(raw: BagItemBase[], propsMap: Record<number, import('@/types
   return raw.map(r => {
     const p = propsMap[r.propId];
     return { ...r, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
-  });
-}
-
-/** Depot uses fuzzy category matching */
-function filterByCatFuzzy(items: ItemRaw[], cat: number) {
-  if (cat === 0) return items;
-  const filterLabel = CATEGORIES[cat]?.label ?? '';
-  return items.filter(i => {
-    const itemCat = i.category ?? '';
-    return itemCat === filterLabel || filterLabel.startsWith(itemCat) || itemCat.startsWith(filterLabel);
   });
 }
 
@@ -66,8 +57,8 @@ export default function DepotPanel() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filterBag = filterByCatFuzzy(bag.filter(i => i.count > 0 && i.zbing !== 1), bagCat);
-  const filterDepot = filterByCatFuzzy(depot.filter(i => i.count > 0), depotCat);
+  const filterBag = filterByCat(bag.filter(i => i.count > 0 && i.zbing !== 1), bagCat, CATEGORIES);
+  const filterDepot = filterByCat(depot.filter(i => i.count > 0), depotCat, CATEGORIES);
   const bagTotal = bag.filter(i => i.count > 0 && i.zbing !== 1).length;
   const depotTotal = depot.filter(i => i.count > 0).length;
 

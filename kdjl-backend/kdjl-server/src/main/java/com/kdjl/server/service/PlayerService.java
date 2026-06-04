@@ -9,6 +9,8 @@ import com.kdjl.server.repository.UserPetRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -97,8 +99,15 @@ public class PlayerService {
         return playerRepo.countOnlineSince(fiveMinutesAgo);
     }
 
+    @Transactional
     public void updateOnlineStatus(Integer playerId) {
         cache.setPlayerOnline(playerId);
+        playerRepo.updateLastVisitTime(playerId, (int) (System.currentTimeMillis() / 1000));
+    }
+
+    @Transactional
+    public void updateLastVisitTime(Integer playerId) {
+        playerRepo.updateLastVisitTime(playerId, (int) (System.currentTimeMillis() / 1000));
     }
 
     public void enterMap(Integer playerId, Integer mapId) {
