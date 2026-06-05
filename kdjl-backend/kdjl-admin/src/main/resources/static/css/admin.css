@@ -46,3 +46,9 @@ tr:hover{background:#fafafa}
 .tabs{display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid #f0f0f0}
 .tabs span{padding:8px 20px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;transition:.2s}
 .tabs span:hover,.tabs span.active{color:#1890ff;border-bottom-color:#1890ff}
+.combo-box{position:relative;width:150px}
+.combo-box .input-sm{width:100%;padding-right:22px}
+.combo-list{display:none;position:absolute;top:100%;left:0;right:0;max-height:260px;overflow-y:auto;background:#fff;border:1px solid #d9d9d9;border-radius:0 0 4px 4px;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.combo-list div{padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
+.combo-list div:hover,.combo-list div.active{background:#e6f7ff;color:#1890ff}
+.combo-list div.all{color:#888;border-bottom:1px solid #f0f0f0}

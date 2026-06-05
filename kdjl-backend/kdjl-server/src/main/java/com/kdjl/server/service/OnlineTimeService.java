@@ -11,12 +11,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
-
-import org.springframework.data.redis.core.Cursor;
-import org.springframework.data.redis.core.ScanOptions;
 
 @Service
 public class OnlineTimeService {
@@ -24,6 +19,7 @@ public class OnlineTimeService {
     private static final Logger log = LoggerFactory.getLogger(OnlineTimeService.class);
     private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final Duration KEY_TTL = Duration.ofHours(25);
+    private static final String ONLINE_SET_KEY = "online:uids";
 
     private final RedisTemplate<String, Object> redis;
     private final PlayerExtRepository extRepo;
@@ -50,6 +46,7 @@ public class OnlineTimeService {
         redis.opsForValue().set(ltKey(uid), now, KEY_TTL);
         redis.opsForValue().set(secKey(uid), 0, KEY_TTL);
         redis.opsForValue().set(dayKey(uid), today, KEY_TTL);
+        redis.opsForSet().add(ONLINE_SET_KEY, uid);
     }
 
     // ---- Called on each heartbeat ----
@@ -88,25 +85,28 @@ public class OnlineTimeService {
         redis.delete(ltKey(uid));
         redis.delete(secKey(uid));
         redis.delete(dayKey(uid));
+        redis.opsForSet().remove(ONLINE_SET_KEY, uid);
     }
 
     // ---- Scheduled flush: Redis → DB every 5 minutes ----
 
     @Scheduled(fixedRate = 300_000)
     public void flushAll() {
-        List<String> keys = scanKeys("online:*:sec");
-        if (keys.isEmpty()) return;
+        try {
+            Set<Object> uids = redis.opsForSet().members(ONLINE_SET_KEY);
+            if (uids == null || uids.isEmpty()) return;
 
-        for (String key : keys) {
-            try {
-                // Extract uid from "online:{uid}:sec"
-                String[] parts = key.split(":");
-                if (parts.length < 3) continue;
-                int uid = Integer.parseInt(parts[1]);
-                flushPlayer(uid);
-            } catch (Exception e) {
-                log.warn("Failed to flush online time for key {}: {}", key, e.getMessage());
+            for (Object uidObj : uids) {
+                try {
+                    int uid = (uidObj instanceof Number) ? ((Number) uidObj).intValue()
+                            : Integer.parseInt(uidObj.toString());
+                    flushPlayer(uid);
+                } catch (Exception e) {
+                    log.warn("Failed to flush online time for uid {}: {}", uidObj, e.getMessage());
+                }
             }
+        } catch (Exception e) {
+            log.error("flushAll failed: {}", e.getMessage());
         }
     }
 
@@ -146,15 +146,5 @@ public class OnlineTimeService {
         } catch (NumberFormatException e) {
             return 0;
         }
-    }
-
-    private List<String> scanKeys(String pattern) {
-        List<String> result = new ArrayList<>();
-        try (Cursor<String> cursor = redis.scan(ScanOptions.scanOptions().match(pattern).count(100).build())) {
-            while (cursor.hasNext()) {
-                result.add(cursor.next());
-            }
-        }
-        return result;
     }
 }

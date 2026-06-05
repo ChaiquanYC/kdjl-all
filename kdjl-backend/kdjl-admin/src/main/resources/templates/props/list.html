@@ -13,7 +13,22 @@
         <div class="card">
             <div class="flex-row">
                 <input class="input" id="keyword" placeholder="搜索道具名称" onkeydown="if(event.key==='Enter')search(1)">
+                <div id="typeCombo" class="combo-box">
+                    <input class="input-sm" id="typeInput" placeholder="输入搜索类型..." autocomplete="off"
+                        onfocus="showTypeList()" oninput="filterTypes()" onkeydown="typeKey(event)">
+                    <input type="hidden" id="typeFilter" value="0">
+                    <div class="combo-list" id="typeList"></div>
+                </div>
                 <button class="btn btn-primary" onclick="search(1)">搜索</button>
+            </div>
+            <div class="flex-row" style="justify-content:space-between">
+                <span id="totalInfo" style="font-size:12px;color:#888"></span>
+                <div>
+                    <label style="font-size:12px;color:#888">每页:</label>
+                    <select id="pageSize" class="input-sm" style="width:60px" onchange="search(1)">
+                        <option value="20">20</option><option value="50">50</option><option value="100">100</option>
+                    </select>
+                </div>
             </div>
             <table><thead><tr>
                 <th>ID</th><th>名称</th><th>类型</th><th>卖价(金)</th><th>买价(金)</th><th>元宝</th><th>水晶</th><th>效果</th>
@@ -23,15 +38,61 @@
     </div>
 </div>
 <script>
-let page=1,total=0;
-function search(p){ page=p||1; fetch('/api/admin/props?keyword='+encodeURIComponent(document.getElementById('keyword').value)+'&page='+page).then(r=>r.json()).then(d=>{
+var TYPES={0:'全部类型',1:'辅助类',2:'增益类',3:'捕捉类',4:'收集类/材料',5:'技能书类',6:'卡片类',7:'进化类',8:'合体类',9:'装备类',10:'精炼类',11:'精炼类',12:'礼包类',13:'特殊类',14:'功能类',15:'宠物卵',16:'合成类',17:'水晶类',18:'特殊回复类',19:'涅槃加成',22:'魔法石',23:'神圣转生道具',24:'卡片类',25:'宝石类',26:'洗练石',27:'合成保低石',28:'刮刮卡类',29:'奇石类',30:'扫雷道具',31:'扫雷道具',32:'扫雷道具',50:'魔塔回复',51:'魔塔复活',52:'魔塔解密',53:'魔塔杀伤',54:'魔塔BUFF',55:'魔塔洗点',56:'魔塔洗点',57:'魔塔出战卷',58:'魔塔增益'};
+var TYPE_LIST=Object.entries(TYPES).map(([k,v])=>({id:parseInt(k),name:v}));
+var page=1,total=0;
+function getSize(){ return parseInt(document.getElementById('pageSize').value)||20; }
+
+// ---- searchable type combo ----
+var typeVal=0;
+function renderTypeList(filter){
+    var list=filter?TYPE_LIST.filter(t=>t.name.includes(filter)):TYPE_LIST;
+    var el=document.getElementById('typeList');
+    el.innerHTML=list.map(t=>`<div class="${t.id===0?'all':''} ${t.id===typeVal?'active':''}" data-id="${t.id}">${t.name}</div>`).join('');
+    el.style.display='block';
+    Array.from(el.children).forEach(d=>d.onclick=function(){selectType(parseInt(this.dataset.id))});
+}
+function showTypeList(){renderTypeList('')}
+function filterTypes(){var v=document.getElementById('typeInput').value;typeVal=0;renderTypeList(v)}
+function selectType(id){typeVal=id;document.getElementById('typeFilter').value=id;
+    document.getElementById('typeInput').value=id?TYPES[id]:'';
+    document.getElementById('typeList').style.display='none';search(1)}
+function typeKey(e){
+    var el=document.getElementById('typeList'), items=el.children;
+    if(e.key==='Escape'){el.style.display='none';return}
+    if(e.key==='Enter'){e.preventDefault();
+        var active=el.querySelector('.active');if(active)selectType(parseInt(active.dataset.id));return}
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+        e.preventDefault();var idx=-1;
+        for(var i=0;i<items.length;i++) if(items[i].classList.contains('active')){idx=i;break}
+        if(idx>=0)items[idx].classList.remove('active');
+        idx=e.key==='ArrowDown'?Math.min(idx+1,items.length-1):Math.max(idx-1,0);
+        items[idx].classList.add('active');items[idx].scrollIntoView({block:'nearest'});}
+}
+document.addEventListener('click',function(e){if(!document.getElementById('typeCombo').contains(e.target))
+    document.getElementById('typeList').style.display='none'});
+
+function search(p){ page=p||1; var size=getSize();
+    fetch('/api/admin/props?keyword='+encodeURIComponent(document.getElementById('keyword').value)+'&type='+typeVal+'&page='+page+'&size='+size)
+    .then(r=>r.json()).then(d=>{
     total=d.total;
+    document.getElementById('totalInfo').textContent='共 '+total+' 条，第 '+d.page+'/'+Math.ceil(total/size)+' 页';
     document.getElementById('tbody').innerHTML=d.list.map(p=>
-        `<tr><td>${p.id}</td><td>${p.name}</td><td>${p.vary}</td><td>${p.sell}</td><td>${p.buy}</td><td>${p.yb}</td><td>${p.sj}</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.effect||'')}">${(p.effect||'').substring(0,30)}</td></tr>`
+        `<tr><td>${p.id}</td><td>${p.name}</td><td>${TYPES[p.vary]||p.vary}</td><td>${p.sell}</td><td>${p.buy}</td><td>${p.yb}</td><td>${p.sj}</td><td style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(p.effect||'')}">${(p.effect||'').substring(0,30)}</td></tr>`
     ).join('');
     renderPager();
 });}
-function renderPager(){ let pages=Math.ceil(total/20), html=''; for(let i=1;i<=pages;i++) html+=`<button class="${i===page?'current':''}" onclick="search(${i})">${i}</button>`; document.getElementById('pager').innerHTML=html; }
+function renderPager(){
+    var pages=Math.ceil(total/getSize()); if(pages<=1){document.getElementById('pager').innerHTML='';return;}
+    var html='', s=Math.max(1,page-5), e=Math.min(pages,page+5);
+    if(s>1){ html+=btn(1); if(s>2) html+='<span style="padding:0 4px">...</span>'; }
+    for(var i=s;i<=e;i++) html+=btn(i);
+    if(e<pages){ if(e<pages-1) html+='<span style="padding:0 4px">...</span>'; html+=btn(pages); }
+    if(page>1) html=`<button onclick="search(${page-1})">«</button>`+html;
+    if(page<pages) html+=`<button onclick="search(${page+1})">»</button>`;
+    document.getElementById('pager').innerHTML=html;
+}
+function btn(i){ return `<button class="${i===page?'current':''}" onclick="search(${i})">${i}</button>`; }
 search(1);
 </script>
 </body>

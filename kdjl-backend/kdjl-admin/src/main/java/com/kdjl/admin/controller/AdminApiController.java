@@ -58,10 +58,11 @@ public class AdminApiController {
     @GetMapping("/props")
     public Map<String, Object> props(
             @RequestParam(defaultValue = "") String keyword,
+            @RequestParam(defaultValue = "0") int type,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
-        List<Map<String, Object>> list = adminService.browseProps(keyword, page, size);
-        long total = adminService.countProps(keyword);
+        List<Map<String, Object>> list = adminService.browseProps(keyword, type, page, size);
+        long total = adminService.countProps(keyword, type);
         return Map.of("list", list, "total", total, "page", page, "size", size);
     }
 
