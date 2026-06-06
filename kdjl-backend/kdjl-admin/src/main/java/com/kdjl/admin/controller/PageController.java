@@ -35,4 +35,7 @@ public class PageController {
 
     @GetMapping("/announcements")
     public String announcements() { return "announcements/list"; }
+
+    @GetMapping("/initial-bag")
+    public String initialBag() { return "initial-bag/list"; }
 }

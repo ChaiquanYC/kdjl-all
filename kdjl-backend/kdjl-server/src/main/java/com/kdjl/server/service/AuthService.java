@@ -30,6 +30,7 @@ public class AuthService {
     private final SkillRepository skillRepo;
     private final OnlineTimeService onlineTimeService;
     private final PlayerService playerService;
+    private final InitialBagConfigRepository initialBagConfigRepo;
     private Set<String> badWords;
 
     public AuthService(PlayerRepository playerRepository,
@@ -42,7 +43,8 @@ public class AuthService {
                        SkillSysRepository skillSysRepo,
                        SkillRepository skillRepo,
                        OnlineTimeService onlineTimeService,
-                       PlayerService playerService) {
+                       PlayerService playerService,
+                       InitialBagConfigRepository initialBagConfigRepo) {
         this.playerRepository = playerRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userPetRepo = userPetRepo;
@@ -54,6 +56,7 @@ public class AuthService {
         this.skillRepo = skillRepo;
         this.onlineTimeService = onlineTimeService;
         this.playerService = playerService;
+        this.initialBagConfigRepo = initialBagConfigRepo;
         loadBadWords();
     }
 
@@ -274,11 +277,20 @@ public class AuthService {
 
     private void addStarterItems(int playerId) {
         long now = System.currentTimeMillis() / 1000;
-        List<UserBag> items = new ArrayList<>();
-        items.add(makeItem(playerId, 1L, 1, 5, now));   // 治疗药水(小) x5
-        items.add(makeItem(playerId, 4L, 1, 5, now));   // 魔法药水(小) x5
-        items.add(makeItem(playerId, 149L, 1, 3, now)); // 金波姆·精灵球 x3
-        bagRepo.saveAll(items);
+        List<InitialBagConfig> configs = initialBagConfigRepo.findAllByEnabledTrueOrderBySortOrderAscIdAsc();
+        if (!configs.isEmpty()) {
+            List<UserBag> items = new ArrayList<>();
+            for (InitialBagConfig config : configs) {
+                items.add(makeItem(playerId, config.getPropId(), 1, config.getCount(), now));
+            }
+            bagRepo.saveAll(items);
+        } else {
+            List<UserBag> items = new ArrayList<>();
+            items.add(makeItem(playerId, 1L, 1, 5, now));
+            items.add(makeItem(playerId, 4L, 1, 5, now));
+            items.add(makeItem(playerId, 149L, 1, 3, now));
+            bagRepo.saveAll(items);
+        }
     }
 
     private UserBag makeItem(int playerId, Long propId, int vary, int sums, long stime) {
