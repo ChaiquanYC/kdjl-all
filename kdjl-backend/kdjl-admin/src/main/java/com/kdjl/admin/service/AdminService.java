@@ -739,7 +739,7 @@ public class AdminService {
             m.put("propId", c.getPropId());
             m.put("count", c.getCount());
             m.put("sortOrder", c.getSortOrder());
-            m.put("enabled", c.getEnabled());
+            m.put("enabled", Boolean.TRUE.equals(c.getEnabled()) ? 1 : 0);
             m.put("remark", c.getRemark());
             return m;
         }).collect(Collectors.toList());
@@ -759,7 +759,7 @@ public class AdminService {
             c.setPropId(toLong(data.get("propId")));
             c.setCount(data.containsKey("count") ? toInt(data.get("count")) : 1);
             c.setSortOrder(data.containsKey("sortOrder") ? toInt(data.get("sortOrder")) : 0);
-            c.setEnabled(data.containsKey("enabled") ? (toInt(data.get("enabled")) == 1 ? 1 : 0) : 1);
+            c.setEnabled(data.containsKey("enabled") ? toInt(data.get("enabled")) == 1 : true);
             c.setRemark(data.containsKey("remark") ? str(data.get("remark")) : null);
             return c;
         }).collect(Collectors.toList());
