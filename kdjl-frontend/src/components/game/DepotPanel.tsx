@@ -7,6 +7,8 @@ import BagColumn from './BagColumn';
 import ResourceBar from './ResourceBar';
 import ShopFooter, { FooterBtn } from './ShopFooter';
 import CategorySelect from './CategorySelect';
+import ItemTooltip, { useTooltipProps } from './ItemTooltip';
+import BagTooltip from './BagTooltip';
 import { CATEGORIES } from './shopConstants';
 import { filterByCat } from './shopUtils';
 import type { BagItemBase } from './ShopTypes';
@@ -15,12 +17,36 @@ import styles from './DepotPanel.module.css';
 
 interface ItemRaw extends BagItemBase {
   varyname?: number; name?: string; img?: string; category?: string;
+  effect?: string; effectDesc?: string; requires?: string; requiresDesc?: string;
+  pluseffect?: string; pluseffectDesc?: string; usages?: string;
+  propsColor?: number; postion?: number; plusflag?: number; propslock?: number;
+  expire?: string; series?: string; serieseffect?: string;
 }
 
 function mergeItems(raw: BagItemBase[], propsMap: Record<number, import('@/types').PropsItem>): ItemRaw[] {
   return raw.map(r => {
     const p = propsMap[r.propId];
-    return { ...r, name: p?.name, img: p?.img, varyname: p?.varyname, category: p?.category };
+    return {
+      ...r,
+      name: p?.name,
+      img: p?.img,
+      varyname: p?.varyname,
+      category: p?.category,
+      effect: p?.effect,
+      effectDesc: p?.effectDesc,
+      requires: p?.requires,
+      requiresDesc: p?.requiresDesc,
+      pluseffect: p?.pluseffect,
+      pluseffectDesc: p?.pluseffectDesc,
+      usages: p?.usages,
+      propsColor: p?.propscolor ? Number(p.propscolor) : undefined,
+      postion: p?.postion,
+      plusflag: p?.plusflag,
+      propslock: p?.propslock,
+      expire: p?.expire ? String(p.expire) : undefined,
+      series: p?.series,
+      serieseffect: p?.serieseffect,
+    };
   });
 }
 
@@ -41,6 +67,8 @@ export default function DepotPanel() {
   const [selDepot, setSelDepot] = useState<number | null>(null);
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
+  const [tooltip, setTooltip] = useState<{ item: any; x: number; y: number } | null>(null);
+  const [bagTooltip, setBagTooltip] = useState<any>(null);
 
   const maxBag = player?.maxBag ?? 30;
   const maxDepot = 50;
@@ -96,6 +124,7 @@ export default function DepotPanel() {
             { icon: '/images/ui/icon01.jpg', label: '元宝', value: player?.yb ?? 0 },
             { icon: '/images/ui/icon02.jpg', label: '金币', value: player?.money ?? 0 },
           ]} />
+          {tooltip && <ItemTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
         </>
       }
     >
@@ -112,7 +141,8 @@ export default function DepotPanel() {
                 <tr><td colSpan={4} className={layoutStyles.empty}>仓库中没有物品</td></tr>
               ) : filterDepot.map(item => (
                 <tr key={item.id} className={`${layoutStyles.row} ${selDepot === item.id ? layoutStyles.rowSel : ''}`}
-                  onClick={() => { setSelDepot(item.id); setSelBag(null); setCount(item.count); }}>
+                  onClick={() => { setSelDepot(item.id); setSelBag(null); setCount(item.count); }}
+                  {...useTooltipProps(setTooltip, item)}>
                   <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
                   <td className={styles.tdName}>{item.name ?? `道具#${item.propId}`}</td>
                   <td className={styles.tdPrice}>{item.sell ?? 0}</td>
@@ -133,10 +163,12 @@ export default function DepotPanel() {
 
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelDepot(null); setCount(item.count); }}
+        onTooltipChange={setBagTooltip}
         extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} showLabel />}
         listClassName={styles.itemListH}
         footer={<div className={`${layoutStyles.colFoot} ${styles.colFoot}`}>背包空间：{bagTotal}/{maxBag}</div>}
       />
+      <BagTooltip item={bagTooltip} onTimeout={() => setBagTooltip(null)} />
     </ShopLayout>
   );
 }

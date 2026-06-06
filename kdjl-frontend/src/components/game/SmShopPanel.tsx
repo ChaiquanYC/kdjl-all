@@ -1,15 +1,15 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
-import ConfirmDialog from './ConfirmDialog';
 import BagColumn from './BagColumn';
 import ResourceBar from './ResourceBar';
 import ShopFooter, { FooterBtn } from './ShopFooter';
 import CategorySelect from './CategorySelect';
 import ItemTooltip, { useTooltipProps } from './ItemTooltip';
+import BagTooltip from './BagTooltip';
 import { CATEGORIES } from './shopConstants';
 import { filterByCat } from './shopUtils';
 import type { ShopItem, BagItemMerged } from './ShopTypes';
@@ -37,8 +37,8 @@ export default function SmShopPanel() {
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
   const [bagCat, setBagCat] = useState(0);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
   const [tooltip, setTooltip] = useState<{ item: any; x: number; y: number } | null>(null);
+  const [bagTooltip, setBagTooltip] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
@@ -92,12 +92,16 @@ export default function SmShopPanel() {
 
   const handleBuy = () => {
     if (!selShop) { setMsg('请先选择商品'); return; }
-    setConfirmDialog({ message: `确定购买 ${count}个商品？`, onConfirm: () => { doBuy(); setConfirmDialog(null); } });
+    if (confirm(`确定购买 ${count}个商品？`)) {
+      doBuy();
+    }
   };
 
   const handleSell = () => {
     if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
-    setConfirmDialog({ message: `确定卖出 ${count}个物品？`, onConfirm: () => { doSell(); setConfirmDialog(null); } });
+    if (confirm(`确定卖出 ${count}个物品？`)) {
+      doSell();
+    }
   };
 
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
@@ -167,16 +171,12 @@ export default function SmShopPanel() {
       {/* Right column — bag */}
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+        onTooltipChange={setBagTooltip}
         listVariant="fixed" listClassName={styles.itemListSize}
         extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
       />
+      <BagTooltip item={bagTooltip} onTimeout={() => setBagTooltip(null)} />
     </ShopLayout>
-      <ConfirmDialog
-        open={confirmDialog !== null}
-        message={confirmDialog?.message ?? ''}
-        onConfirm={() => confirmDialog?.onConfirm()}
-        onCancel={() => setConfirmDialog(null)}
-      />
     </>
   );
 }

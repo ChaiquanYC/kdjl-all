@@ -3,8 +3,8 @@
 .colHeader img{height:25px}
 
 /* Column widths */
-.thName{width:100px}.tdName{width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.thPrice{width:55px}.tdPrice{width:55px}
+.thName{width:85px}.tdName{width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.thPrice{width:70px}.tdPrice{width:70px}
 .thCount{}.tdCount{}
 
 /* Footer — left-aligned for bag space info */

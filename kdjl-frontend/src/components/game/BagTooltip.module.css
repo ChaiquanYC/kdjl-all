@@ -1,9 +1,14 @@
-.tooltip {
-  position: fixed;
-  z-index: 999;
+/* Fixed-position tooltip for bag items — matches PHP baginfo div */
+.bagTooltip {
+  position: absolute;
+  top: 100px;
+  right: 10px;
+  z-index: 20;
   font-size: 12px;
   line-height: 20px;
   pointer-events: none;
+}
+.bagTooltip table {
   border-collapse: collapse;
 }
 .tipBorderTd {

@@ -1,14 +1,15 @@
-import { useEffect, useState, useMemo, type ReactNode } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import { systips } from '@/stores/systipsStore';
 import ShopLayout from './ShopLayout';
-import ConfirmDialog from './ConfirmDialog';
 import BagColumn from './BagColumn';
 import ResourceBar from './ResourceBar';
 import ShopFooter, { FooterBtn } from './ShopFooter';
 import CategorySelect from './CategorySelect';
+import ItemTooltip, { useTooltipProps } from './ItemTooltip';
+import BagTooltip from './BagTooltip';
 import { CATEGORIES } from './shopConstants';
 import { filterByCat } from './shopUtils';
 import type { ShopItem, BagItemBase, BagItemMerged } from './ShopTypes';
@@ -28,9 +29,19 @@ function mergeWithProps(base: BagItemBase, propsMap: Record<number, import('@/ty
     requires: p?.requires,
     requiresDesc: p?.requiresDesc,
     pluseffect: p?.pluseffect,
+    pluseffectDesc: p?.pluseffectDesc,
     usages: p?.usages,
     propsColor: p?.propscolor ? Number(p.propscolor) : undefined,
     postion: p?.postion,
+    plusflag: p?.plusflag,
+    pluspid: p?.pluspid,
+    plusget: p?.plusget,
+    plusnum: p?.plusnum,
+    series: p?.series,
+    serieseffect: p?.serieseffect,
+    serieseffectDesc: p?.serieseffectDesc,
+    propslock: p?.propslock,
+    expire: p?.expire ? String(p.expire) : undefined,
   };
 }
 
@@ -51,7 +62,8 @@ export default function ShopPanel() {
   const [msg, setMsg] = useState<string | null>(null);
   const [shopCat, setShopCat] = useState(0);
   const [bagCat, setBagCat] = useState(0);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
+  const [tooltip, setTooltip] = useState<{ item: any; x: number; y: number } | null>(null);
+  const [bagTooltip, setBagTooltip] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
@@ -98,20 +110,18 @@ export default function ShopPanel() {
 
   const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
     const cost = (currency === 'money' ? item.buy : (item.prestige ?? 0)) * count;
-    setConfirmDialog({
-      message: `确定购买 ${count}个 ${item.name}？共${cost}${currency === 'money' ? '金币' : '威望'}`,
-      onConfirm: () => { doBuy(item, currency); setConfirmDialog(null); },
-    });
+    if (confirm(`确定购买 ${count}个 ${item.name}？共${cost}${currency === 'money' ? '金币' : '威望'}`)) {
+      doBuy(item, currency);
+    }
   };
 
   const handleSell = () => {
     if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
     const item = bagItems.find(i => i.id === selBag);
     if (!item) return;
-    setConfirmDialog({
-      message: `确定卖出 ${count}个 ${item.name}？共${(item.sell ?? 0) * count}金币`,
-      onConfirm: () => { doSell(item); setConfirmDialog(null); },
-    });
+    if (confirm(`确定卖出 ${count}个 ${item.name}？共${(item.sell ?? 0) * count}金币`)) {
+      doSell(item);
+    }
   };
 
   if (loading) return <div className={layoutStyles.loading}>加载中...</div>;
@@ -135,6 +145,7 @@ export default function ShopPanel() {
           <ResourceBar items={[
             { icon: '/images/ui/icon02.jpg', label: tab === 1 ? '金币' : '威望', value: tab === 1 ? (player?.money ?? 0) : (player?.prestige ?? 0) },
           ]} />
+          {tooltip && <ItemTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
         </>
       }
     >
@@ -151,7 +162,8 @@ export default function ShopPanel() {
                 <tr><td colSpan={4} className={layoutStyles.empty}>暂无商品</td></tr>
               ) : displayItems.map(item => (
                 <tr key={item.id} className={`${layoutStyles.row} ${selShop === item.id ? layoutStyles.rowSel : ''}`}
-                  onClick={() => { setSelShop(item.id); setSelBag(null); }}>
+                  onClick={() => { setSelShop(item.id); setSelBag(null); }}
+                  {...useTooltipProps(setTooltip, item)}>
                   <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
                   <td className={styles.tdName}>{item.name}</td>
                   <td className={styles.tdPrice}>{tab === 1 ? item.buy : item.prestige}</td>
@@ -169,15 +181,11 @@ export default function ShopPanel() {
 
       <BagColumn items={filterBag} selId={selBag}
         onSelect={item => { setSelBag(item.id); setSelShop(null); }}
+        onTooltipChange={setBagTooltip}
         extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
       />
+      <BagTooltip item={bagTooltip} onTimeout={() => setBagTooltip(null)} />
     </ShopLayout>
-      <ConfirmDialog
-        open={confirmDialog !== null}
-        message={confirmDialog?.message ?? ''}
-        onConfirm={() => confirmDialog?.onConfirm()}
-        onCancel={() => setConfirmDialog(null)}
-      />
     </>
   );
 }

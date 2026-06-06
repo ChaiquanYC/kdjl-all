@@ -1,9 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
-import ConfirmDialog from './ConfirmDialog';
 import layoutStyles from './ShopLayout.module.css';
 import styles from './AuctionPanel.module.css';
 
@@ -38,7 +37,6 @@ export default function AuctionPanel() {
   const [sellBuyer, setSellBuyer] = useState('');
   const [showSellPanel, setShowSellPanel] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
 
   const auctionType = tab === 2 ? 'sj' : tab === 3 ? 'yb' : 'gold';
 
@@ -72,16 +70,12 @@ export default function AuctionPanel() {
     const total = item.price * qty;
     const fee = Math.round(total * feeRate);
     const currencyName = auctionType === 'sj' ? '水晶' : auctionType === 'yb' ? '元宝' : '金币';
-    setConfirmDialog({
-      message: `购买 ${item.name} x${qty}？\n单价: ${item.price} ${currencyName}\n总价: ${total} ${currencyName}\n手续费: ${fee} (${feeRate * 100}%)`,
-      onConfirm: () => {
-        apiPost('/auction/buy/' + selAuc, { type: auctionType, quantity: qty }).then((res: any) => {
-          if (res.code === 0) { toast('购买成功！手续费 ' + (res.data?.fee || 0)); setSelAuc(null); setBuyQty('1'); fetchData(); triggerRefresh(); }
-          else toast(res.message);
-        }).catch((e: any) => toast(e?.response?.data?.message || '购买失败'));
-        setConfirmDialog(null);
-      },
-    });
+    if (confirm(`购买 ${item.name} x${qty}？\n单价: ${item.price} ${currencyName}\n总价: ${total} ${currencyName}\n手续费: ${fee} (${feeRate * 100}%)`)) {
+      apiPost('/auction/buy/' + selAuc, { type: auctionType, quantity: qty }).then((res: any) => {
+        if (res.code === 0) { toast('购买成功！手续费 ' + (res.data?.fee || 0)); setSelAuc(null); setBuyQty('1'); fetchData(); triggerRefresh(); }
+        else toast(res.message);
+      }).catch((e: any) => toast(e?.response?.data?.message || '购买失败'));
+    }
   };
 
   const handleSell = () => {
@@ -109,30 +103,22 @@ export default function AuctionPanel() {
 
   const handleCancel = () => {
     if (!selMyAuc) { toast('请先选择要取回的物品'); return; }
-    setConfirmDialog({
-      message: '确定取回选中的拍卖物品吗？',
-      onConfirm: () => {
-        apiPost('/auction/cancel/' + selMyAuc).then((res: any) => {
-          if (res.code === 0) { toast('已取回'); setSelMyAuc(null); fetchData(); triggerRefresh(); }
-          else toast(res.message);
-        }).catch((e: any) => toast(e?.response?.data?.message || '取回失败'));
-        setConfirmDialog(null);
-      },
-    });
+    if (confirm('确定取回选中的拍卖物品吗？')) {
+      apiPost('/auction/cancel/' + selMyAuc).then((res: any) => {
+        if (res.code === 0) { toast('已取回'); setSelMyAuc(null); fetchData(); triggerRefresh(); }
+        else toast(res.message);
+      }).catch((e: any) => toast(e?.response?.data?.message || '取回失败'));
+    }
   };
 
   const handleRenew = () => {
     if (!selMyAuc) { toast('请先选择要续拍的物品'); return; }
-    setConfirmDialog({
-      message: '确定续拍选中的物品吗？（续拍3小时）',
-      onConfirm: () => {
-        apiPost('/auction/renew/' + selMyAuc).then((res: any) => {
-          if (res.code === 0) { toast('续拍成功！'); setSelMyAuc(null); fetchData(); }
-          else toast(res.message);
-        }).catch((e: any) => toast(e?.response?.data?.message || '续拍失败'));
-        setConfirmDialog(null);
-      },
-    });
+    if (confirm('确定续拍选中的物品吗？（续拍3小时）')) {
+      apiPost('/auction/renew/' + selMyAuc).then((res: any) => {
+        if (res.code === 0) { toast('续拍成功！'); setSelMyAuc(null); fetchData(); }
+        else toast(res.message);
+      }).catch((e: any) => toast(e?.response?.data?.message || '续拍失败'));
+    }
   };
 
   const handleWithdraw = () => {
@@ -144,16 +130,12 @@ export default function AuctionPanel() {
     if (pm > 0) parts.push(`金币: ${pm}`);
     if (psj > 0) parts.push(`水晶: ${psj}`);
     if (pyb > 0) parts.push(`元宝: ${pyb}`);
-    setConfirmDialog({
-      message: `确定提取拍卖所资金吗？\n${parts.join('\n')}`,
-      onConfirm: () => {
-        apiPost('/auction/withdraw').then((res: any) => {
-          if (res.code === 0) { toast('提取成功！'); fetchData(); triggerRefresh(); }
-          else toast(res.message);
-        }).catch((e: any) => toast(e?.response?.data?.message || '提取失败'));
-        setConfirmDialog(null);
-      },
-    });
+    if (confirm(`确定提取拍卖所资金吗？\n${parts.join('\n')}`)) {
+      apiPost('/auction/withdraw').then((res: any) => {
+        if (res.code === 0) { toast('提取成功！'); fetchData(); triggerRefresh(); }
+        else toast(res.message);
+      }).catch((e: any) => toast(e?.response?.data?.message || '提取失败'));
+    }
   };
 
   const formatTime = (sec: number | undefined) => {
@@ -337,12 +319,6 @@ export default function AuctionPanel() {
           </div>
         </div>
       )}
-      <ConfirmDialog
-        open={confirmDialog !== null}
-        message={confirmDialog?.message ?? ''}
-        onConfirm={() => confirmDialog?.onConfirm()}
-        onCancel={() => setConfirmDialog(null)}
-      />
     </>
   );
 }

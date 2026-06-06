@@ -85,6 +85,9 @@ public class Props {
     @Column(length = 255)
     private String serieseffect;
 
+    @Column
+    private Integer expire;
+
     public Long getId() { return id; }
     public String getName() { return name; }
     public String getRequires() { return requires; }
@@ -111,4 +114,5 @@ public class Props {
     public Integer getPropslock() { return propslock; }
     public String getSeries() { return series; }
     public String getSerieseffect() { return serieseffect; }
+    public Integer getExpire() { return expire; }
 }

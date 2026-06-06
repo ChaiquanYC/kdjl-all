@@ -17,15 +17,17 @@ public class ShopService {
     private final UserBagRepository bagRepo;
     private final ShopOrderRepository orderRepo;
     private final PlayerExtRepository playerExtRepo;
+    private final BagService bagService;
 
     public ShopService(PropsRepository propsRepo, PlayerRepository playerRepo,
                        UserBagRepository bagRepo, ShopOrderRepository orderRepo,
-                       PlayerExtRepository playerExtRepo) {
+                       PlayerExtRepository playerExtRepo, BagService bagService) {
         this.propsRepo = propsRepo;
         this.playerRepo = playerRepo;
         this.bagRepo = bagRepo;
         this.orderRepo = orderRepo;
         this.playerExtRepo = playerExtRepo;
+        this.bagService = bagService;
     }
 
     /** PHP shop types: props(金币道具), equip(金币装备), prestige(威望道具), zprestige(威望装备), yb(元宝), sj(灵石), vip */
@@ -70,6 +72,11 @@ public class ShopService {
                 m.put("sell", p.getSell());
                 int cat = p.getVaryname() != null ? p.getVaryname() : 0;
                 m.put("category", BagService.CATEGORIES.getOrDefault(cat, "其他" + cat));
+                // Pre-resolved descriptions
+                m.put("effectDesc", bagService.resolveEffect(p.getEffect(), p.getVaryname()));
+                m.put("requiresDesc", bagService.resolveRequires(p.getRequires(), p.getVaryname()));
+                m.put("pluseffectDesc", bagService.resolvePlusEffect(p.getPluseffect()));
+                m.put("usagesDesc", bagService.resolveUsages(p.getUsages()));
                 return m;
             }).collect(Collectors.toList());
     }

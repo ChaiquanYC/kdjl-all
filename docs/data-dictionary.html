@@ -30,7 +30,7 @@ code{font-family:'Cascadia Code','Consolas',monospace;font-size:.8rem;background
 <div class="container">
 
 <h1>KDJL 数据字典 — 完整字段含义与 PHP 源码使用参考<br><small>
-  涵盖 12 张核心表，117 字段详解，PHP 读写位置标注 | 基于 PHP 319 源文件 + MySQL Schema 逐字段分析 | 2026-05-22
+  涵盖 12 张核心表，150+ 字段详解，PHP 读写位置标注 | 基于 PHP 319 源文件 + MySQL Schema 逐字段分析 | 2026-06-06
 </small></h1>
 
 <!-- ============ player ============ -->
@@ -331,44 +331,73 @@ code{font-family:'Cascadia Code','Consolas',monospace;font-size:.8rem;background
 
 <!-- ============ userbag ============ -->
 <h2>4. userbag (背包表)</h2>
-<div class="note">PHP: <code>$_pm['user']->getUserBagById($uid)</code></div>
+<div class="note">PHP: <code>$_pm['user']->getUserBagById($uid)</code><br>
+<b>拼音缩写</b>: zbing = 装备(zhuangbei)+ing | zbpets = 装备+宠物 | psell/pyb/psj = 拍卖(pai)+sell/yb/sj | pstime/petime = 拍卖+stime/etime | bsum = 仓库(?) + sum</div>
 
 <table>
-<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
-<tr><td><code>pid</code></td><td>道具ID (→ props.id)</td><td class="php-ref">关联 props 获取名称/效果/价格</td></tr>
-<tr><td><code>uid</code></td><td>所属玩家ID</td><td>—</td></tr>
-<tr><td><code>sums</code></td><td><b>堆叠数量</b></td><td class="php-ref">可堆叠道具 vary=1 累加; 不可堆叠 vary=2 固定1</td></tr>
-<tr><td><code>vary</code></td><td><b>1=可堆叠(消耗品) 2=不可堆叠(装备/技能书)</b></td><td class="php-ref">getBag.php: 分类过滤; sellBag.php: 批量出售只处理 vary=1</td></tr>
-<tr><td><code>zbing</code></td><td><b>0=未装备 1=已装备到宠物</b></td><td class="php-ref">usedProps.php: 穿戴→ set zbing=1; 卸下→ set zbing=0</td></tr>
-<tr><td><code>zbpets</code></td><td>装备在哪个宠物上 (userbb.id)</td><td class="php-ref">usedProps.php: 穿戴时设置; 卸下时清零</td></tr>
-<tr><td><code>sell</code></td><td>售价 (金币)</td><td class="php-ref">sellBag.php: 出售时加到玩家金币</td></tr>
-<tr><td><code>stime</code></td><td>获得时间戳</td><td>—</td></tr>
-<tr><td><code>pyb</code></td><td>拍卖元宝价</td><td class="php-ref">拍卖行系统</td></tr>
-<tr><td><code>psell</code></td><td>拍卖出售标记</td><td>—</td></tr>
-<tr><td><code>pstime/petime</code></td><td>拍卖开始/结束时间</td><td class="php-ref">paisellGate.php 使用</td></tr>
-<tr><td><code>cantrade</code></td><td>可否交易</td><td>—</td></tr>
-<tr><td><code>holeInfo</code></td><td>镶嵌孔信息</td><td class="php-ref">装备镶嵌宝石系统</td></tr>
+<tr><th width="14%">字段</th><th width="10%">拼音来源</th><th width="36%">含义</th><th width="40%">PHP 使用说明</th></tr>
+<tr><td><code>id</code> <span class="tag tag-pk">PK</span></td><td>—</td><td>背包记录唯一ID</td><td>—</td></tr>
+<tr><td><code>pid</code></td><td>props id</td><td>道具类型ID (→ props.id)</td><td class="php-ref">关联 props 获取名称/效果/价格</td></tr>
+<tr><td><code>uid</code></td><td>user id</td><td>所属玩家ID (→ player.id)</td><td>—</td></tr>
+<tr><td><code>sums</code></td><td>sum</td><td><b>堆叠数量</b></td><td class="php-ref">可堆叠道具 vary=1 累加; 不可堆叠 vary=2 固定1; 0=已用完</td></tr>
+<tr><td><code>vary</code></td><td>vary</td><td><b>1=可堆叠(消耗品) 2=不可堆叠(装备/技能书)</b></td><td class="php-ref">getBag.php: 分类过滤; sellBag.php: 批量出售只处理 vary=1</td></tr>
+<tr><td><code>zbing</code></td><td>装备(zhuangbei)+ing</td><td><b>0=未装备 1=已装备到宠物</b></td><td class="php-ref">usedProps.php: 穿戴→ set zbing=1; 卸下→ set zbing=0</td></tr>
+<tr><td><code>zbpets</code></td><td>装备+宠物(pets)</td><td>装备在哪个宠物上 (→ userbb.id)</td><td class="php-ref">usedProps.php: 穿戴时设置; 卸下时清零</td></tr>
+<tr><td><code>sell</code></td><td>sell</td><td>售价 (金币)</td><td class="php-ref">sellBag.php: 出售时加到玩家金币</td></tr>
+<tr><td><code>stime</code></td><td>start time</td><td>获得时间戳 (用于计算过期)</td><td>—</td></tr>
+<tr><td><code>cantrade</code></td><td>can trade</td><td>交易状态: 0=遵循props.propslock规则 1=可交易 2=不可交易</td><td class="php-ref">equipment.v1.php: tooltip显示可交易/不可交易</td></tr>
+<tr><td><code>F_item_hole_info</code></td><td>Field item hole info</td><td><b>宝石镶嵌信息</b> (格式: "hits:60%,hitsmp:60%,crit:25%")</td><td class="php-ref">equipment.v1.php: getZbCardAttrib() 显示卡槽和宝石效果</td></tr>
+<tr><td><code>plus_tms_eft</code></td><td>附加(plus)+次数(times)+效果(effect)</td><td><b>强化效果数据</b> (格式: "等级,属性值" 如 "1,1000")</td><td class="php-ref">equipment.v1.php: tms() 查询强化等级和加成属性</td></tr>
+<tr><td><code>psell</code></td><td>拍卖(pai)+sell</td><td>拍卖行挂售的<b>金币</b>价格 (0=未挂售)</td><td class="php-ref">paisellGate.php: 金币拍卖</td></tr>
+<tr><td><code>pyb</code></td><td>拍卖+元宝(yb)</td><td>拍卖行挂售的<b>元宝</b>价格 (0=未挂售)</td><td class="php-ref">ybsellGate.php: 元宝拍卖</td></tr>
+<tr><td><code>psj</code></td><td>拍卖+水晶(sj)</td><td>拍卖行挂售的<b>水晶</b>价格 (0=未挂售)</td><td class="php-ref">Pai_Mod.php: 水晶拍卖显示</td></tr>
+<tr><td><code>pstime</code></td><td>拍卖+start time</td><td>拍卖开始时间戳</td><td class="php-ref">paisellGate.php: 拍卖上架时间</td></tr>
+<tr><td><code>petime</code></td><td>拍卖+end time</td><td>拍卖结束时间戳</td><td class="php-ref">paisellGate.php: 拍卖到期时间</td></tr>
+<tr><td><code>psum</code></td><td>拍卖+sum</td><td>拍卖挂售数量</td><td class="php-ref">paisellGate.php: 拍卖数量</td></tr>
+<tr><td><code>bsum</code></td><td>仓库(base)+sum</td><td>仓库存放数量 (与sums分开管理)</td><td class="php-ref">cangku_Mod.php: 仓库系统</td></tr>
+<tr><td><code>buycode</code></td><td>buy code</td><td>购买码/交易验证码 (bigint)</td><td>交易系统验证用</td></tr>
 </table>
 
 <!-- ============ props ============ -->
 <h2>5. props (道具定义表)</h2>
+<div class="note"><b>拼音缩写</b>: postion = position(拼写错误) | pluseffect = plus+effect(附加效果) | plusflag = plus+flag(可强化标记) | pluspid = plus+pid(强化材料) | plusnum = plus+num(卡槽数) | propscolor = props+color(品质颜色) | propslock = props+lock(锁定) | zhekouyb = 折扣(zhekou)+元宝(yb)</div>
 
 <table>
-<tr><th width="12%">字段</th><th width="38%">含义</th><th width="50%">PHP 使用说明</th></tr>
-<tr><td><code>vary</code></td><td><b>1=可堆叠(消耗品) 2=不可堆叠</b></td><td class="php-ref">同 userbag.vary; 决定掉落时新增还是累加</td></tr>
-<tr><td><code>varyname</code></td><td><b>物品类别</b></td><td class="php-ref"><b>关键字段</b>: 0=普通 1=辅助 2=增益 3=捕捉 4=收集 5=技能书 7=卡片 8=进化 9=装备 10=合成 20=传承道具<br>usedProps.php: <code>$rs['varyname']==9</code> 走装备逻辑</td></tr>
-<tr><td><code>name</code></td><td>道具名称</td><td class="php-ref">所有界面显示</td></tr>
-<tr><td><code>effect</code></td><td><b>效果定义</b> (核心字段)</td><td class="php-ref"><code>"hp:200"</code> 回血; <code>"mp:500"</code> 回蓝; <code>"catch:1|2|3:5%:2"</code> 捕捉; <code>"openmap:2"</code> 解锁地图; <code>"chuanc:X"</code> 传承珠; <code>"skills:X"</code> 技能保留</td></tr>
-<tr><td><code>usages</code></td><td>使用条件描述</td><td class="php-ref">展示给玩家的文本 "战斗中可使用"</td></tr>
-<tr><td><code>requires</code></td><td><b>使用要求</b></td><td class="php-ref">装备: <code>"lv:10,wx:3"</code> → 等级≥10且五行=水<br>技能书: <code>"1:1:only:bbid"</code> → 宠物等级≥1, 五行匹配, 专属技能</td></tr>
-<tr><td><code>buy</code></td><td>金币购买价格</td><td class="php-ref">Props_Mod.php: 金币商店</td></tr>
-<tr><td><code>yb</code></td><td>元宝购买价格</td><td class="php-ref">Shopsm_Mod.php: 元宝商店</td></tr>
-<tr><td><code>sell</code></td><td>出售价格</td><td class="php-ref">sellBag.php: 卖价</td></tr>
-<tr><td><code>postion</code></td><td><b>装备槽位 0-10</b></td><td class="php-ref">0=武器 1=衣服 2=头盔 3=鞋子 4=项链 5=戒指左 6=戒指右 7=护腕 8=腰带 9=特殊 10=翅膀</td></tr>
-<tr><td><code>img</code></td><td>图标文件名</td><td class="php-ref">如 "1.gif" → /images/props/1.gif</td></tr>
-<tr><td><code>pluseffect</code></td><td>附加效果</td><td class="php-ref">强化/精炼时附加属性</td></tr>
-<tr><td><code>propscolor</code></td><td>品质颜色</td><td class="php-ref">1白 2绿 3蓝 4紫 5橙 6红</td></tr>
-<tr><td><code>merge</code></td><td>是否为求婚道具 (1=是)</td><td class="php-ref">Merge_Mod.php: 求婚界面筛选 merge=1 的道具</td></tr>
+<tr><th width="14%">字段</th><th width="10%">拼音来源</th><th width="36%">含义</th><th width="40%">PHP 使用说明</th></tr>
+<tr><td><code>id</code> <span class="tag tag-pk">PK</span></td><td>—</td><td>道具类型唯一ID (被 userbag.pid 引用)</td><td>—</td></tr>
+<tr><td><code>name</code></td><td>name</td><td>道具名称</td><td class="php-ref">所有界面显示</td></tr>
+<tr><td><code>vary</code></td><td>vary</td><td><b>1=可堆叠(消耗品) 2=不可堆叠(装备)</b></td><td class="php-ref">同 userbag.vary; 决定掉落时新增还是累加</td></tr>
+<tr><td><code>varyname</code></td><td>vary+name</td><td><b>物品类别</b> (关键字段)</td><td class="php-ref">0=普通 1=辅助 2=增益 3=捕捉 4=收集 5=技能书 7=卡片 8=进化 <b>9=装备</b> 10=合成 20=传承 22=魔法石 25=宝石 26=洗练石<br>usedProps.php: <code>$rs['varyname']==9</code> 走装备逻辑</td></tr>
+<tr><td><code>effect</code></td><td>effect</td><td><b>效果定义</b> (核心字段)</td><td class="php-ref">装备: <code>"ac:100,mc:50"</code> 攻击+100防御+50<br>道具: <code>"hp:200"</code> 回血; <code>"mp:500"</code> 回蓝<br>捕捉: <code>"catch:1|2|3:5%:2"</code><br>钥匙: <code>"openmap:2"</code> 解锁地图</td></tr>
+<tr><td><code>requires</code></td><td>requires</td><td><b>使用要求</b></td><td class="php-ref">装备: <code>"lv:10,wx:3"</code> → 等级≥10且五行=水<br>宝石: <code>"postion:1|2|3,color:2"</code> → 可镶嵌头部/身体/脚部,蓝色装备<br>技能书: <code>"1:1:only:bbid"</code> → 专属技能</td></tr>
+<tr><td><code>usages</code></td><td>usages</td><td>物品描述/说明文字</td><td class="php-ref">展示给玩家的文本 "战斗中可使用"</td></tr>
+<tr><td><code>sell</code></td><td>sell</td><td>出售价格 (金币)</td><td class="php-ref">sellBag.php: 卖价, 加到 player.money</td></tr>
+<tr><td><code>buy</code></td><td>buy</td><td>金币购买价格</td><td class="php-ref">Props_Mod.php: 金币商店</td></tr>
+<tr><td><code>yb</code></td><td>元宝(yuanbao)</td><td>元宝购买价格</td><td class="php-ref">Shopsm_Mod.php: 元宝商城</td></tr>
+<tr><td><code>sj</code></td><td>水晶(shuijing)</td><td>水晶购买价格</td><td class="php-ref">Shopsm_Mod.php: 水晶商城</td></tr>
+<tr><td><code>prestige</code></td><td>prestige</td><td>声望购买价格</td><td class="php-ref">Prestige_Mod.php: 声望商店</td></tr>
+<tr><td><code>zhekouyb</code></td><td>折扣(zhekou)+元宝(yb)</td><td>折扣元宝价格 (限时抢购)</td><td class="php-ref">Shopsm_Mod.php: 限时抢购标签页</td></tr>
+<tr><td><code>vip</code></td><td>vip</td><td>VIP等级需求</td><td class="php-ref">vipbuyGate.php: VIP商店</td></tr>
+<tr><td><code>postion</code></td><td>position(拼写错误)</td><td><b>装备槽位</b>: 0=翅膀 1=头部 2=身体 3=脚部 4=武器 5=项链 6=戒指 7=翅膀 8=手镯 9=宝石 10=道具</td><td class="php-ref">usedProps.php: 装备穿戴位置检查</td></tr>
+<tr><td><code>img</code></td><td>image</td><td>图标文件名</td><td class="php-ref">如 "1.gif" → /images/props/1.gif</td></tr>
+<tr><td><code>propscolor</code></td><td>props+color</td><td>品质颜色</td><td class="php-ref"><b>1=白色 2=蓝色 3=紫色 4=绿色 5=金色 6=橙色</b><br>equipment.v1.php: tooltip名称颜色</td></tr>
+<tr><td><code>propslock</code></td><td>props+lock</td><td>锁定状态</td><td class="php-ref"><b>0=锁定(不可交易) 非0=未锁定(可交易)</b><br>equipment.v1.php: cantrade=0时检查此字段</td></tr>
+<tr><td><code>pluseffect</code></td><td>plus+effect</td><td><b>极品属性/附加属性</b></td><td class="php-ref">格式: <code>"ac:50,hp:200,hitshp:5%"</code><br>equipment.v1.php: getZbPlusAttrib() 显示蓝色属性</td></tr>
+<tr><td><code>plusflag</code></td><td>plus+flag</td><td>是否可强化</td><td class="php-ref"><b>1=可强化 0=不可强化</b><br>zbstrength_Mod.php: 强化界面筛选</td></tr>
+<tr><td><code>pluspid</code></td><td>plus+pid</td><td>强化所需材料道具ID (→ props.id)</td><td class="php-ref">zbstrength_Mod.php: 强化消耗的道具</td></tr>
+<tr><td><code>plusget</code></td><td>plus+get</td><td>强化成功后获得的属性加成</td><td class="php-ref">ext_zbstrength.php: 强化成功后增加的属性</td></tr>
+<tr><td><code>plusnum</code></td><td>plus+num</td><td><b>卡槽数量</b> (宝石孔数)</td><td class="php-ref">equipment.v1.php: getZbCardAttrib() 显示"卡槽数: 0/3"</td></tr>
+<tr><td><code>series</code></td><td>series</td><td><b>套装信息</b></td><td class="php-ref">格式: <code>"套装名:部件ID1|部件ID2|..."</code><br>如 <code>"龙王套装:1001|1002|1003|1004"</code><br>equipment.v1.php: getZbSeriesAttrib()</td></tr>
+<tr><td><code>serieseffect</code></td><td>series+effect</td><td><b>套装激活效果</b></td><td class="php-ref">格式: <code>"hp:500,ac:100,hp:1000"</code><br>按穿戴件数激活: 2件+500HP, 3件+100攻击, 4件+1000HP<br>equipment.v1.php: getZbSeriesAttrib()</td></tr>
+<tr><td><code>expire</code></td><td>expire</td><td>过期时长 (秒)</td><td class="php-ref"><b>0=永久, >0=从获得起多少秒后过期</b><br>getPropsInfo.php: get_remianing_time_str() 计算到期时间<br>equipment.v1.php: set_expiration()</td></tr>
+<tr><td><code>stime</code></td><td>start time</td><td>物品上架/可用的起始时间戳</td><td>联合主键的一部分</td></tr>
+<tr><td><code>endtime</code></td><td>end time</td><td>物品下架/失效的时间戳</td><td>—</td></tr>
+<tr><td><code>timelimit</code></td><td>time limit</td><td>时间限制 (使用次数或时间)</td><td class="php-ref">Shopsm_Mod.php: 限时抢购筛选 timelimit>0</td></tr>
+<tr><td><code>merge</code></td><td>merge</td><td>合体/关联ID</td><td class="php-ref">合体类道具关联的宠物ID; Merge_Mod.php: 求婚界面筛选 merge=1</td></tr>
+<tr><td><code>note</code></td><td>note</td><td>备注 (内部用)</td><td>—</td></tr>
+<tr><td><code>honor</code></td><td>honor</td><td>荣誉值购买需求</td><td>—</td></tr>
+<tr><td><code>contribution</code></td><td>contribution</td><td>贡献值购买需求</td><td>—</td></tr>
+<tr><td><code>guild_level</code></td><td>guild level</td><td>家族等级购买需求</td><td>—</td></tr>
 </table>
 
 <!-- ============ skill / skillsys ============ -->

@@ -163,6 +163,7 @@ public class BagService {
             m.put("merge", p.getMerge());
             m.put("stime", p.getStime());
             m.put("endtime", p.getEndtime());
+            m.put("expire", p.getExpire());
             // Pre-resolved descriptions (computed once, cached for all clients)
             m.put("effectDesc", resolveEffect(p.getEffect(), p.getVaryname()));
             m.put("requiresDesc", resolveRequires(p.getRequires(), p.getVaryname()));
@@ -3470,7 +3471,7 @@ public class BagService {
     /**
      * Parse comma-separated key:value pairs — matches PHP getZbPlusAttrib loop.
      */
-    private String resolveAttribList(String raw) {
+    public String resolveAttribList(String raw) {
         if (raw == null || raw.isEmpty() || "0".equals(raw)) return "";
         StringBuilder sb = new StringBuilder();
         for (String part : raw.split(",")) {
@@ -3492,7 +3493,7 @@ public class BagService {
 
     // ==================== Effect / PlusEffect / Requires resolvers ====================
 
-    private String resolveEffect(String effect, Integer varyname) {
+    public String resolveEffect(String effect, Integer varyname) {
         if (effect == null || effect.isEmpty() || "0".equals(effect)) return "";
         // Equipment (varyname=9) and skill books (varyname=5) use ZB-style attribute display
         if (varyname != null && (varyname == 9 || varyname == 5)) {
@@ -3573,7 +3574,7 @@ public class BagService {
         return sb.toString();
     }
 
-    private String resolvePlusEffect(String pluseffect) {
+    public String resolvePlusEffect(String pluseffect) {
         return resolveAttribList(pluseffect);
     }
 
@@ -3605,7 +3606,7 @@ public class BagService {
      * - Gem (varyname=25): "postion:X|Y,color:Z" → "镶嵌部位：头部/身体，只能镶嵌蓝色装备"
      * - Others: generic "key:value" pairs
      */
-    private String resolveRequires(String requires, Integer varyname) {
+    public String resolveRequires(String requires, Integer varyname) {
         if (requires == null || requires.isEmpty() || "0".equals(requires)) return "";
         if (varyname != null && varyname == 9) {
             return resolveEquipRequires(requires);
@@ -3704,7 +3705,7 @@ public class BagService {
         return sb.toString();
     }
 
-    private String resolveUsages(String usages) {
+    public String resolveUsages(String usages) {
         if (usages == null || usages.isEmpty() || "0".equals(usages)) return "";
         return usages;
     }

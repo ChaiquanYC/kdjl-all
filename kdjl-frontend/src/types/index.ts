@@ -95,6 +95,7 @@ export interface PropsItem {
   merge?: number;
   stime?: number;
   endtime?: number;
+  expire?: number;
   effectDesc?: string;
   requiresDesc?: string;
   usagesDesc?: string;

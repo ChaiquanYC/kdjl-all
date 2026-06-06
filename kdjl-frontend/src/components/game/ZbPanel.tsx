@@ -1,13 +1,14 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '@/api/client';
 import { useGameStore } from '@/stores/gameStore';
 import { useAuthStore } from '@/stores/authStore';
 import ShopLayout from './ShopLayout';
-import ConfirmDialog from './ConfirmDialog';
 import BagColumn from './BagColumn';
 import ResourceBar from './ResourceBar';
 import ShopFooter, { FooterBtn } from './ShopFooter';
 import CategorySelect from './CategorySelect';
+import ItemTooltip, { useTooltipProps } from './ItemTooltip';
+import BagTooltip from './BagTooltip';
 import { CATEGORIES } from './shopConstants';
 import { filterByCat } from './shopUtils';
 import type { ShopItem, BagItemMerged } from './ShopTypes';
@@ -53,7 +54,8 @@ export default function ZbPanel() {
   const [count, setCount] = useState(1);
   const [msg, setMsg] = useState<string | null>(null);
   const [bagCat, setBagCat] = useState(0);
-  const [confirmDialog, setConfirmDialog] = useState<{ message: ReactNode; onConfirm: () => void } | null>(null);
+  const [tooltip, setTooltip] = useState<{ item: any; x: number; y: number } | null>(null);
+  const [bagTooltip, setBagTooltip] = useState<any>(null);
 
   // Strengthen state
   const [selEquip, setSelEquip] = useState<number | null>(null);
@@ -103,12 +105,16 @@ export default function ZbPanel() {
   };
 
   const handleBuy = (item: ShopItem, currency: 'money' | 'prestige') => {
-    setConfirmDialog({ message: `确定购买 ${count}个 ${item.name}？`, onConfirm: () => { doBuy(item, currency); setConfirmDialog(null); } });
+    if (confirm(`确定购买 ${count}个 ${item.name}？`)) {
+      doBuy(item, currency);
+    }
   };
 
   const handleSell = () => {
     if (!selBag) { setMsg('请先选择要卖出的物品'); return; }
-    setConfirmDialog({ message: `确定卖出 ${count}个物品？`, onConfirm: () => { doSell(); setConfirmDialog(null); } });
+    if (confirm(`确定卖出 ${count}个物品？`)) {
+      doSell();
+    }
   };
 
   // Strengthen logic
@@ -164,6 +170,7 @@ export default function ZbPanel() {
           <ResourceBar items={[
             { icon: '/images/ui/icon02.jpg', label: tab <= 2 ? (tab === 1 ? '金币' : '威望') : '金币', value: tab === 2 ? (player?.prestige ?? 0) : (player?.money ?? 0) },
           ]} />
+          {tooltip && <ItemTooltip item={tooltip.item} x={tooltip.x} y={tooltip.y} />}
         </>
       }
     >
@@ -184,7 +191,8 @@ export default function ZbPanel() {
                     <tr><td colSpan={4} className={layoutStyles.empty}>暂无装备</td></tr>
                   ) : displayItems.map(item => (
                     <tr key={item.id} className={`${layoutStyles.row} ${selShop === item.id ? layoutStyles.rowSel : ''}`}
-                      onClick={() => { setSelShop(item.id); setSelBag(null); }}>
+                      onClick={() => { setSelShop(item.id); setSelBag(null); }}
+                      {...useTooltipProps(setTooltip, item)}>
                       <td className={layoutStyles.tdIcon}>{item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}</td>
                       <td className={styles.tdName}>{item.name}</td>
                       <td className={styles.tdPrice}>{tab === 1 ? item.buy : item.prestige}</td>
@@ -202,9 +210,11 @@ export default function ZbPanel() {
 
           <BagColumn items={filterByCat(bagItems, bagCat, CATEGORIES)} selId={selBag}
             onSelect={item => { setSelBag(item.id); setSelShop(null); setCount(item.count); }}
+            onTooltipChange={setBagTooltip}
             title={<span className={styles.colTitle}>我的背包</span>}
             extraHeader={<CategorySelect value={bagCat} onChange={setBagCat} />}
           />
+          <BagTooltip item={bagTooltip} onTimeout={() => setBagTooltip(null)} />
         </>
       ) : (
         // Tab 3: Strengthen
@@ -223,7 +233,8 @@ export default function ZbPanel() {
                     const level = item.plusTimesEffect ? parseInt(item.plusTimesEffect.split(',')[0]) : 0;
                     return (
                       <tr key={item.id} className={`${layoutStyles.row} ${selEquip === item.id ? layoutStyles.rowSel : ''}`}
-                        onClick={() => { setSelEquip(item.id); setSelAuxiliary(null); }}>
+                        onClick={() => { setSelEquip(item.id); setSelAuxiliary(null); }}
+                        {...useTooltipProps(setTooltip, item)}>
                         <td className={layoutStyles.tdIcon}>{item.img ? <img src={`/images/props/${item.img}`} alt="" /> : null}</td>
                         <td className={styles.tdName}>{item.name}</td>
                         <td className={styles.tdPrice}>+{level}</td>
@@ -286,12 +297,6 @@ export default function ZbPanel() {
         </>
       )}
     </ShopLayout>
-      <ConfirmDialog
-        open={confirmDialog !== null}
-        message={confirmDialog?.message ?? ''}
-        onConfirm={() => confirmDialog?.onConfirm()}
-        onCancel={() => setConfirmDialog(null)}
-      />
     </>
   );
 }

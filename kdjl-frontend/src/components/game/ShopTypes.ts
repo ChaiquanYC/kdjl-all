@@ -53,16 +53,20 @@ export interface ShopItem {
   prestige?: number;
   img?: string;
   effect?: string;
+  effectDesc?: string;
   varyname?: number;
   category?: string;
   stime?: number;
   timelimit?: number;
   requires?: string;
+  requiresDesc?: string;
   propsColor?: number;
   vary?: number;
   postion?: number;
   plusflag?: number;
   pluseffect?: string;
+  pluseffectDesc?: string;
   sell?: number;
   usages?: string;
+  usagesDesc?: string;
 }

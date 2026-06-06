@@ -12,6 +12,7 @@ interface BagColumnProps {
   items: BagColumnItem[];
   selId: number | null;
   onSelect: (item: BagColumnItem) => void;
+  onTooltipChange?: (item: BagColumnItem | null) => void;
   title?: ReactNode;
   extraHeader?: ReactNode;
   listVariant?: 'scroll' | 'fixed';
@@ -24,13 +25,13 @@ const HEADER = (
   <thead><tr>
     <th className={layoutStyles.thIcon}></th>
     <th className={styles.thName}>名称</th>
-    <th className={styles.thPrice}>卖价</th>
+    <th className={styles.thPrice}>卖出金币</th>
     <th className={styles.thCount}>数量</th>
   </tr></thead>
 );
 
 export default function BagColumn({
-  items, selId, onSelect, title, extraHeader, listVariant = 'scroll', listClassName, className, footer,
+  items, selId, onSelect, onTooltipChange, title, extraHeader, listVariant = 'scroll', listClassName, className, footer,
 }: BagColumnProps) {
   const player = useAuthStore(s => s.player);
   const maxBag = player?.maxBag ?? 30;
@@ -43,7 +44,9 @@ export default function BagColumn({
       ) : filtered.map(item => (
         <tr key={item.id}
           className={`${layoutStyles.row} ${selId === item.id ? layoutStyles.rowSel : ''}`}
-          onClick={() => onSelect(item)}>
+          onClick={() => onSelect(item)}
+          onMouseEnter={() => onTooltipChange?.(item)}
+          onMouseLeave={() => onTooltipChange?.(null)}>
           <td className={layoutStyles.tdIcon}>
             {item.varyname ? <img src={`/images/ui/bag/${item.varyname}.gif`} alt="" /> : null}
           </td>
