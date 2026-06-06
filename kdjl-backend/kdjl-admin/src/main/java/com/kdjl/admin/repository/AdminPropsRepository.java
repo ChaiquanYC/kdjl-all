@@ -22,4 +22,10 @@ public interface AdminPropsRepository extends JpaRepository<Props, Long> {
 
     @Query("SELECT p FROM Props p WHERE :kw = '' OR p.name LIKE CONCAT('%', :kw, '%')")
     List<Props> searchByName(@Param("kw") String keyword, Pageable pageable);
+
+    @Query("SELECT p FROM Props p WHERE (:kw = '' OR p.name LIKE CONCAT('%', :kw, '%')) AND p.varyname = :type")
+    Page<Props> searchByKeywordAndType(@Param("kw") String keyword, @Param("type") int type, Pageable pageable);
+
+    @Query("SELECT COUNT(p) FROM Props p WHERE (:kw = '' OR p.name LIKE CONCAT('%', :kw, '%')) AND p.varyname = :type")
+    long countByKeywordAndType(@Param("kw") String keyword, @Param("type") int type);
 }

@@ -215,8 +215,12 @@ public class AdminService {
                 yield Map.of("success", true, "type", "元宝", "amount", amount);
             }
             case "sj" -> {
-                PlayerExt ext = playerExtRepo.findById(playerId).orElse(null);
-                if (ext == null) yield Map.of("error", "玩家扩展数据不存在");
+                PlayerExt ext = playerExtRepo.findById(playerId).orElseGet(() -> {
+                    PlayerExt e = new PlayerExt();
+                    e.setPlayerId(playerId); e.setSj(0); e.setMerge(0);
+                    e.setRequestMerge(0); e.setRequest(0);
+                    return playerExtRepo.save(e);
+                });
                 ext.setSj((ext.getSj() != null ? ext.getSj() : 0) + amount);
                 playerExtRepo.save(ext);
                 yield Map.of("success", true, "type", "水晶", "amount", amount);
@@ -226,13 +230,16 @@ public class AdminService {
     }
 
     // ---- Props browser ----
-    public List<Map<String, Object>> browseProps(String keyword, int page, int size) {
+    public List<Map<String, Object>> browseProps(String keyword, int type, int page, int size) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1)).stream()
+        var pageResult = type > 0
+            ? propsRepo.searchByKeywordAndType(kw, type, Pageable.ofSize(size).withPage(page - 1))
+            : propsRepo.searchByKeyword(kw, Pageable.ofSize(size).withPage(page - 1));
+        return pageResult.stream()
             .map(p -> {
                 Map<String, Object> m = new LinkedHashMap<>();
                 m.put("id", p.getId()); m.put("name", p.getName());
-                m.put("vary", p.getVary()); m.put("sell", p.getSell());
+                m.put("vary", p.getVaryname()); m.put("sell", p.getSell());
                 m.put("buy", p.getBuy()); m.put("yb", p.getYb());
                 m.put("sj", p.getSj()); m.put("effect", p.getEffect());
                 m.put("usages", p.getUsages());
@@ -240,9 +247,9 @@ public class AdminService {
             }).collect(Collectors.toList());
     }
 
-    public long countProps(String keyword) {
+    public long countProps(String keyword, int type) {
         String kw = keyword != null ? keyword : "";
-        return propsRepo.countByKeyword(kw);
+        return type > 0 ? propsRepo.countByKeywordAndType(kw, type) : propsRepo.countByKeyword(kw);
     }
 
     // ---- Pet template browser ----
