@@ -266,4 +266,21 @@ public class AdminApiController {
     public Map<String, Object> resetOnlineReward(@RequestBody ResetRewardRequest req) {
         return adminService.resetPlayerOnlineReward(req.playerId());
     }
+
+    // --- 初始背包配置 ---
+
+    @GetMapping("/initial-bag")
+    public Map<String, Object> listInitialBag() {
+        return adminService.getInitialBagConfigs();
+    }
+
+    @PostMapping("/initial-bag")
+    public Map<String, Object> saveInitialBag(@RequestBody List<Map<String, Object>> configs) {
+        return adminService.saveInitialBagConfigs(configs);
+    }
+
+    @DeleteMapping("/initial-bag/{id}")
+    public Map<String, Object> deleteInitialBag(@PathVariable Integer id) {
+        return adminService.deleteInitialBagConfig(id);
+    }
 }

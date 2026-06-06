@@ -25,6 +25,7 @@ public class AdminService {
     private final AdminTaskAcceptRepository taskAcceptRepo;
     private final AdminOnlineRewardConfigRepository rewardConfigRepo;
     private final AdminAnnouncementRepository announcementRepo;
+    private final AdminInitialBagConfigRepository initialBagConfigRepo;
 
     public AdminService(AdminPlayerRepository playerRepo, AdminPlayerExtRepository playerExtRepo,
                         AdminUserPetRepository petRepo, AdminUserBagRepository bagRepo,
@@ -32,7 +33,8 @@ public class AdminService {
                         AdminFightLogRepository fightLogRepo, AdminYbLogRepository ybLogRepo,
                         AdminTaskDefRepository taskDefRepo, AdminTaskAcceptRepository taskAcceptRepo,
                         AdminOnlineRewardConfigRepository rewardConfigRepo,
-                        AdminAnnouncementRepository announcementRepo) {
+                        AdminAnnouncementRepository announcementRepo,
+                        AdminInitialBagConfigRepository initialBagConfigRepo) {
         this.playerRepo = playerRepo;
         this.playerExtRepo = playerExtRepo;
         this.petRepo = petRepo;
@@ -45,6 +47,7 @@ public class AdminService {
         this.taskAcceptRepo = taskAcceptRepo;
         this.rewardConfigRepo = rewardConfigRepo;
         this.announcementRepo = announcementRepo;
+        this.initialBagConfigRepo = initialBagConfigRepo;
     }
 
     // ---- Dashboard stats ----
@@ -430,6 +433,11 @@ public class AdminService {
         if (v instanceof Number n) return n.intValue();
         try { return Integer.parseInt(v.toString()); } catch (NumberFormatException e) { return null; }
     }
+    private Long toLong(Object v) {
+        if (v == null) return null;
+        if (v instanceof Number n) return n.longValue();
+        try { return Long.parseLong(v.toString()); } catch (NumberFormatException e) { return null; }
+    }
 
     // ---- CID / Xulie helpers ----
 
@@ -719,5 +727,55 @@ public class AdminService {
             a.setEndTime(s != null && !s.isBlank() ? LocalDateTime.parse(s) : null);
         }
         if (data.containsKey("broadcastInterval")) a.setBroadcastInterval(toInt(data.get("broadcastInterval")));
+    }
+
+    // ---- 初始背包配置 ----
+
+    public Map<String, Object> getInitialBagConfigs() {
+        List<InitialBagConfig> configs = initialBagConfigRepo.findAllByOrderBySortOrderAscIdAsc();
+        List<Map<String, Object>> list = configs.stream().map(c -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("id", c.getId());
+            m.put("propId", c.getPropId());
+            m.put("count", c.getCount());
+            m.put("sortOrder", c.getSortOrder());
+            m.put("enabled", c.getEnabled());
+            m.put("remark", c.getRemark());
+            return m;
+        }).collect(Collectors.toList());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("code", 0);
+        result.put("data", list);
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> saveInitialBagConfigs(List<Map<String, Object>> configs) {
+        List<InitialBagConfig> entities = configs.stream().map(data -> {
+            InitialBagConfig c = new InitialBagConfig();
+            if (data.containsKey("id") && data.get("id") != null) {
+                c.setId(toInt(data.get("id")));
+            }
+            c.setPropId(toLong(data.get("propId")));
+            c.setCount(data.containsKey("count") ? toInt(data.get("count")) : 1);
+            c.setSortOrder(data.containsKey("sortOrder") ? toInt(data.get("sortOrder")) : 0);
+            c.setEnabled(data.containsKey("enabled") ? (toInt(data.get("enabled")) == 1 ? 1 : 0) : 1);
+            c.setRemark(data.containsKey("remark") ? str(data.get("remark")) : null);
+            return c;
+        }).collect(Collectors.toList());
+        initialBagConfigRepo.saveAll(entities);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("code", 0);
+        result.put("message", "保存成功");
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> deleteInitialBagConfig(Integer id) {
+        initialBagConfigRepo.deleteById(id);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("code", 0);
+        result.put("message", "删除成功");
+        return result;
     }
 }

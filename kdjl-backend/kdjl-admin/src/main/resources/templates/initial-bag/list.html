@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>初始背包配置 - KDJL 后台管理</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="admin-layout" th:replace="~{fragments/sidebar :: sidebar('initial-bag')}">
+</div>
+<div class="main-content">
+    <h1>🎒 初始背包配置</h1>
+    <p style="color:#999; margin-bottom:20px;">配置新注册玩家的初始背包物品。新玩家注册时将自动获得这些物品。</p>
+
+    <div style="display:flex; gap:10px; margin-bottom:20px; align-items:center;">
+        <button id="addBtn" onclick="showAddModal()">➕ 添加物品</button>
+    </div>
+
+    <table>
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>道具ID</th>
+            <th>道具名称</th>
+            <th>数量</th>
+            <th>排序</th>
+            <th>状态</th>
+            <th>备注</th>
+            <th>更新时间</th>
+            <th>操作</th>
+        </tr>
+        </thead>
+        <tbody id="configList"></tbody>
+    </table>
+
+    <p id="emptyMsg" style="display:none; text-align:center; color:#999; margin-top:20px;">暂无配置</p>
+</div>
+
+<!-- 添加弹窗 -->
+<div id="addModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:30px; border-radius:8px; width:500px; max-width:90vw;">
+        <h3 style="margin-top:0;">添加初始物品</h3>
+        <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">搜索道具</label>
+            <input type="text" id="searchInput" placeholder="输入道具名称搜索..." style="width:100%; padding:8px; box-sizing:border-box;" oninput="searchProps()">
+            <div id="searchResults" style="max-height:200px; overflow-y:auto; border:1px solid #ddd; display:none; background:white;"></div>
+        </div>
+        <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">选中道具</label>
+            <div id="selectedProp" style="padding:8px; background:#f5f5f5; border-radius:4px; color:#999;">未选择</div>
+        </div>
+        <div style="display:flex; gap:15px; margin-bottom:15px;">
+            <div style="flex:1;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">数量</label>
+                <input type="number" id="itemCount" value="1" min="1" style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="flex:1;">
+                <label style="display:block; margin-bottom:5px; font-weight:bold;">排序</label>
+                <input type="number" id="itemSort" value="0" style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+        </div>
+        <div style="margin-bottom:15px;">
+            <label style="display:block; margin-bottom:5px; font-weight:bold;">备注</label>
+            <input type="text" id="itemRemark" placeholder="可选备注" style="width:100%; padding:8px; box-sizing:border-box;">
+        </div>
+        <div style="text-align:right;">
+            <button onclick="closeAddModal()" style="background:#ccc; color:#333;">取消</button>
+            <button onclick="submitAdd()" style="margin-left:8px;">确认添加</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedPropId = null;
+    let selectedPropName = '';
+    let allConfigs = [];
+
+    // 加载配置列表
+    async function loadConfig() {
+        const resp = await fetch('/api/admin/initial-bag');
+        const data = await resp.json();
+        allConfigs = data.list || [];
+        renderList();
+    }
+
+    function renderList() {
+        const tbody = document.getElementById('configList');
+        const emptyMsg = document.getElementById('emptyMsg');
+        if (allConfigs.length === 0) {
+            tbody.innerHTML = '';
+            emptyMsg.style.display = 'block';
+            return;
+        }
+        emptyMsg.style.display = 'none';
+        tbody.innerHTML = allConfigs.map(c => `
+            <tr>
+                <td>${c.id}</td>
+                <td>${c.propId}</td>
+                <td><strong>${c.propName}</strong></td>
+                <td>
+                    <input type="number" value="${c.count}" min="1"
+                        style="width:60px; padding:4px; text-align:center;"
+                        onchange="updateItem(${c.id}, 'count', this.value)">
+                </td>
+                <td>
+                    <input type="number" value="${c.sortOrder}"
+                        style="width:60px; padding:4px; text-align:center;"
+                        onchange="updateItem(${c.id}, 'sortOrder', this.value)">
+                </td>
+                <td>
+                    <button onclick="toggleEnabled(${c.id}, ${c.enabled})"
+                        style="padding:4px 12px; font-size:12px; ${c.enabled ? 'background:#28a745;' : 'background:#dc3545;'}">
+                        ${c.enabled ? '✅ 启用' : '❌ 禁用'}
+                    </button>
+                </td>
+                <td style="max-width:150px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${c.remark || ''}">${c.remark || '-'}</td>
+                <td style="font-size:12px; color:#999;">${c.updateTime || '-'}</td>
+                <td>
+                    <button onclick="deleteItem(${c.id})" style="background:#dc3545; padding:4px 12px; font-size:12px;">🗑️ 删除</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // 搜索道具
+    let searchTimer = null;
+    async function searchProps() {
+        const keyword = document.getElementById('searchInput').value.trim();
+        if (keyword.length < 1) {
+            document.getElementById('searchResults').style.display = 'none';
+            return;
+        }
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(async () => {
+            const resp = await fetch('/api/admin/items/search?keyword=' + encodeURIComponent(keyword));
+            const items = await resp.json();
+            const div = document.getElementById('searchResults');
+            if (items.length === 0) {
+                div.innerHTML = '<div style="padding:8px; color:#999;">未找到匹配道具</div>';
+            } else {
+                div.innerHTML = items.map(item => `
+                    <div style="padding:8px; cursor:pointer; border-bottom:1px solid #eee;"
+                        onmouseover="this.style.background='#f0f0f0'"
+                        onmouseout="this.style.background='white'"
+                        onclick="selectProp(${item.id}, '${item.name.replace(/'/g, "\\'")}')">
+                        <strong>${item.name}</strong> <span style="color:#999;">(ID: ${item.id})</span>
+                    </div>
+                `).join('');
+            }
+            div.style.display = 'block';
+        }, 300);
+    }
+
+    function selectProp(id, name) {
+        selectedPropId = id;
+        selectedPropName = name;
+        document.getElementById('selectedProp').innerHTML = `<strong>${name}</strong> <span style="color:#999;">(ID: ${id})</span>`;
+        document.getElementById('selectedProp').style.background = '#e8f5e9';
+        document.getElementById('searchResults').style.display = 'none';
+        document.getElementById('searchInput').value = '';
+    }
+
+    function showAddModal() {
+        selectedPropId = null;
+        selectedPropName = '';
+        document.getElementById('selectedProp').innerHTML = '未选择';
+        document.getElementById('selectedProp').style.background = '#f5f5f5';
+        document.getElementById('itemCount').value = 1;
+        document.getElementById('itemSort').value = 0;
+        document.getElementById('itemRemark').value = '';
+        document.getElementById('searchInput').value = '';
+        document.getElementById('searchResults').style.display = 'none';
+        document.getElementById('addModal').style.display = 'block';
+    }
+
+    function closeAddModal() {
+        document.getElementById('addModal').style.display = 'none';
+    }
+
+    async function submitAdd() {
+        if (!selectedPropId) {
+            alert('请先选择一个道具');
+            return;
+        }
+        const count = parseInt(document.getElementById('itemCount').value) || 1;
+        const sortOrder = parseInt(document.getElementById('itemSort').value) || 0;
+        const remark = document.getElementById('itemRemark').value.trim();
+
+        const resp = await fetch('/api/admin/initial-bag', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                propId: selectedPropId,
+                count: count,
+                sortOrder: sortOrder,
+                enabled: true,
+                remark: remark || selectedPropName
+            })
+        });
+        const result = await resp.json();
+        if (result.error) {
+            alert('错误: ' + result.error);
+            return;
+        }
+        closeAddModal();
+        loadConfig();
+    }
+
+    async function updateItem(id, field, value) {
+        const data = {id: id};
+        data[field] = parseInt(value) || 0;
+        const resp = await fetch('/api/admin/initial-bag', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        });
+        const result = await resp.json();
+        if (result.error) {
+            alert('错误: ' + result.error);
+            loadConfig();
+        }
+    }
+
+    async function toggleEnabled(id, currentEnabled) {
+        const resp = await fetch('/api/admin/initial-bag', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: id, enabled: !currentEnabled})
+        });
+        const result = await resp.json();
+        if (result.error) {
+            alert('错误: ' + result.error);
+        }
+        loadConfig();
+    }
+
+    async function deleteItem(id) {
+        if (!confirm('确定删除此初始物品配置？')) return;
+        const resp = await fetch('/api/admin/initial-bag/' + id, {method: 'DELETE'});
+        const result = await resp.json();
+        if (result.error) {
+            alert('错误: ' + result.error);
+        }
+        loadConfig();
+    }
+
+    // 页面加载时获取数据
+    loadConfig();
+</script>
+</body>
+</html>

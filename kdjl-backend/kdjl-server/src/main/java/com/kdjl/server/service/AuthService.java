@@ -277,19 +277,18 @@ public class AuthService {
 
     private void addStarterItems(int playerId) {
         long now = System.currentTimeMillis() / 1000;
-        // 从 initial_bag_config 表读取配置
         List<InitialBagConfig> configs = initialBagConfigRepo.findAllByEnabledTrueOrderBySortOrderAscIdAsc();
         if (!configs.isEmpty()) {
-            List<UserBag> items = configs.stream()
-                .map(c -> makeItem(playerId, c.getPropId(), 1, c.getCount(), now))
-                .collect(Collectors.toList());
+            List<UserBag> items = new ArrayList<>();
+            for (InitialBagConfig config : configs) {
+                items.add(makeItem(playerId, config.getPropId(), 1, config.getCount(), now));
+            }
             bagRepo.saveAll(items);
         } else {
-            // 兜底：如果没有配置，使用默认物品（兼容性）
             List<UserBag> items = new ArrayList<>();
-            items.add(makeItem(playerId, 1L, 1, 5, now));   // 治疗药水(小) x5
-            items.add(makeItem(playerId, 4L, 1, 5, now));   // 魔法药水(小) x5
-            items.add(makeItem(playerId, 149L, 1, 3, now)); // 金波姆·精灵球 x3
+            items.add(makeItem(playerId, 1L, 1, 5, now));
+            items.add(makeItem(playerId, 4L, 1, 5, now));
+            items.add(makeItem(playerId, 149L, 1, 3, now));
             bagRepo.saveAll(items);
         }
     }
