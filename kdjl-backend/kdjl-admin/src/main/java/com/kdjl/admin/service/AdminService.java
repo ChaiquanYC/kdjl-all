@@ -438,6 +438,12 @@ public class AdminService {
         if (v instanceof Number n) return n.longValue();
         try { return Long.parseLong(v.toString()); } catch (NumberFormatException e) { return null; }
     }
+    private Boolean toBool(Object v) {
+        if (v == null) return null;
+        if (v instanceof Boolean b) return b;
+        if (v instanceof Number n) return n.intValue() == 1;
+        return "true".equals(v.toString()) || "1".equals(v.toString());
+    }
 
     // ---- CID / Xulie helpers ----
 
@@ -737,10 +743,13 @@ public class AdminService {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("id", c.getId());
             m.put("propId", c.getPropId());
+            Props props = propsRepo.findById(c.getPropId()).orElse(null);
+            m.put("propName", props != null ? props.getName() : "未知道具");
             m.put("count", c.getCount());
             m.put("sortOrder", c.getSortOrder());
-            m.put("enabled", Boolean.TRUE.equals(c.getEnabled()) ? 1 : 0);
+            m.put("enabled", Boolean.TRUE.equals(c.getEnabled()));
             m.put("remark", c.getRemark());
+            m.put("updateTime", c.getUpdateTime() != null ? c.getUpdateTime().toString() : null);
             return m;
         }).collect(Collectors.toList());
         Map<String, Object> result = new LinkedHashMap<>();
@@ -750,23 +759,36 @@ public class AdminService {
     }
 
     @Transactional
-    public Map<String, Object> saveInitialBagConfigs(List<Map<String, Object>> configs) {
-        List<InitialBagConfig> entities = configs.stream().map(data -> {
-            InitialBagConfig c = new InitialBagConfig();
-            if (data.containsKey("id") && data.get("id") != null) {
-                c.setId(toInt(data.get("id")));
-            }
-            c.setPropId(toLong(data.get("propId")));
-            c.setCount(data.containsKey("count") ? toInt(data.get("count")) : 1);
-            c.setSortOrder(data.containsKey("sortOrder") ? toInt(data.get("sortOrder")) : 0);
-            c.setEnabled(data.containsKey("enabled") ? toInt(data.get("enabled")) == 1 : true);
-            c.setRemark(data.containsKey("remark") ? str(data.get("remark")) : null);
-            return c;
-        }).collect(Collectors.toList());
-        initialBagConfigRepo.saveAll(entities);
+    public Map<String, Object> saveInitialBagConfig(Map<String, Object> data) {
+        InitialBagConfig c = new InitialBagConfig();
+        c.setPropId(toLong(data.get("propId")));
+        c.setCount(data.containsKey("count") ? toInt(data.get("count")) : 1);
+        c.setSortOrder(data.containsKey("sortOrder") ? toInt(data.get("sortOrder")) : 0);
+        c.setEnabled(data.containsKey("enabled") ? toBool(data.get("enabled")) : true);
+        c.setRemark(data.containsKey("remark") ? str(data.get("remark")) : null);
+        initialBagConfigRepo.save(c);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("code", 0);
         result.put("message", "保存成功");
+        return result;
+    }
+
+    @Transactional
+    public Map<String, Object> updateInitialBagConfig(Map<String, Object> data) {
+        Integer id = toInt(data.get("id"));
+        InitialBagConfig c = id != null ? initialBagConfigRepo.findById(id).orElse(null) : null;
+        if (c == null) {
+            return Map.of("error", "配置不存在");
+        }
+        if (data.containsKey("propId")) c.setPropId(toLong(data.get("propId")));
+        if (data.containsKey("count")) c.setCount(toInt(data.get("count")));
+        if (data.containsKey("sortOrder")) c.setSortOrder(toInt(data.get("sortOrder")));
+        if (data.containsKey("enabled")) c.setEnabled(toBool(data.get("enabled")));
+        if (data.containsKey("remark")) c.setRemark(str(data.get("remark")));
+        initialBagConfigRepo.save(c);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("code", 0);
+        result.put("message", "更新成功");
         return result;
     }
 

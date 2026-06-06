@@ -79,7 +79,7 @@
     async function loadConfig() {
         const resp = await fetch('/api/admin/initial-bag');
         const data = await resp.json();
-        allConfigs = data.list || [];
+        allConfigs = data.data || [];
         renderList();
     }
 

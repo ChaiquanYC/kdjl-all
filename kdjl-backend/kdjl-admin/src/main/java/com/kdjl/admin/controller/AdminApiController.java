@@ -275,8 +275,13 @@ public class AdminApiController {
     }
 
     @PostMapping("/initial-bag")
-    public Map<String, Object> saveInitialBag(@RequestBody List<Map<String, Object>> configs) {
-        return adminService.saveInitialBagConfigs(configs);
+    public Map<String, Object> saveInitialBag(@RequestBody Map<String, Object> data) {
+        return adminService.saveInitialBagConfig(data);
+    }
+
+    @PutMapping("/initial-bag")
+    public Map<String, Object> updateInitialBag(@RequestBody Map<String, Object> data) {
+        return adminService.updateInitialBagConfig(data);
     }
 
     @DeleteMapping("/initial-bag/{id}")
