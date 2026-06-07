@@ -1,6 +1,16 @@
+import type { ReactNode } from 'react';
 import { PROPS_COLORS, SLOT_NAMES, TIP_COLORS } from './shopConstants';
 import { resolveEffect, parseRequires, getTradeStatus } from './shopUtils';
 import styles from './TooltipContent.module.css';
+
+/** Render text that may contain <br/> or <br> from PHP — convert to real line breaks */
+function renderBr(text: string): ReactNode {
+  const parts = text.split(/<br\s*\/?>/i);
+  if (parts.length === 1) return text;
+  return parts.map((p, i) => (
+    <span key={i}>{i > 0 && <br />}{p}</span>
+  ));
+}
 
 type TooltipItem = { name?: string; [key: string]: any };
 
@@ -70,6 +80,7 @@ export default function TooltipContent({ item }: TooltipContentProps) {
   const effect = (item as any).effectDesc || resolveEffect(item.effect);
   const pluseffect = (item as any).pluseffectDesc || resolveEffect((item as any).pluseffect);
   const req = parseRequires((item as any).requiresDesc || item.requires);
+  const usages = (item as any).usagesDesc || (item as any).usages;
   const slotName = item.postion != null ? SLOT_NAMES[item.postion] : null;
   const vn = item.varyname;
   const tradeStatus = getTradeStatus(item as any);
@@ -82,34 +93,67 @@ export default function TooltipContent({ item }: TooltipContentProps) {
           <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
           <div style={{ color: TIP_COLORS.gray }}>{tradeStatus}</div>
           {slotName && <div style={{ color: TIP_COLORS.base }}>{slotName}装备 ({((item as any).plusflag ?? 0) === 1 ? '可强化' : '不可强化'})</div>}
-          {effect && <div style={{ color: TIP_COLORS.base }}>{effect}</div>}
+          {effect && <div style={{ color: TIP_COLORS.base }}>{renderBr(effect)}</div>}
           {req && (req.wx || req.lv) && (
             <>
               {req.wx && <div style={{ color: TIP_COLORS.base }}>五行需求：{req.wx}系</div>}
               {req.lv && <div style={{ color: TIP_COLORS.base }}>需求等级：{req.lv}级</div>}
             </>
           )}
-          {pluseffect && <div style={{ color: TIP_COLORS.plus }}>{pluseffect}</div>}
+          {pluseffect && <div style={{ color: TIP_COLORS.plus }}>{renderBr(pluseffect)}</div>}
           {parseHoleInfo(item.holeInfo, item.plusnum).map((line, i) => (
             <div key={i} style={{ color: i === 0 ? TIP_COLORS.base : '#FF4444' }}>{line}</div>
           ))}
           {parseSeries(item.series, item.serieseffect).map((line, i) => (
             <div key={i} style={{ color: i === 0 ? '#FED625' : '#A8A7A4' }}>{line}</div>
           ))}
-          {(item as any).usages && <div style={{ color: TIP_COLORS.base }}>{(item as any).usages}</div>}
+          {usages && <div style={{ color: TIP_COLORS.base }}>{renderBr(usages)}</div>}
+          {(item as any).prestige != null && (item as any).prestige > 0 && (
+            <div style={{ color: TIP_COLORS.base }}>威望：{(item as any).prestige}</div>
+          )}
+        </>
+      ) : vn === 5 ? (
+        <>
+          <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
+          <div style={{ color: TIP_COLORS.gray }}>{tradeStatus}</div>
+          {effect && <div style={{ color: TIP_COLORS.base }}>效果：{renderBr(effect)}</div>}
+          {pluseffect && <div style={{ color: TIP_COLORS.plus }}>{renderBr(pluseffect)}</div>}
+          {usages && <div style={{ color: TIP_COLORS.base }}>{renderBr(usages)}</div>}
+        </>
+      ) : vn === 25 ? (
+        <>
+          <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
+          <div style={{ color: TIP_COLORS.gray }}>{tradeStatus}</div>
+          {req && (req.wx || req.lv) && (
+            <>
+              <div style={{ color: TIP_COLORS.base }}>镶嵌条件：</div>
+              {req.wx && <div style={{ color: TIP_COLORS.base, paddingLeft: 12 }}>五行需求：{req.wx}系</div>}
+              {req.lv && <div style={{ color: TIP_COLORS.base, paddingLeft: 12 }}>需求等级：{req.lv}级</div>}
+            </>
+          )}
+          {usages && <div style={{ color: TIP_COLORS.base }}>{renderBr(usages)}</div>}
+        </>
+      ) : vn === 22 ? (
+        <>
+          <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
+          <div style={{ color: TIP_COLORS.gray }}>{tradeStatus}</div>
+          <div style={{ color: TIP_COLORS.base }}>神秘的魔法石，<span style={{ color: '#14FD10' }}>魔法屋的芙蕾娅</span>可以帮你使用它哦。</div>
         </>
       ) : (
         <>
           <div className={styles.tipName} style={{ color: nameColor }}><b>{item.name}</b></div>
           <div style={{ color: TIP_COLORS.gray }}>{tradeStatus}</div>
-          {effect && <div style={{ color: TIP_COLORS.base }}>{effect}</div>}
+          {usages ? (
+            <div style={{ color: TIP_COLORS.base }}>{renderBr(usages)}</div>
+          ) : effect ? (
+            <div style={{ color: TIP_COLORS.base }}>效果：{renderBr(effect)}</div>
+          ) : null}
           {req && (req.wx || req.lv) && (
             <>
               {req.wx && <div style={{ color: TIP_COLORS.base }}>五行需求：{req.wx}系</div>}
               {req.lv && <div style={{ color: TIP_COLORS.base }}>需求等级：{req.lv}级</div>}
             </>
           )}
-          {(item as any).usages && <div style={{ color: TIP_COLORS.base }}>{(item as any).usages}</div>}
         </>
       )}
       {expireStr && <div style={{ color: TIP_COLORS.base }}>{expireStr}</div>}
