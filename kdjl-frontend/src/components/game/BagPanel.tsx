@@ -143,18 +143,16 @@ export default function BagPanel() {
   const filtered = items.filter(i => {
     if (i.count <= 0 || i.zbing === 1) return false;
     if (category === 0) return true;
-    const itemCat = i.category ?? '';
-    const filterCat = CATEGORIES[category]?.label ?? '';
-    if (!itemCat || !filterCat) return false;
-    return itemCat === filterCat || filterCat.startsWith(itemCat) || itemCat.startsWith(filterCat);
+    const varyList = CATEGORIES[category]?.vary ?? [];
+    if (varyList.length === 0) return true;
+    return varyList.includes(i.varyname ?? 0);
   });
 
   const usedCells = items.filter(i => i.count > 0 && i.zbing !== 1).length;
 
   const getCatLabel = (item: BagItemMerged) => {
-    if (!item.category) return '道具';
-    const c = CATEGORIES.find(c => c.vary.length > 0 && c.label.startsWith(item.category!));
-    return c?.label ?? item.category;
+    const c = CATEGORIES.find(c => c.vary.length > 0 && c.vary.includes(item.varyname ?? 0));
+    return c?.label ?? item.category ?? '道具';
   };
   const selectedItem = items.find(i => i.id === selectedId);
 

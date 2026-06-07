@@ -73,6 +73,17 @@ public class BagService {
         sszc.put(1, Map.of(6, 0.15, 8, 0.25, 9, 0.45));
         SET_BONUS_CONFIG.put("神圣战场套装", sszc);
     }
+
+    /**
+     * 道具使用场景限制表：varyname → 错误提示。
+     * 在此表中的道具不能从背包面板直接使用，只能在指定场景使用。
+     * 不在表中的道具可在背包自由使用。
+     */
+    private static final Map<Integer, String> BAG_RESTRICTIONS = Map.of(
+        1,  "辅助道具只能在战斗中使用！",
+        3,  "精灵球只能在战斗中使用！",
+        22, "占卜石请在占卜屋中使用！"
+    );
     private final SkillSysRepository skillSysRepo;
     private final SkillRepository skillRepo;
     private final WarPlayerRepository warPlayerRepo;
@@ -220,7 +231,13 @@ public class BagService {
         return useItem(playerId, bagItemId, petId, false);
     }
 
+    @Transactional
     public Map<String, Object> useItem(Long playerId, Long bagItemId, Long petId, boolean isJs) {
+        return useItem(playerId, bagItemId, petId, isJs ? "zhanbu" : "bag");
+    }
+
+    @Transactional
+    public Map<String, Object> useItem(Long playerId, Long bagItemId, Long petId, String context) {
         UserBag bagItem = bagRepo.findById(bagItemId)
             .orElseThrow(() -> new IllegalArgumentException("物品不存在"));
         if (!bagItem.getPlayerId().equals(playerId)) {
@@ -230,12 +247,15 @@ public class BagService {
         Props props = getPropsCached(bagItem.getPropId().longValue());
         if (props == null) throw new IllegalArgumentException("道具定义不存在");
 
-        // PHP usedProps.php:862 — magic stones must be used in divination house
-        if (props.getVaryname() != null && props.getVaryname() == 22 && !isJs) {
-            Map<String, Object> error = new LinkedHashMap<>();
-            error.put("error", "占卜石，请在占卜屋中占卜时使用！");
-            error.put("redirectTo", "zhanbu");
-            return error;
+        // 统一场景限制检查：非战斗/占卜场景下，限制特定 varyname
+        if (props.getVaryname() != null && !"battle".equals(context) && !"zhanbu".equals(context)) {
+            String restriction = BAG_RESTRICTIONS.get(props.getVaryname());
+            if (restriction != null) {
+                Map<String, Object> error = new LinkedHashMap<>();
+                error.put("error", restriction);
+                if (props.getVaryname() == 22) error.put("redirectTo", "zhanbu");
+                return error;
+            }
         }
 
         // PHP usedProps.php:1322 — crafting/blueprint (varyname==16)
@@ -326,6 +346,7 @@ public class BagService {
         // Handle giveitems/randitem chests (complex format with | and , delimiters)
         // PHP usedProps.php:764-781 — check for needkey prefix first
         String chestEffect = effect;
+        UserBag savedKeyItem = null;
         if (chestEffect.startsWith("needkey:")) {
             int commaIdx = chestEffect.indexOf(',');
             if (commaIdx > 0) {
@@ -340,7 +361,7 @@ public class BagService {
                     result.put("skipConsume", true);
                     return result;
                 }
-                decrementOrRemove(keyItem);
+                savedKeyItem = keyItem;
                 chestEffect = chestEffect.substring(commaIdx + 1);
             }
         }
@@ -351,26 +372,66 @@ public class BagService {
                 try {
                     int requiredLv = Integer.parseInt(requires.substring(3).trim());
                     Player player = playerRepo.findById(playerId.intValue()).orElse(null);
-                    if (player != null && player.getMbid() != null) {
-                        UserPet mainPet = userPetRepo.findById(player.getMbid().longValue()).orElse(null);
-                        if (mainPet == null || (mainPet.getLevel() != null && mainPet.getLevel() < requiredLv)) {
-                            result.put("error", "您没有达到相应的等级，不能开启该宝箱！");
-                            result.put("skipConsume", true);
-                            return result;
-                        }
+                    if (player == null || player.getMbid() == null) {
+                        result.put("error", "请先设置主战宠物！");
+                        result.put("skipConsume", true);
+                        return result;
+                    }
+                    UserPet mainPet = userPetRepo.findById(player.getMbid().longValue()).orElse(null);
+                    if (mainPet == null || (mainPet.getLevel() != null ? mainPet.getLevel() : 0) < requiredLv) {
+                        result.put("error", "您没有达到相应的等级，不能开启该宝箱！");
+                        result.put("skipConsume", true);
+                        return result;
                     }
                 } catch (NumberFormatException ignored) {}
             }
-            // PHP usedProps.php:730 — check bag has >= 3 free slots
+            // PHP usedProps.php:730 — check bag space
             Player player = playerRepo.findById(playerId.intValue()).orElse(null);
             int maxBag = player != null && player.getMaxBag() != null ? player.getMaxBag() : 30;
-            int currentItems = (int) bagRepo.findByPlayerId(playerId).stream()
+            List<UserBag> allBags = bagRepo.findByPlayerId(playerId);
+            int currentItems = (int) allBags.stream()
                 .filter(b -> b.getSums() != null && b.getSums() > 0 && (b.getZbing() == null || b.getZbing() == 0))
                 .count();
-            if (currentItems >= maxBag - 2) {
-                result.put("error", "背包空间不足（需要至少3格空位），当前" + currentItems + "/" + maxBag);
-                result.put("skipConsume", true);
-                return result;
+            boolean isGiveItems = chestEffect.startsWith("giveitems:");
+            // After consuming the chest, we gain 1 free slot
+            int freeAfterConsume = maxBag - currentItems + 1;
+            if (isGiveItems) {
+                // PHP usedProps.php:791 — need enough slots for ALL items
+                int newSlotsNeeded = 0;
+                Set<Long> countedProps = new HashSet<>();
+                for (UserBag b : allBags) {
+                    if (b.getSums() != null && b.getSums() > 0) countedProps.add(b.getPropId());
+                }
+                // Parse the items to count how many need NEW bag slots
+                String body = chestEffect.substring("giveitems:".length());
+                for (String s : body.split(",")) {
+                    String[] p = s.split(":");
+                    if (p.length < 2) continue;
+                    try {
+                        long pid = Long.parseLong(p[0].trim());
+                        if (!countedProps.contains(pid)) {
+                            newSlotsNeeded++;
+                            countedProps.add(pid); // avoid double-counting same propId
+                        }
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (freeAfterConsume < newSlotsNeeded) {
+                    result.put("error", "背包空间不足！需要" + newSlotsNeeded + "个空格，当前剩余" + freeAfterConsume + "格");
+                    result.put("skipConsume", true);
+                    return result;
+                }
+            } else {
+                // randitem only gives 1 item, need at least 1 free slot
+                if (freeAfterConsume < 1) {
+                    result.put("error", "背包空间不足，请先清理包裹！");
+                    result.put("skipConsume", true);
+                    return result;
+                }
+            }
+
+            // All checks passed — now consume the key (if any)
+            if (savedKeyItem != null) {
+                decrementOrRemove(savedKeyItem);
             }
 
             String prefix = chestEffect.startsWith("randitem:") ? "randitem:" : "giveitems:";
@@ -380,39 +441,54 @@ public class BagService {
             List<Map<String, Object>> givenItems = new ArrayList<>();
             boolean shouldAnnounce = false;
 
-            for (String itemStr : items) {
-                String[] parts = itemStr.split(":");
-                if (parts.length < 2) continue;
-                try {
-                    long givePropId = Long.parseLong(parts[0].trim());
-                    int giveCount = Integer.parseInt(parts[1].trim());
-                    if (isRandom) {
-                        // Random chest: probability is 1-in-N. parts: propId,count,prob,announceFlag
-                        int prob = parts.length >= 3 ? Integer.parseInt(parts[2].trim()) : 100;
+            if (isRandom) {
+                // PHP usedProps.php:824-856 — randitem: consume ONLY on hit
+                for (String itemStr : items) {
+                    String[] parts = itemStr.split(":");
+                    if (parts.length < 3) continue;
+                    try {
+                        long givePropId = Long.parseLong(parts[0].trim());
+                        int giveCount = Integer.parseInt(parts[1].trim());
+                        int prob = Integer.parseInt(parts[2].trim());
+                        if (prob < 1) prob = 1;
                         if ((int)(Math.random() * prob) >= 1) continue;
-                        // PHP usedProps.php:770,846 — announce when flag == 1 (2 = silent)
+                        // Hit! Consume the chest item first (matches PHP)
+                        decrementOrRemove(bagItem);
                         int announceFlag = parts.length >= 4 ? Integer.parseInt(parts[3].trim()) : 2;
                         if (announceFlag == 1) shouldAnnounce = true;
                         addItemToBag(playerId, givePropId, giveCount);
-                        givenItems.add(Map.of("propId", givePropId, "count", giveCount));
-                        // PHP usedProps.php: recursion — check if given item is also a chest
-                        openChestRecursive(playerId, givePropId, giveCount, givenItems);
+                        Props giveProps = getPropsCached(givePropId);
+                        String giveName = giveProps != null ? giveProps.getName() : "道具#" + givePropId;
+                        givenItems.add(Map.of("propId", givePropId, "count", giveCount, "name", giveName));
                         break; // randitem picks only ONE
-                    } else {
-                        // Fixed chest: all items guaranteed
+                    } catch (NumberFormatException ignored) {}
+                }
+                if (givenItems.isEmpty()) {
+                    // All probabilities missed — item NOT consumed (matches PHP)
+                    result.put("type", "chest");
+                    result.put("message", "很遗憾，这次什么都没有获得...");
+                    return result;
+                }
+            } else {
+                // PHP usedProps.php:783-823 — giveitems: consume FIRST, then give all items
+                decrementOrRemove(bagItem);
+                for (String itemStr : items) {
+                    String[] parts = itemStr.split(":");
+                    if (parts.length < 2) continue;
+                    try {
+                        long givePropId = Long.parseLong(parts[0].trim());
+                        int giveCount = Integer.parseInt(parts[1].trim());
                         addItemToBag(playerId, givePropId, giveCount);
-                        givenItems.add(Map.of("propId", givePropId, "count", giveCount));
-                        openChestRecursive(playerId, givePropId, giveCount, givenItems);
-                    }
-                } catch (NumberFormatException ignored) {}
+                        Props giveProps = getPropsCached(givePropId);
+                        String giveName = giveProps != null ? giveProps.getName() : "道具#" + givePropId;
+                        givenItems.add(Map.of("propId", givePropId, "count", giveCount, "name", giveName));
+                    } catch (NumberFormatException ignored) {}
+                }
             }
-            if (!givenItems.isEmpty()) {
-                result.put("type", "chest");
-                result.put("items", givenItems);
-                result.put("message", "恭喜获得" + givenItems.size() + "种道具！");
-                if (shouldAnnounce) result.put("announce", true);
-            }
-            decrementOrRemove(bagItem);
+            result.put("type", "chest");
+            result.put("items", givenItems);
+            result.put("message", "恭喜获得" + givenItems.size() + "种道具！");
+            if (shouldAnnounce) result.put("announce", true);
             return result;
         }
 
@@ -2943,6 +3019,13 @@ public class BagService {
         }
     }
 
+    /** Check if a props item is a chest (has giveitems/randitem/needkey effect) */
+    private boolean isChestEffect(Props props) {
+        if (props == null) return false;
+        String eff = props.getEffect();
+        return eff != null && (eff.startsWith("giveitems:") || eff.startsWith("randitem:") || eff.startsWith("needkey:"));
+    }
+
     /** PHP usedProps.php: recursive chest opening — if given item is a chest, open it too */
     private void openChestRecursive(Long playerId, long propId, int count, List<Map<String, Object>> givenItems) {
         openChestRecursive(playerId, propId, count, givenItems, 0);
@@ -2956,32 +3039,47 @@ public class BagService {
         if (!eff.startsWith("giveitems:") && !eff.startsWith("randitem:")) return;
 
         String recPrefix = eff.startsWith("randitem:") ? "randitem:" : "giveitems:";
-        String chestBody = eff.replace(recPrefix, "");
+        String chestBody = eff.substring(recPrefix.length());
         boolean isRandom = recPrefix.equals("randitem:");
         String[] items = isRandom ? chestBody.split("\\|") : chestBody.split(",");
-        for (String itemStr : items) {
-            String[] parts = itemStr.split(":");
-            if (parts.length < 2) continue;
-            try {
-                long childPropId = Long.parseLong(parts[0].trim());
-                int childCount = Integer.parseInt(parts[1].trim());
-                if (isRandom) {
-                    int prob = parts.length >= 3 ? Integer.parseInt(parts[2].trim()) : 100;
-                    if ((int)(Math.random() * prob) >= 1) continue;
-                    addItemToBag(playerId, childPropId, childCount);
-                    givenItems.add(Map.of("propId", childPropId, "count", childCount, "fromChest", true));
-                    openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
-                    break;
-                } else {
-                    addItemToBag(playerId, childPropId, childCount);
-                    givenItems.add(Map.of("propId", childPropId, "count", childCount, "fromChest", true));
-                    openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
-                }
-            } catch (NumberFormatException ignored) {}
+
+        for (int c = 0; c < count; c++) {
+            for (String itemStr : items) {
+                String[] parts = itemStr.split(":");
+                if (parts.length < 2) continue;
+                try {
+                    long childPropId = Long.parseLong(parts[0].trim());
+                    int childCount = Integer.parseInt(parts[1].trim());
+                    if (isRandom) {
+                        int prob = parts.length >= 3 ? Integer.parseInt(parts[2].trim()) : 100;
+                        if (prob < 1) prob = 1;
+                        if ((int)(Math.random() * prob) >= 1) continue;
+                        Props childProps = getPropsCached(childPropId);
+                        String childName = childProps != null ? childProps.getName() : "道具#" + childPropId;
+                        if (isChestEffect(childProps)) {
+                            openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
+                        } else {
+                            addItemToBag(playerId, childPropId, childCount);
+                            givenItems.add(Map.of("propId", childPropId, "count", childCount, "name", childName, "fromChest", true));
+                        }
+                        break;
+                    } else {
+                        Props childProps = getPropsCached(childPropId);
+                        String childName = childProps != null ? childProps.getName() : "道具#" + childPropId;
+                        if (isChestEffect(childProps)) {
+                            openChestRecursive(playerId, childPropId, childCount, givenItems, recursionDepth + 1);
+                        } else {
+                            addItemToBag(playerId, childPropId, childCount);
+                            givenItems.add(Map.of("propId", childPropId, "count", childCount, "name", childName, "fromChest", true));
+                        }
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
         }
     }
 
     /** PHP: useItem by prop ID (usedProps.php?pid=X&js) */
+    @Transactional
     public Map<String, Object> useItemByPid(Long playerId, Long propId, boolean isJs) {
         var bagItem = bagRepo.findByPlayerId(playerId).stream()
             .filter(b -> b.getPropId() != null && b.getPropId().equals(propId) && b.getSums() != null && b.getSums() > 0)
@@ -3014,6 +3112,16 @@ public class BagService {
             bag.setSums((bag.getSums() != null ? bag.getSums() : 0) + count);
             bagRepo.save(bag);
         } else {
+            // 统一检查背包空间
+            Player player = playerRepo.findById(playerId.intValue()).orElse(null);
+            int maxBag = player != null && player.getMaxBag() != null ? player.getMaxBag() : 30;
+            long currentItems = bagRepo.findByPlayerId(playerId).stream()
+                .filter(b -> b.getSums() != null && b.getSums() > 0 && (b.getZbing() == null || b.getZbing() == 0))
+                .count();
+            if (currentItems >= maxBag) {
+                throw new IllegalStateException("背包已满（" + currentItems + "/" + maxBag + "），无法获得新物品！");
+            }
+
             UserBag bag = new UserBag();
             bag.setPlayerId(playerId);
             bag.setPropId(propId);

@@ -44,7 +44,8 @@ public class BagController {
         Long petId = body.get("petId") != null
             ? Long.valueOf(body.get("petId").toString()) : null;
         boolean isJs = body.get("js") != null && "true".equals(String.valueOf(body.get("js")));
-        return ApiResponse.success(bagService.useItem(uid, id, petId, isJs));
+        String context = isJs ? "zhanbu" : String.valueOf(body.getOrDefault("context", "bag"));
+        return ApiResponse.success(bagService.useItem(uid, id, petId, context));
     }
 
     /** Magic house: use item by prop ID (PHP usedProps.php?pid=X&js) */
